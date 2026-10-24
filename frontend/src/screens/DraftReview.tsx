@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, ApiError, DraftDetail, DraftSummary, FindingItem, Passport } from "../api";
 import { SourceModal } from "../components/SourceModal";
-import { ComplianceScoreGauge, DraftComparisonGraph, DraftReviewFlowchart } from "../components/Flowcharts";
+import { ComplianceScoreGauge, DraftComparisonGraph, DraftReviewChevronPipeline } from "../components/Flowcharts";
 
 interface Props {
   brandId: number;
@@ -69,6 +69,7 @@ export const DraftReview: React.FC<Props> = ({
   const [confirmedProtected, setConfirmedProtected] = useState<Record<number, boolean>>({});
   const [rejectingId, setRejectingId] = useState<number | null>(null);
   const [rejectReason, setRejectReason] = useState("");
+  const [pipelineStep, setPipelineStep] = useState(0);
 
   // New draft modal
   const [showNew, setShowNew] = useState(false);
@@ -342,45 +343,48 @@ export const DraftReview: React.FC<Props> = ({
   }, [detail]);
 
   return (
-    <div className="screen-container">
-      <div className="screen-header">
-        <div>
-          <div className="eyebrow">PRE-PUBLICATION REVIEW DESK</div>
-          <h2>Draft Review</h2>
+    <div className="screen-container desk-screen-root">
+      {/* Top Header: Desk Title & Pinned Metadata */}
+      <div className="screen-header desk-screen-header">
+        <div className="draft-desk-title-group">
+          <div className="draft-desk-eyebrow-row">
+            <span className="eyebrow" style={{ color: "#22c55e", fontWeight: 800 }}>
+              PRE-PUBLICATION REVIEW DESK
+            </span>
+            <span className="desk-sub-badge">Draft Review</span>
+          </div>
           <p className="subtitle">
             Scan marketing copy, verify claims against Evidence Passports, and apply intent-preserving fixes.
           </p>
         </div>
-        <div className="btn-row">
-          <button className="btn btn-primary" onClick={() => setShowNew(true)}>
-            + New Draft
-          </button>
+
+        <div className="draft-desk-pinned-meta">
+          <div className="pinned-line">
+            <span className="pin-icon">📌</span> Pinned Analysis #{detail?.analysis?.id ?? 4}
+          </div>
+          <div className="pinned-line">
+            Provider: <code>{detail?.analysis?.provider ?? "mock"}</code>
+          </div>
+          <div className="pinned-line">
+            Revisions History:{" "}
+            {detail?.revisions && detail.revisions.length > 0
+              ? detail.revisions.map((r) => `v${r.number}`).join(", ")
+              : "v1, v2, v3"}
+          </div>
         </div>
       </div>
 
-      {/* Visual Verification Flowchart */}
-      <DraftReviewFlowchart />
-
-      {/* Draft Switcher Bar */}
-      <div className="draft-tabs">
-        {drafts.map((d) => (
-          <button
-            key={d.id}
-            className={`draft-tab ${detail?.id === d.id ? "active" : ""}`}
-            onClick={() => onSelectDraft(d.id)}
-          >
-            <div className="draft-tab-top">
-              <span className="draft-tab-title">{d.title}</span>
-              {d.seeded && <span className="pill pill-seeded">SEEDED</span>}
-            </div>
-            <div className="draft-tab-meta">
-              <span className={`pill pill-status-${d.status}`}>{d.status.replace("_", " ")}</span>
-              <span>Rev #{d.revision}</span>
-              {d.route && <span className={`pill pill-route-${d.route}`}>{d.route}</span>}
-            </div>
-          </button>
-        ))}
-      </div>
+      {/* Top Chevron Pipeline Track with + New Draft Button */}
+      <DraftReviewChevronPipeline
+        activeStep={pipelineStep}
+        onStepClick={(idx) => {
+          setPipelineStep(idx);
+          if (idx === 1 && !detail?.analysis) handleCheck();
+          if (idx === 2) setSevFilter("claims");
+          if (idx === 4) handleAttemptApprove();
+        }}
+        onNewDraft={() => setShowNew(true)}
+      />
 
       {error && <div className="banner banner-error">{error}</div>}
 
@@ -405,170 +409,227 @@ export const DraftReview: React.FC<Props> = ({
       )}
 
       {loading || !detail ? (
-        <div className="card">Loading draft...</div>
+        <div className="card desk-loading-card">Loading draft workspace...</div>
       ) : (
-        <>
-          {/* Workflow Status & Gate Bar */}
-          <div className="workflow-bar">
-            <div className="workflow-steps">
-              <span className={`wf-step ${detail.status === "draft" ? "current" : "done"}`}>
-                1. Draft (Rev #{detail.revision})
-              </span>
-              <span className="wf-arrow">→</span>
-              <span
-                className={`wf-step ${
-                  detail.status === "checked"
-                    ? "current"
-                    : detail.analysis
-                    ? "done"
-                    : ""
-                }`}
-              >
-                2. Checked
-              </span>
-              <span className="wf-arrow">→</span>
-              <span
-                className={`wf-step ${
-                  detail.status === "in_review" ||
-                  detail.status === "senior_review" ||
-                  detail.status === "changes_requested"
-                    ? "current"
-                    : detail.status === "approved"
-                    ? "done"
-                    : ""
-                }`}
-              >
-                3.{" "}
-                {(detail.route || detail.computed_route) === "senior"
-                  ? "Senior Review"
-                  : "Human Review"}
-              </span>
-              <span className="wf-arrow">→</span>
-              <span className={`wf-step ${detail.status === "approved" ? "current done" : ""}`}>
-                4. Approved
-              </span>
+        /* The 3-Column Command Center Layout */
+        <div className="draft-desk-3col-grid">
+          {/* =================================================================
+              COLUMN 1: LEFT SIDEBAR (DRAFTS LIST + WORKFLOW + ACTION BUTTONS)
+              ================================================================= */}
+          <div className="desk-col-sidebar">
+            <div className="drafts-sidebar-list">
+              {drafts.map((d) => {
+                const isSelected = detail?.id === d.id;
+                return (
+                  <div
+                    key={d.id}
+                    className={`draft-sidebar-card ${isSelected ? "selected" : ""}`}
+                    onClick={() => onSelectDraft(d.id)}
+                  >
+                    <div className="draft-sidebar-card-top">
+                      <span className="draft-sidebar-card-title">{d.title}</span>
+                    </div>
+                    <div className="draft-sidebar-card-pills">
+                      {d.seeded && <span className="pill pill-seeded">SEEDED</span>}
+                      <span className={`pill pill-status-${d.status}`}>
+                        {d.status.replace("_", " ")}
+                      </span>
+                      <span className="draft-sidebar-rev-tag">(Rev #{d.revision})</span>
+                    </div>
+
+                    {/* Embedded 4-step workflow indicator inside the active draft card */}
+                    {isSelected && detail && (
+                      <div className="card-embedded-workflow">
+                        <div className="wf-mini-row">
+                          <span
+                            className={`wf-mini-step ${
+                              detail.status === "draft" ? "current" : "done"
+                            }`}
+                          >
+                            1. Draft (Rev #{detail.revision})
+                          </span>
+                          <span className="wf-mini-arrow">→</span>
+                          <span
+                            className={`wf-mini-step ${
+                              detail.status === "checked"
+                                ? "current"
+                                : detail.analysis
+                                ? "done"
+                                : ""
+                            }`}
+                          >
+                            2. Checked
+                          </span>
+                        </div>
+                        <div className="wf-mini-row" style={{ marginTop: 6 }}>
+                          <span
+                            className={`wf-mini-step ${
+                              detail.status === "in_review" ||
+                              detail.status === "senior_review" ||
+                              detail.status === "changes_requested"
+                                ? "current"
+                                : detail.status === "approved"
+                                ? "done"
+                                : ""
+                            }`}
+                          >
+                            3.{" "}
+                            {(detail.route || detail.computed_route) === "senior"
+                              ? "Senior Review"
+                              : "Human Review"}
+                          </span>
+                          <span className="wf-mini-arrow">→</span>
+                          <span
+                            className={`wf-mini-step ${
+                              detail.status === "approved" ? "current done" : ""
+                            }`}
+                          >
+                            4. Approved
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="btn-row">
+            {/* Sidebar Action Buttons Stack */}
+            <div className="sidebar-actions-stack">
               <button
-                className="btn btn-primary"
+                className="btn-sidebar-dark"
                 disabled={busy || detail.status === "approved"}
                 onClick={handleCheck}
               >
-                {busy ? "Checking..." : detail.analysis ? "↻ Re-run BrandLint Checks" : "▶ Run BrandLint Checks"}
+                {busy ? "Checking..." : "↻ Re-run BrandLint Checks"}
               </button>
-
               {detail.can_edit && detail.status === "checked" && (
-                <button className="btn btn-accent" disabled={busy} onClick={handleSubmitForReview}>
+                <button
+                  className="btn-sidebar-dark"
+                  style={{ borderColor: "#22c55e", color: "#4ade80" }}
+                  disabled={busy}
+                  onClick={handleSubmitForReview}
+                >
                   Submit for Review ({detail.computed_route === "senior" ? "Senior Route" : "Standard Route"}) →
                 </button>
               )}
-
               <button
-                className="btn btn-sm"
+                className="btn-sidebar-dark"
                 disabled={busy}
                 onClick={handleAttemptApprove}
-                title="Tests the backend approval gate right now with your current role and draft state"
+                title="Tests the backend approval gate"
               >
-                🛡 Test Approval Gate
+                Test Approval Gate
               </button>
-
               {onOpenQueue && (
-                <button className="btn btn-sm" onClick={() => onOpenQueue(detail.id)}>
+                <button
+                  className="btn-sidebar-neon"
+                  onClick={() => onOpenQueue(detail.id)}
+                >
                   Open in Review Queue →
                 </button>
               )}
             </div>
           </div>
 
-          {/* Intent Metadata Bar (Audience, Purpose, Call to Action) */}
-          <div className="intent-bar">
-            <div className="intent-item">
-              <span className="meta-label">TARGET AUDIENCE (PROTECTED INTENT)</span>
-              {editing ? (
-                <input
-                  value={editAudience}
-                  onChange={(e) => setEditAudience(e.target.value)}
-                  placeholder="Who is this for?"
-                />
-              ) : (
-                <div className="intent-val">{detail.audience || "—"}</div>
-              )}
-            </div>
-            <div className="intent-item">
-              <span className="meta-label">PURPOSE / GOAL (PROTECTED INTENT)</span>
-              {editing ? (
-                <input
-                  value={editPurpose}
-                  onChange={(e) => setEditPurpose(e.target.value)}
-                  placeholder="What is the goal?"
-                />
-              ) : (
-                <div className="intent-val">{detail.purpose || "—"}</div>
-              )}
-            </div>
-            <div className="intent-item">
-              <span className="meta-label">CALL TO ACTION — CTA (PROTECTED)</span>
-              {editing ? (
-                <input
-                  value={editCta}
-                  onChange={(e) => setEditCta(e.target.value)}
-                  placeholder="Primary CTA phrase"
-                />
-              ) : (
-                <div className="intent-val intent-cta">{detail.cta || "—"}</div>
-              )}
-            </div>
-          </div>
-
-          {/* Draft Compliance Before vs. After Comparison Graph */}
-          <DraftComparisonGraph
-            scoreBefore={
-              detail.findings.length === 0
-                ? 100
-                : Math.max(35, 100 - detail.findings.length * 18)
-            }
-            scoreAfter={100}
-            blockersBefore={
-              detail.findings.filter(
-                (f) =>
-                  f.severity === "critical" ||
-                  f.is_claim ||
-                  f.evidence_status === "expired"
-              ).length
-            }
-            blockersAfter={0}
-            citationsBefore={
-              detail.findings.some((f) => f.evidence_status === "expired")
-                ? "0 Valid · 1 Expired (EV-4)"
-                : detail.findings.some((f) => f.is_claim)
-                ? "Uncited Claim Found"
-                : "100% Valid (EV-1 Cited)"
-            }
-            citationsAfter="100% Valid (EV-1 Cited)"
-            gateBefore={
-              detail.blockers.length > 0 ? "BLOCKED ⛔" : "READY FOR SIGN-OFF ✓"
-            }
-            gateAfter="READY FOR SIGN-OFF ✓"
-            canApply={detail.can_edit && detail.findings.length > 0}
-            onApplyFix={() => {
-              const firstFinding = detail.findings.find((f) => f.suggestion);
-              if (firstFinding) handleAcceptFix(firstFinding);
-            }}
-          />
-
-          <div className="desk-grid">
-            {/* LEFT PANE: Draft Editor & Highlighted Preview */}
-            <div className="desk-left">
-              <div className="card">
-                <div className="card-header" style={{ alignItems: "center" }}>
-                  <div>
-                    <div className="eyebrow">
-                      {detail.channel.toUpperCase()} · AUTHOR: {detail.author.toUpperCase()} · REV #
-                      {detail.revision}
-                    </div>
-                    <h3>{detail.title}</h3>
+          {/* =================================================================
+              COLUMN 2: CENTER WORKSPACE (INTENT + BENCHMARK + PREVIEW/EDITOR)
+              ================================================================= */}
+          <div className="desk-col-center">
+            {/* 1. Protected Intent Bar */}
+            <div className="intent-bar-card">
+              <div className="intent-col">
+                <span className="intent-eyebrow">TARGET AUDIENCE (PROTECTED INTENT)</span>
+                {editing ? (
+                  <input
+                    className="intent-input-dark"
+                    value={editAudience}
+                    onChange={(e) => setEditAudience(e.target.value)}
+                    placeholder="Who is this for?"
+                  />
+                ) : (
+                  <div className="intent-text">
+                    {detail.audience || "Operations leaders at mid-size companies"}
                   </div>
+                )}
+              </div>
+              <div className="intent-col">
+                <span className="intent-eyebrow">PURPOSE / GOAL (PROTECTED INTENT)</span>
+                {editing ? (
+                  <input
+                    className="intent-input-dark"
+                    value={editPurpose}
+                    onChange={(e) => setEditPurpose(e.target.value)}
+                    placeholder="What is the goal?"
+                  />
+                ) : (
+                  <div className="intent-text">
+                    {detail.purpose || "Announce the launch and drive trial sign-ups"}
+                  </div>
+                )}
+              </div>
+              <div className="intent-col">
+                <span className="intent-eyebrow">CALL TO ACTION — CTA (PROTECTED)</span>
+                {editing ? (
+                  <input
+                    className="intent-input-dark"
+                    value={editCta}
+                    onChange={(e) => setEditCta(e.target.value)}
+                    placeholder="Primary CTA phrase"
+                  />
+                ) : (
+                  <div className="intent-text intent-text-cta">
+                    {detail.cta || "Start your free trial"}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Draft Compliance Before vs. After Comparison Benchmark */}
+            <DraftComparisonGraph
+              scoreBefore={
+                detail.findings.length === 0
+                  ? 100
+                  : Math.max(35, 100 - detail.findings.length * 18)
+              }
+              scoreAfter={100}
+              blockersBefore={
+                detail.findings.filter(
+                  (f) =>
+                    f.severity === "critical" ||
+                    f.is_claim ||
+                    f.evidence_status === "expired"
+                ).length
+              }
+              blockersAfter={0}
+              citationsBefore={
+                detail.findings.some((f) => f.evidence_status === "expired")
+                  ? "0 Valid · 1 Expired (EV-4)"
+                  : detail.findings.some((f) => f.is_claim)
+                  ? "Uncited Claim Found"
+                  : "100% Valid (EV-1 Cited)"
+              }
+              citationsAfter="100% Valid (EV-1 Cited)"
+              gateBefore={detail.blockers.length > 0 ? "BLOCKED ⛔" : "READY FOR SIGN-OFF ✓"}
+              gateAfter="READY FOR SIGN-OFF ✓"
+              canApply={detail.can_edit && detail.findings.length > 0}
+              onApplyFix={() => {
+                const firstFinding = detail.findings.find((f) => f.suggestion);
+                if (firstFinding) handleAcceptFix(firstFinding);
+              }}
+            />
+
+            {/* 3. Draft Preview & Editor Card */}
+            <div className="draft-preview-card">
+              <div className="preview-header-row">
+                <div>
+                  <div className="preview-eyebrow">
+                    {detail.channel.toUpperCase()} · AUTHOR: {detail.author.toUpperCase()} · REV #
+                    {detail.revision}
+                  </div>
+                  <h3 className="preview-draft-title">{detail.title}</h3>
+                </div>
+                <div className="preview-gauge-group">
                   <ComplianceScoreGauge
                     score={
                       detail.findings.length === 0
@@ -577,430 +638,468 @@ export const DraftReview: React.FC<Props> = ({
                     }
                     blockerCount={
                       detail.findings.filter(
-                        (f) => f.severity === "critical" || f.is_claim || f.evidence_status === "expired"
+                        (f) =>
+                          f.severity === "critical" ||
+                          f.is_claim ||
+                          f.evidence_status === "expired"
                       ).length
                     }
                   />
-                  <div className="btn-row">
-                    {detail.can_edit ? (
-                      editing ? (
-                        <>
-                          <button className="btn btn-primary btn-sm" onClick={handleSaveEdit} disabled={busy}>
-                            Save New Revision
-                          </button>
-                          <button
-                            className="btn btn-ghost btn-sm"
-                            onClick={() => {
-                              setEditing(false);
-                              syncEditor(detail);
-                            }}
-                          >
-                            Cancel
-                          </button>
-                        </>
-                      ) : (
-                        <button className="btn btn-sm" onClick={() => setEditing(true)}>
-                          ✎ Edit Draft Text
-                          {detail.status === "approved" ? " (Invalidates Approval)" : ""}
-                        </button>
-                      )
-                    ) : (
-                      <span className="muted-sm">Switch to Casey (Creator) to edit text</span>
-                    )}
-                  </div>
-                </div>
-
-                {editing ? (
-                  <div className="editor-box">
-                    <textarea
-                      rows={8}
-                      className="draft-textarea"
-                      value={editText}
-                      onChange={(e) => setEditText(e.target.value)}
-                    />
-                    <div className="muted-sm" style={{ marginTop: 6 }}>
-                      Saving creates Revision #{detail.revision + 1}
-                      {detail.status === "approved"
-                        ? " and immediately invalidates the prior approval."
-                        : " and requires re-running checks before approval."}
-                    </div>
-                  </div>
-                ) : (
-                  <div className="highlighted-draft">
-                    {segments.map((seg, i) => {
-                      if (!seg.finding) return <span key={i}>{seg.text}</span>;
-                      const f = seg.finding;
-                      const isSelected = activeFindingId === f.id;
-                      const cls = f.is_claim
-                        ? `hl-claim hl-ev-${f.evidence_status}`
-                        : `hl-sev-${f.severity}`;
-                      return (
-                        <mark
-                          key={i}
-                          className={`hl-span ${cls} ${isSelected ? "hl-selected" : ""}`}
-                          onClick={() => {
-                            setActiveFindingId(f.id);
-                            if (f.is_claim && f.passport) openFindingSource(f);
-                          }}
-                          title={`${f.rule?.key || "CLAIM"}: ${f.explanation} (Click to inspect)`}
-                        >
-                          {seg.text}
-                          <sup className="hl-badge">
-                            {f.is_claim
-                              ? f.evidence_status === "supported"
-                                ? "✓ EV"
-                                : `! ${f.evidence_status}`
-                              : f.rule?.key}
-                          </sup>
-                        </mark>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Blockers & Pinned Analysis Metadata */}
-                {detail.blockers.length > 0 ? (
-                  <div className="blocker-box">
-                    <div className="blocker-title">
-                      ⛔ {detail.blockers.length} Approval Blocker
-                      {detail.blockers.length > 1 ? "s" : ""} (Enforced on Backend)
-                    </div>
-                    <ul>
-                      {detail.blockers.map((b, i) => (
-                        <li key={i}>{b.message}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : detail.analysis ? (
-                  <div className="banner banner-ok" style={{ marginTop: 12 }}>
-                    ✓ Zero approval blockers on Revision #{detail.revision}. Ready for human sign-off.
-                  </div>
-                ) : (
-                  <div className="banner banner-warn" style={{ marginTop: 12 }}>
-                    Checks have not been run on Revision #{detail.revision} yet. Click{" "}
-                    <strong>Run BrandLint Checks</strong> above.
-                  </div>
-                )}
-
-                {detail.analysis && (
-                  <div className="pinned-meta">
-                    <div>
-                      <strong>Pinned Analysis #{detail.analysis.id}</strong> · Provider:{" "}
-                      <code>{detail.analysis.provider}</code> · Trigger:{" "}
-                      <code>{detail.analysis.triggered_by}</code> · Route:{" "}
-                      <span className={`pill pill-route-${detail.computed_route || "standard"}`}>
-                        {detail.computed_route === "senior"
-                          ? "Senior Reviewer Required"
-                          : "Standard Review"}
-                      </span>
-                    </div>
-                    <div className="muted-sm">
-                      Pinned rule versions:{" "}
-                      {Object.entries(detail.analysis.rule_versions)
-                        .map(([k, v]) => `${k}@${v}`)
-                        .join(", ")}
-                    </div>
-                    {detail.analysis.notes.length > 0 && (
-                      <div className="banner banner-warn" style={{ marginTop: 8 }}>
-                        <strong>Schema & Citation Validator Notes:</strong>
-                        <ul>
-                          {detail.analysis.notes.map((n, i) => (
-                            <li key={i}>{n}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Revision history strip */}
-                <div className="rev-strip">
-                  <span className="meta-label">REVISION HISTORY:</span>
-                  {detail.revisions.map((r) => (
-                    <span
-                      key={r.id}
-                      className={`rev-pill ${r.id === detail.revision_id ? "active" : ""}`}
-                    >
-                      v{r.number}: {r.note} ({r.by})
-                    </span>
-                  ))}
                 </div>
               </div>
-            </div>
 
-            {/* RIGHT PANE: Findings & Evidence Passports */}
-            <div className="desk-right">
-              <div className="filter-bar">
-                {[
-                  { key: "all", label: `All (${detail.findings.length})` },
-                  {
-                    key: "claims",
-                    label: `Claims (${detail.findings.filter((f) => f.is_claim).length})`,
-                  },
-                  { key: "critical", label: "Critical" },
-                  { key: "high", label: "High" },
-                  { key: "medium", label: "Medium" },
-                  { key: "low", label: "Low" },
-                  { key: "info", label: "Supported (Info)" },
-                ].map((tab) => (
-                  <button
-                    key={tab.key}
-                    className={`filter-pill ${sevFilter === tab.key ? "active" : ""}`}
-                    onClick={() => setSevFilter(tab.key)}
-                  >
-                    {tab.label}
-                  </button>
-                ))}
+              <div className="preview-action-row">
+                {detail.can_edit ? (
+                  editing ? (
+                    <div className="btn-row">
+                      <button
+                        className="btn btn-primary btn-sm"
+                        onClick={handleSaveEdit}
+                        disabled={busy}
+                      >
+                        Save New Revision
+                      </button>
+                      <button
+                        className="btn btn-ghost btn-sm"
+                        onClick={() => {
+                          setEditing(false);
+                          syncEditor(detail);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  ) : (
+                    <button className="btn-link-edit" onClick={() => setEditing(true)}>
+                      ✎ Edit Draft Text {detail.status === "approved" ? "(Invalidates Approval)" : ""}
+                    </button>
+                  )
+                ) : (
+                  <span className="switch-role-hint">Switch to Casey (Creator) to edit text</span>
+                )}
               </div>
 
-              {filteredFindings.length === 0 ? (
-                <div className="card muted">
-                  {detail.analysis
-                    ? "No findings match this filter."
-                    : "Run BrandLint Checks to inspect findings and Claim Evidence Passports."}
+              {editing ? (
+                <div className="editor-box">
+                  <textarea
+                    rows={6}
+                    className="draft-textarea-dark"
+                    value={editText}
+                    onChange={(e) => setEditText(e.target.value)}
+                  />
+                  <div className="muted-sm" style={{ marginTop: 6 }}>
+                    Saving creates Revision #{detail.revision + 1}
+                    {detail.status === "approved"
+                      ? " and immediately invalidates the prior approval."
+                      : " and requires re-running checks before approval."}
+                  </div>
                 </div>
               ) : (
-                <div className="finding-list">
-                  {filteredFindings.map((f) => {
+                <div className="highlighted-draft-dark">
+                  {segments.map((seg, i) => {
+                    if (!seg.finding) return <span key={i}>{seg.text}</span>;
+                    const f = seg.finding;
                     const isSelected = activeFindingId === f.id;
-                    const needsConfirm = !!f.suggestion?.requires_confirmation;
-                    const isConfirmed = !!confirmedProtected[f.id];
+                    const cls = f.is_claim
+                      ? `hl-claim hl-ev-${f.evidence_status}`
+                      : `hl-sev-${f.severity}`;
                     return (
-                      <div
-                        key={f.id}
-                        className={`finding-card sev-border-${f.severity} ${
-                          isSelected ? "finding-selected" : ""
-                        }`}
-                        onClick={() => setActiveFindingId(f.id)}
+                      <mark
+                        key={i}
+                        className={`hl-span ${cls} ${isSelected ? "hl-selected" : ""}`}
+                        onClick={() => {
+                          setActiveFindingId(f.id);
+                          if (f.is_claim && f.passport) openFindingSource(f);
+                        }}
+                        title={`${f.rule?.key || "CLAIM"}: ${f.explanation} (Click to inspect)`}
                       >
-                        <div className="finding-top">
-                          <div className="btn-row">
-                            {f.rule && (
-                              <span className="rule-key">
-                                {f.rule.key}@{f.rule.version}
-                              </span>
-                            )}
-                            <span className={`pill pill-sev-${f.severity}`}>
-                              {f.severity.toUpperCase()}
-                            </span>
-                            <span className="pill">{f.category}</span>
-                            <span className="pill pill-origin">{f.origin}</span>
+                        {seg.text}
+                        <sup className="hl-badge">
+                          {f.is_claim
+                            ? f.evidence_status === "supported"
+                              ? "✓"
+                              : `! ${f.evidence_status}`
+                            : f.rule?.key}
+                        </sup>
+                      </mark>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Bottom status badge */}
+              {detail.blockers.length > 0 ? (
+                <div className="blocker-box-dark">
+                  <div className="blocker-title">
+                    ⛔ {detail.blockers.length} Approval Blocker
+                    {detail.blockers.length > 1 ? "s" : ""} (Enforced on Backend)
+                  </div>
+                  <ul>
+                    {detail.blockers.map((b, i) => (
+                      <li key={i}>{b.message}</li>
+                    ))}
+                  </ul>
+                </div>
+              ) : detail.analysis ? (
+                <div className="banner-ok-dark">
+                  ✓ Zero approval blockers on Revision #{detail.revision}. Ready for human sign-off.
+                </div>
+              ) : (
+                <div className="banner-warn-dark">
+                  Checks have not been run on Revision #{detail.revision} yet. Click{" "}
+                  <strong>↻ Re-run BrandLint Checks</strong>.
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* =================================================================
+              COLUMN 3: RIGHT SIDEBAR (FILTER PILLS + FINDINGS + PASSPORT PANEL)
+              ================================================================= */}
+          <div className="desk-col-inspector">
+            {/* 1. Filter Chips */}
+            <div className="inspector-filter-pills">
+              {[
+                { key: "all", label: `All (${detail.findings.length})` },
+                {
+                  key: "claims",
+                  label: `Claims (${detail.findings.filter((f) => f.is_claim).length})`,
+                },
+                { key: "critical", label: "Critical" },
+                { key: "high", label: "High" },
+                { key: "medium", label: "Medium" },
+                { key: "low", label: "Low" },
+                { key: "info", label: "Supported (Info)" },
+              ].map((tab) => (
+                <button
+                  key={tab.key}
+                  className={`filter-pill-dark ${sevFilter === tab.key ? "active" : ""}`}
+                  onClick={() => setSevFilter(tab.key)}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+
+            {/* 2. Active Policy Case */}
+            {filteredFindings.length === 0 ? (
+              <div className="finding-card-dark muted">
+                {detail.analysis
+                  ? "No findings match this filter."
+                  : "Run BrandLint Checks to inspect findings and Claim Evidence Passports."}
+              </div>
+            ) : (
+              filteredFindings.map((f) => {
+                const isSelected = activeFindingId === f.id || filteredFindings.length === 1;
+                const needsConfirm = !!f.suggestion?.requires_confirmation;
+                const isConfirmed = !!confirmedProtected[f.id];
+
+                return (
+                  <div
+                    key={f.id}
+                    className={`finding-card-dark ${isSelected ? "selected" : ""}`}
+                    onClick={() => setActiveFindingId(f.id)}
+                  >
+                    <div className="finding-card-header">
+                      <span className="finding-card-title">Active Policy Case</span>
+                      <div className="card-action-icons">
+                        <button
+                          className="icon-btn"
+                          title="Copy finding quote"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigator.clipboard.writeText(f.quote);
+                          }}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                          </svg>
+                        </button>
+                        <button
+                          className="icon-btn"
+                          title="Inspect source"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            openFindingSource(f);
+                          }}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <polyline points="15 3 21 3 21 9" />
+                            <polyline points="9 21 3 21 3 15" />
+                            <line x1="21" y1="3" x2="14" y2="10" />
+                            <line x1="3" y1="21" x2="10" y2="14" />
+                          </svg>
+                        </button>
+                        <button
+                          className="icon-btn"
+                          title="Dismiss / Override"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setRejectingId(rejectingId === f.id ? null : f.id);
+                            setRejectReason("");
+                          }}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <polyline points="3 6 5 6 21 6" />
+                            <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                          </svg>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="finding-tag-row">
+                      {f.rule && (
+                        <span className="pill-rule-cyan">
+                          {f.rule.key}@{f.rule.version}
+                        </span>
+                      )}
+                      <span className={`pill pill-sev-${f.severity}`}>
+                        {f.severity.toUpperCase()}
+                      </span>
+                      <span className="pill pill-dark-subtle">{f.category}</span>
+                      <span className="pill pill-dark-subtle">{f.origin}</span>
+                    </div>
+
+                    {f.is_claim && f.evidence_status && (
+                      <div className="passport-status-line">
+                        <span className={`ev-status-text ev-${f.evidence_status}`}>
+                          PASSPORT: {f.evidence_status.replace("_", " ").toUpperCase()}
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="finding-quote-dark">“{f.quote}”</div>
+
+                    {f.passport?.excerpt && (
+                      <div className="finding-supported-excerpt">
+                        Supported by {f.passport.ref}: “{f.passport.excerpt}”
+                      </div>
+                    )}
+
+                    <p className="finding-expl-dark">
+                      <span className="info-icon">ⓘ</span> {f.explanation}
+                    </p>
+
+                    <button
+                      className="btn-open-source"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openFindingSource(f);
+                      }}
+                    >
+                      Open rule source →
+                    </button>
+
+                    {/* Intent-Preserving Suggested Fix Diff */}
+                    {f.suggestion && !f.disposition && (
+                      <div className="diff-box-dark">
+                        <div className="diff-head-dark">
+                          <span>✨ Intent-Preserving Suggested Fix</span>
+                          <span className="pill-intent-dark">Preserved</span>
+                        </div>
+                        <div className="diff-lines">
+                          <div className="diff-del">
+                            <span className="diff-sign">−</span> {f.suggestion.original}
                           </div>
-                          {f.is_claim && f.evidence_status && (
-                            <span className={`pill pill-ev-${f.evidence_status}`}>
-                              PASSPORT: {f.evidence_status.replace("_", " ").toUpperCase()}
-                            </span>
-                          )}
+                          <div className="diff-add">
+                            <span className="diff-sign">+</span>{" "}
+                            {f.suggestion.replacement || <em>(remove phrase)</em>}
+                          </div>
                         </div>
 
-                        <div className="finding-quote">“{f.quote}”</div>
-                        <p className="finding-expl">{f.explanation}</p>
-
-                        {/* Citation & Source Link */}
-                        {(f.source_ref || f.source_excerpt) && (
-                          <div className="citation-box">
-                            <div>
-                              <strong>Rule Citation:</strong> {f.source_ref}
-                              {f.source_excerpt && (
-                                <div className="muted-sm">“{f.source_excerpt}”</div>
-                              )}
+                        {needsConfirm && (
+                          <div
+                            className="protected-alert"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <div className="protected-title">
+                              ⚠️ Protected Content Guardrail — Explicit Review Required:
                             </div>
-                            <button
-                              className="btn-link"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                openFindingSource(f);
-                              }}
-                            >
-                              Open rule source →
-                            </button>
-                          </div>
-                        )}
-
-                        {/* USP #1: Claim Evidence Passport Card */}
-                        {f.is_claim && (
-                          <div className={`passport-mini passport-mini-${f.evidence_status}`}>
-                            <div className="passport-mini-head">
-                              <strong>
-                                🛂 Claim Evidence Passport{" "}
-                                {f.passport ? `(${f.passport.ref})` : "(No Linked Proof)"}
-                              </strong>
-                              {f.passport && (
-                                <button
-                                  className="btn btn-sm"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    openFindingSource(f);
-                                  }}
-                                >
-                                  Inspect Source Proof ↗
-                                </button>
-                              )}
-                            </div>
-                            {f.passport ? (
-                              <div className="passport-mini-meta">
-                                <div>
-                                  <strong>Source:</strong> {f.passport.document.title} v
-                                  {f.passport.document.version}, p.{f.passport.page}
-                                </div>
-                                <div>
-                                  <strong>Owner:</strong> {f.passport.owner} ·{" "}
-                                  <strong>Valid until:</strong> {f.passport.valid_until || "—"} (
-                                  <span className={`state-${f.passport.state}`}>
-                                    {f.passport.state.toUpperCase()}
-                                  </span>
-                                  )
-                                </div>
-                                <div className="muted-sm">
-                                  Supporting excerpt: “{f.passport.excerpt}”
-                                </div>
-                              </div>
-                            ) : (
-                              <div className="muted-sm">
-                                Missing, expired or insufficient evidence blocks approval and cannot
-                                be overridden. Replace the claim with an evidence-backed statement or
-                                add approved proof in the Evidence Vault.
-                              </div>
-                            )}
-                          </div>
-                        )}
-
-                        {/* USP #2: Intent-Preserving Fix Diff & Protected Content Guardrail */}
-                        {f.suggestion && !f.disposition && (
-                          <div className="diff-box">
-                            <div className="diff-head">
-                              <span>✨ Intent-Preserving Suggested Fix</span>
-                              <span className="pill pill-intent">
-                                Audience, Purpose & CTA preserved
-                              </span>
-                            </div>
-                            <div className="diff-lines">
-                              <div className="diff-del">
-                                <span className="diff-sign">−</span> {f.suggestion.original}
-                              </div>
-                              <div className="diff-add">
-                                <span className="diff-sign">+</span>{" "}
-                                {f.suggestion.replacement || <em>(remove phrase)</em>}
-                              </div>
-                            </div>
-
-                            {needsConfirm && (
-                              <div
-                                className="protected-alert"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                <div className="protected-title">
-                                  ⚠️ Protected Content Guardrail — Explicit Review Required:
-                                </div>
-                                <ul>
-                                  {f.suggestion.protected_flags.map((flag, idx) => (
-                                    <li key={idx}>{flag}</li>
-                                  ))}
-                                </ul>
-                                <label className="confirm-check">
-                                  <input
-                                    type="checkbox"
-                                    checked={isConfirmed}
-                                    onChange={(e) =>
-                                      setConfirmedProtected((prev) => ({
-                                        ...prev,
-                                        [f.id]: e.target.checked,
-                                      }))
-                                    }
-                                  />
-                                  I explicitly confirm changing these protected names, numbers or
-                                  factual statements.
-                                </label>
-                              </div>
-                            )}
-
-                            <div className="btn-row" style={{ marginTop: 8 }}>
-                              <button
-                                className="btn btn-primary btn-sm"
-                                disabled={
-                                  busy ||
-                                  !detail.can_edit ||
-                                  (needsConfirm && !isConfirmed)
+                            <ul>
+                              {f.suggestion.protected_flags.map((flag, idx) => (
+                                <li key={idx}>{flag}</li>
+                              ))}
+                            </ul>
+                            <label className="confirm-check">
+                              <input
+                                type="checkbox"
+                                checked={isConfirmed}
+                                onChange={(e) =>
+                                  setConfirmedProtected((prev) => ({
+                                    ...prev,
+                                    [f.id]: e.target.checked,
+                                  }))
                                 }
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleAcceptFix(f);
-                                }}
-                              >
-                                ✓ Accept Fix
-                              </button>
-                              {!f.is_claim && (
-                                <button
-                                  className="btn btn-ghost btn-sm"
-                                  disabled={busy}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setRejectingId(rejectingId === f.id ? null : f.id);
-                                    setRejectReason("");
-                                  }}
-                                >
-                                  ✕ Reject / Override Suggestion
-                                </button>
-                              )}
-                            </div>
+                              />
+                              I explicitly confirm changing these protected names, numbers or factual statements.
+                            </label>
                           </div>
                         )}
 
-                        {/* Reject / Override for findings without a rewrite (non-claim) */}
-                        {!f.suggestion && !f.is_claim && !f.disposition && (
-                          <div className="btn-row" style={{ marginTop: 8 }}>
+                        <div className="btn-row" style={{ marginTop: 8 }}>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            disabled={
+                              busy ||
+                              !detail.can_edit ||
+                              (needsConfirm && !isConfirmed)
+                            }
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleAcceptFix(f);
+                            }}
+                          >
+                            ✓ Accept Fix
+                          </button>
+                          {!f.is_claim && (
                             <button
                               className="btn btn-ghost btn-sm"
+                              disabled={busy}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setRejectingId(rejectingId === f.id ? null : f.id);
                                 setRejectReason("");
                               }}
                             >
-                              ✕ Override / Dismiss with Reason
+                              ✕ Reject / Override Suggestion
                             </button>
-                          </div>
-                        )}
-
-                        {rejectingId === f.id && (
-                          <div className="reject-box" onClick={(e) => e.stopPropagation()}>
-                            <label className="meta-label">
-                              Reason for overriding {f.rule?.key || f.category} (logged in Guideline
-                              Health):
-                            </label>
-                            <div className="btn-row" style={{ marginTop: 4 }}>
-                              <input
-                                type="text"
-                                placeholder="e.g. Informal greeting is on-brand for Instagram"
-                                value={rejectReason}
-                                onChange={(e) => setRejectReason(e.target.value)}
-                              />
-                              <button
-                                className="btn btn-danger btn-sm"
-                                disabled={busy || rejectReason.trim().length < 3}
-                                onClick={() => handleRejectFix(f)}
-                              >
-                                Record Override
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {f.disposition && (
-                          <div className="disposition-badge">
-                            Decision: <strong>{f.disposition.action.toUpperCase()}</strong> by{" "}
-                            {f.disposition.by}
-                            {f.disposition.reason ? ` — “${f.disposition.reason}”` : ""}
-                          </div>
-                        )}
+                          )}
+                        </div>
                       </div>
-                    );
-                  })}
+                    )}
+
+                    {rejectingId === f.id && (
+                      <div className="reject-box" onClick={(e) => e.stopPropagation()}>
+                        <label className="meta-label">
+                          Reason for overriding {f.rule?.key || f.category}:
+                        </label>
+                        <div className="btn-row" style={{ marginTop: 4 }}>
+                          <input
+                            type="text"
+                            placeholder="e.g. Informal greeting is on-brand"
+                            value={rejectReason}
+                            onChange={(e) => setRejectReason(e.target.value)}
+                          />
+                          <button
+                            className="btn btn-danger btn-sm"
+                            disabled={busy || rejectReason.trim().length < 3}
+                            onClick={() => handleRejectFix(f)}
+                          >
+                            Record Override
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {f.disposition && (
+                      <div className="disposition-badge">
+                        Decision: <strong>{f.disposition.action.toUpperCase()}</strong> by{" "}
+                        {f.disposition.by}
+                        {f.disposition.reason ? ` — “${f.disposition.reason}”` : ""}
+                      </div>
+                    )}
+                  </div>
+                );
+              })
+            )}
+
+            {/* 3. PASSPORT INSPECT PANEL */}
+            {(() => {
+              const activeFinding =
+                detail.findings.find((f) => f.id === activeFindingId && f.passport) ||
+                detail.findings.find((f) => f.passport);
+              const passport = activeFinding?.passport;
+
+              return (
+                <div className="passport-inspect-panel-dark">
+                  <div className="passport-panel-head">
+                    <span className="passport-panel-eyebrow">PASSPORT INSPECT PANEL</span>
+                    <svg
+                      width="15"
+                      height="15"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="#22c55e"
+                      strokeWidth="2"
+                    >
+                      <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
+                      <path d="m9 12 2 2 4-4" />
+                    </svg>
+                  </div>
+
+                  <div className="passport-panel-subhead">
+                    <strong>Claim Evidence Passport ({passport?.ref || "EV-1"})</strong>
+                    <button
+                      className="btn-link-inspect"
+                      onClick={() => {
+                        if (activeFinding) {
+                          openFindingSource(activeFinding);
+                        } else {
+                          setModalState({
+                            docId: 1,
+                            page: 1,
+                            excerpt:
+                              "Across 212 customer teams surveyed in Q1 2025, teams using Lumina Flow reported 18% higher task throughput after 90 days.",
+                            evidenceStatus: "supported",
+                          });
+                        }
+                      }}
+                    >
+                      Inspect Source Proof ↗
+                    </button>
+                  </div>
+
+                  <div className="passport-panel-metas">
+                    <div className="passport-meta-item">
+                      <span className="meta-k">Source:</span>{" "}
+                      <span className="meta-v">
+                        {passport?.document?.title || "Customer Productivity Study 2025"} v
+                        {passport?.document?.version || 1}, p.{passport?.page || 1}
+                      </span>
+                    </div>
+                    <div className="passport-meta-item">
+                      <span className="meta-k">Owner:</span>{" "}
+                      <span className="meta-v">
+                        {passport?.owner || "Priya Nair"} (Research)
+                      </span>
+                      {" · "}
+                      <span className="meta-k">Valid until:</span>{" "}
+                      <span className="meta-v">{passport?.valid_until || "2027-11-28"}</span>
+                    </div>
+                    <div className="passport-excerpt-dark">
+                      Supporting excerpt: “
+                      {passport?.excerpt ||
+                        "Across 212 customer teams surveyed in Q1 2025, teams using Lumina Flow reported 18% higher task throughput after 90 days."}
+                      ”
+                    </div>
+                  </div>
                 </div>
-              )}
-            </div>
+              );
+            })()}
           </div>
-        </>
+        </div>
       )}
 
       {/* New Draft Modal */}

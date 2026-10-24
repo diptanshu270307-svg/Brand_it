@@ -262,44 +262,58 @@ export const BrandLibraryArchitectureFlowchart: React.FC = () => {
 };
 
 // ============================================================================
-// 3. Draft Review Compliance Flowchart
+// 3. Draft Review Compliance Flowchart & Chevron Pipeline Track
 // ============================================================================
-export const DraftReviewFlowchart: React.FC = () => {
+export interface ChevronPipelineProps {
+  activeStep?: number;
+  onStepClick?: (stepIndex: number) => void;
+  onNewDraft?: () => void;
+}
+
+export const DraftReviewChevronPipeline: React.FC<ChevronPipelineProps> = ({
+  activeStep = 0,
+  onStepClick,
+  onNewDraft,
+}) => {
+  const steps = [
+    { num: 1, title: "Marketing Copy" },
+    { num: 2, title: "Pre-Flight Lint" },
+    { num: 3, title: "Evidence Match" },
+    { num: 4, title: "Intent Fixes" },
+    { num: 5, title: "Backend Gate" },
+  ];
+
   return (
-    <div className="flowchart-compact-card">
-      <div className="flowchart-compact-track">
-        <div className="compact-node">
-          <span className="c-step">1</span>
-          <span className="c-title">Marketing Copy</span>
-          <span className="c-sub">Audience, Purpose & CTA</span>
-        </div>
-        <span className="c-arrow">→</span>
-        <div className="compact-node">
-          <span className="c-step">2</span>
-          <span className="c-title">Pre-Flight Lint</span>
-          <span className="c-sub">Deterministic Tone & Terms</span>
-        </div>
-        <span className="c-arrow">→</span>
-        <div className="compact-node node-accent">
-          <span className="c-step">3</span>
-          <span className="c-title">Evidence Match</span>
-          <span className="c-sub">Passport Validity & Excerpts</span>
-        </div>
-        <span className="c-arrow">→</span>
-        <div className="compact-node">
-          <span className="c-step">4</span>
-          <span className="c-title">Intent Fixes</span>
-          <span className="c-sub">Guarded Numbers & Diffs</span>
-        </div>
-        <span className="c-arrow">→</span>
-        <div className="compact-node node-success">
-          <span className="c-step">5</span>
-          <span className="c-title">Backend Gate</span>
-          <span className="c-sub">Sign-Off or Block</span>
-        </div>
+    <div className="pipeline-chevron-bar">
+      {onNewDraft && (
+        <button
+          type="button"
+          className="btn-new-draft-neon"
+          onClick={onNewDraft}
+        >
+          <span className="plus-sym">+</span> New Draft
+        </button>
+      )}
+      <div className="chevron-segments-wrap">
+        {steps.map((st, idx) => {
+          const isActive = activeStep === idx;
+          return (
+            <div
+              key={st.num}
+              className={`chevron-segment ${isActive ? "active" : ""}`}
+              onClick={() => onStepClick && onStepClick(idx)}
+            >
+              <span className="chevron-title">{st.num}. {st.title}</span>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
+};
+
+export const DraftReviewFlowchart: React.FC = () => {
+  return <DraftReviewChevronPipeline activeStep={0} />;
 };
 
 // ============================================================================
@@ -587,12 +601,45 @@ export interface DraftComparisonProps {
   canApply?: boolean;
 }
 
+const MiniCircMeter: React.FC<{ score: number; color: string }> = ({
+  score,
+  color,
+}) => {
+  const radius = 28;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+
+  return (
+    <div className="comp-circ-meter-wrap">
+      <svg width="74" height="74" viewBox="0 0 70 70" className="comp-circ-meter-svg">
+        <circle cx="35" cy="35" r={radius} fill="none" stroke="#172033" strokeWidth="6" />
+        <circle
+          cx="35"
+          cy="35"
+          r={radius}
+          fill="none"
+          stroke={color}
+          strokeWidth="6"
+          strokeDasharray={circumference}
+          strokeDashoffset={strokeDashoffset}
+          strokeLinecap="round"
+          transform="rotate(-90 35 35)"
+          style={{ transition: "stroke-dashoffset 0.8s ease" }}
+        />
+      </svg>
+      <div className="comp-circ-meter-center">
+        <span className="comp-circ-val" style={{ color }}>{score}%</span>
+      </div>
+    </div>
+  );
+};
+
 export const DraftComparisonGraph: React.FC<DraftComparisonProps> = ({
-  scoreBefore = 38,
+  scoreBefore = 82,
   scoreAfter = 100,
-  blockersBefore = 2,
+  blockersBefore = 1,
   blockersAfter = 0,
-  citationsBefore = "0 Valid · 1 Expired (EV-4)",
+  citationsBefore = "Uncited Claim Found",
   citationsAfter = "100% Valid (EV-1 Cited)",
   gateBefore = "BLOCKED ⛔",
   gateAfter = "READY FOR SIGN-OFF ✓",
@@ -632,35 +679,30 @@ export const DraftComparisonGraph: React.FC<DraftComparisonProps> = ({
           <div className="comparison-column col-before">
             <div className="col-header-row">
               <span className="state-tag tag-before">BEFORE FIX · REVISION 1</span>
-              <span className="score-num num-before">{scoreBefore}%</span>
             </div>
 
-            <div className="progress-track-wrap">
-              <div
-                className="progress-bar-fill fill-before"
-                style={{ width: `${scoreBefore}%` }}
-              />
-            </div>
-
-            <div className="metric-rows-group">
-              <div className="comp-row">
-                <span className="comp-lbl">Active Policy Violations:</span>
-                <span className="comp-val val-danger">
-                  {blockersBefore} Blockers (TONE-01 & EV-4)
-                </span>
-              </div>
-              <div className="comp-row">
-                <span className="comp-lbl">Evidence Passport Match:</span>
-                <span className="comp-val val-danger">{citationsBefore}</span>
-              </div>
-              <div className="comp-row">
-                <span className="comp-lbl">Deterministic Gate:</span>
-                <span className="comp-val val-danger">{gateBefore}</span>
+            <div className="col-metrics-split">
+              <MiniCircMeter score={scoreBefore} color="#f87171" />
+              <div className="metric-rows-group">
+                <div className="comp-row">
+                  <span className="comp-lbl">Active Policy Violations:</span>
+                  <span className="comp-val val-danger">
+                    {blockersBefore} Blockers (TONE-01 & EV-4)
+                  </span>
+                </div>
+                <div className="comp-row">
+                  <span className="comp-lbl">Evidence Passport Match:</span>
+                  <span className="comp-val val-danger">{citationsBefore}</span>
+                </div>
+                <div className="comp-row">
+                  <span className="comp-lbl">Deterministic Gate:</span>
+                  <span className="comp-val val-danger">{gateBefore}</span>
+                </div>
               </div>
             </div>
 
             <div className="sample-diff-quote diff-before">
-              <span className="quote-badge">FLAGGED COPY</span>
+              <span className="quote-badge">FLAGGED COPY:</span>
               “Our platform <span className="hl-red">guarantees</span>{" "}
               <span className="hl-red">40% higher productivity</span>.”
             </div>
@@ -672,56 +714,36 @@ export const DraftComparisonGraph: React.FC<DraftComparisonProps> = ({
               <span className="delta-plus">+62%</span>
               <span className="delta-sub">COMPLIANCE DELTA</span>
             </div>
-            <svg
-              className="delta-arrow-svg"
-              width="36"
-              height="20"
-              viewBox="0 0 36 20"
-              fill="none"
-            >
-              <path
-                d="M2 10H30M30 10L22 2M30 10L22 18"
-                stroke="#22c55e"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
           </div>
 
           {/* AFTER COLUMN */}
           <div className="comparison-column col-after">
             <div className="col-header-row">
               <span className="state-tag tag-after">AFTER FIX · VERIFIED</span>
-              <span className="score-num num-after">{scoreAfter}%</span>
             </div>
 
-            <div className="progress-track-wrap">
-              <div
-                className="progress-bar-fill fill-after"
-                style={{ width: `${scoreAfter}%` }}
-              />
-            </div>
-
-            <div className="metric-rows-group">
-              <div className="comp-row">
-                <span className="comp-lbl">Active Policy Violations:</span>
-                <span className="comp-val val-ok">
-                  {blockersAfter} Violations (0 Absolute Claims)
-                </span>
-              </div>
-              <div className="comp-row">
-                <span className="comp-lbl">Evidence Passport Match:</span>
-                <span className="comp-val val-ok">{citationsAfter}</span>
-              </div>
-              <div className="comp-row">
-                <span className="comp-lbl">Deterministic Gate:</span>
-                <span className="comp-val val-ok">{gateAfter}</span>
+            <div className="col-metrics-split">
+              <MiniCircMeter score={scoreAfter} color="#22c55e" />
+              <div className="metric-rows-group">
+                <div className="comp-row">
+                  <span className="comp-lbl">Active Policy Violations:</span>
+                  <span className="comp-val val-ok">
+                    {blockersAfter} Violations (0 Absolute Claims)
+                  </span>
+                </div>
+                <div className="comp-row">
+                  <span className="comp-lbl">Evidence Passport Match:</span>
+                  <span className="comp-val val-ok">{citationsAfter}</span>
+                </div>
+                <div className="comp-row">
+                  <span className="comp-lbl">Deterministic Gate:</span>
+                  <span className="comp-val val-ok">{gateAfter}</span>
+                </div>
               </div>
             </div>
 
             <div className="sample-diff-quote diff-after">
-              <span className="quote-badge badge-green">VERIFIED REWRITE</span>
+              <span className="quote-badge badge-green">VERIFIED REWRITE:</span>
               “Our platform <span className="hl-green">helps deliver</span>{" "}
               <span className="hl-green">up to 18% higher throughput</span>.”
             </div>

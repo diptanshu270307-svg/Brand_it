@@ -1,5 +1,6 @@
 import React, { useRef, useState } from "react";
 import { Count, SectionRail, useIntroMotion } from "../components/Motion";
+import { SecuritySealsRow } from "../components/Flowcharts";
 
 interface Props {
   onOpenScreen: (screen: "library" | "review" | "vault" | "queue" | "insights") => void;
@@ -109,6 +110,7 @@ export const AppleIntro: React.FC<Props> = ({
 
         {/* 2. REAL-TIME ENGINE CONSOLE */}
         <div className="wrap">
+          <SecuritySealsRow />
           <div className="stage" data-reveal>
             {/* Draft Selector Tabs */}
             <div className="term-picker">

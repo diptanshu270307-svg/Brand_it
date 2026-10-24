@@ -962,3 +962,165 @@ body {
   border-radius: 4px;
   border: 1px solid #e2e8f0;
 }
+
+
+/* ============================================================================
+   5. VANTA.JS 3D DOTS BACKGROUND & PRELOADER VISUALS
+   ============================================================================ */
+.vanta-loader-container {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.vanta-fallback-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+.bl-loader-core {
+  position: relative;
+  z-index: 2;
+  backdrop-filter: blur(20px);
+  background: rgba(11, 16, 32, 0.72);
+  border: 1px solid rgba(99, 102, 241, 0.35);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08);
+  border-radius: 20px;
+  padding: 32px 36px;
+}
+
+/* ============================================================================
+   6. COMPLIANCE GAUGE & DASHBOARD VISUALS
+   ============================================================================ */
+.compliance-gauge-box {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 8px 16px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+}
+
+.gauge-svg-wrap {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.gauge-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.gauge-center-text {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+.gauge-score {
+  font-family: var(--sans);
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -0.03em;
+  color: #0b1020;
+  line-height: 1;
+}
+
+.gauge-label {
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  margin-top: 2px;
+}
+
+.gauge-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.gauge-status-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.gauge-status-sub {
+  font-size: 12px;
+  color: #64748b;
+}
+
+/* ============================================================================
+   7. SECURITY SEALS & COMPLIANCE BADGES (Intro)
+   ============================================================================ */
+.security-seals-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+  gap: 12px;
+  margin-bottom: 24px;
+}
+
+.security-seal-item {
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 1px 3px rgba(15, 23, 42, 0.04);
+  transition: all 0.2s ease;
+}
+
+.security-seal-item:hover {
+  border-color: #cbd5e1;
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(15, 23, 42, 0.06);
+}
+
+.seal-icon-circle {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: #eff6ff;
+  color: #2563eb;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.seal-text-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.seal-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.seal-sub {
+  font-size: 11.5px;
+  color: #64748b;
+}

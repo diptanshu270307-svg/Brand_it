@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, ApiError, DraftDetail, DraftSummary, FindingItem, Passport } from "../api";
 import { SourceModal } from "../components/SourceModal";
-import { DraftReviewFlowchart } from "../components/Flowcharts";
+import { ComplianceScoreGauge, DraftReviewFlowchart } from "../components/Flowcharts";
 
 interface Props {
   brandId: number;
@@ -525,7 +525,7 @@ export const DraftReview: React.FC<Props> = ({
             {/* LEFT PANE: Draft Editor & Highlighted Preview */}
             <div className="desk-left">
               <div className="card">
-                <div className="card-header">
+                <div className="card-header" style={{ alignItems: "center" }}>
                   <div>
                     <div className="eyebrow">
                       {detail.channel.toUpperCase()} · AUTHOR: {detail.author.toUpperCase()} · REV #
@@ -533,6 +533,18 @@ export const DraftReview: React.FC<Props> = ({
                     </div>
                     <h3>{detail.title}</h3>
                   </div>
+                  <ComplianceScoreGauge
+                    score={
+                      detail.findings.length === 0
+                        ? 100
+                        : Math.max(35, 100 - detail.findings.length * 18)
+                    }
+                    blockerCount={
+                      detail.findings.filter(
+                        (f) => f.severity === "critical" || f.is_claim || f.evidence_status === "expired"
+                      ).length
+                    }
+                  />
                   <div className="btn-row">
                     {detail.can_edit ? (
                       editing ? (

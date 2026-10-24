@@ -441,3 +441,132 @@ export const ReviewQueueRoutingFlowchart: React.FC = () => {
     </div>
   );
 };
+
+
+// ============================================================================
+// 6. Visual Compliance Health Gauge (Draft Review & Intro)
+// ============================================================================
+export const ComplianceScoreGauge: React.FC<{ score: number; blockerCount?: number }> = ({
+  score,
+  blockerCount = 0,
+}) => {
+  const radius = 42;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (score / 100) * circumference;
+  const isClean = blockerCount === 0 && score >= 90;
+
+  return (
+    <div className="compliance-gauge-box">
+      <div className="gauge-svg-wrap">
+        <svg width="104" height="104" viewBox="0 0 100 100" className="gauge-svg">
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="transparent"
+            stroke="#1e293b"
+            strokeWidth="8"
+          />
+          <circle
+            cx="50"
+            cy="50"
+            r={radius}
+            fill="transparent"
+            stroke={isClean ? "url(#gaugeGradGreen)" : "url(#gaugeGradWarn)"}
+            strokeWidth="8"
+            strokeDasharray={circumference}
+            strokeDashoffset={strokeDashoffset}
+            strokeLinecap="round"
+            style={{ transition: "stroke-dashoffset 1s ease" }}
+            transform="rotate(-90 50 50)"
+          />
+          <defs>
+            <linearGradient id="gaugeGradGreen" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#10b981" />
+              <stop offset="100%" stopColor="#06b6d4" />
+            </linearGradient>
+            <linearGradient id="gaugeGradWarn" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#f59e0b" />
+              <stop offset="100%" stopColor="#ef4444" />
+            </linearGradient>
+          </defs>
+        </svg>
+        <div className="gauge-center-text">
+          <span className="gauge-score">{score}%</span>
+          <span className="gauge-label">HEALTH</span>
+        </div>
+      </div>
+      <div className="gauge-info">
+        <div className="gauge-status-title">
+          {isClean ? "Audit-Grade Compliant" : `${blockerCount} Gate Blocker${blockerCount > 1 ? "s" : ""}`}
+        </div>
+        <div className="gauge-status-sub">
+          {isClean
+            ? "Zero violations · 100% citation coverage"
+            : "Requires evidence resolution before publication"}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// 7. Visual Security & Governance Seals (Trust Row)
+// ============================================================================
+export const SecuritySealsRow: React.FC = () => {
+  const seals = [
+    {
+      title: "Untrusted Data Sandbox",
+      sub: "Immune to Prompt Injections",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+          <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+        </svg>
+      ),
+    },
+    {
+      title: "Evidence Passport Verification",
+      sub: "100% Verifiable Source Excerpts",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+          <path d="m9 12 2 2 4-4"/>
+        </svg>
+      ),
+    },
+    {
+      title: "Intent-Preserving Diff Guard",
+      sub: "Protected Facts & Numbers",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+        </svg>
+      ),
+    },
+    {
+      title: "Immutable Human Audit Gate",
+      sub: "Revisions Invalidate Prior Approvals",
+      icon: (
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10"/>
+          <polyline points="12 6 12 12 16 14"/>
+        </svg>
+      ),
+    },
+  ];
+
+  return (
+    <div className="security-seals-grid">
+      {seals.map((s, i) => (
+        <div key={i} className="security-seal-item">
+          <div className="seal-icon-circle">{s.icon}</div>
+          <div className="seal-text-group">
+            <span className="seal-title">{s.title}</span>
+            <span className="seal-sub">{s.sub}</span>
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+};

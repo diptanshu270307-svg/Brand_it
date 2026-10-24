@@ -152,7 +152,7 @@ export const App: React.FC = () => {
             className={`nav-tab ${screen === "intro" ? "active" : ""}`}
             onClick={() => setScreen("intro")}
           >
-            <span className="tab-num"></span> Overview
+            <span className="tab-num">00</span> Overview
           </button>
           <button
             className={`nav-tab ${screen === "library" ? "active" : ""}`}

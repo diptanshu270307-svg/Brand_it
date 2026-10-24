@@ -15,7 +15,7 @@ const SAMPLE_DEMOS = [
     persona: "casey@lumina.demo",
     lines: [
       { text: "$ brandlint check drafts/hero-launch.txt --brand Lumina", cls: "dim" },
-      { text: "› Ingesting 10 brand guidelines & Evidence Vault candidate proofs...", cls: "dim" },
+      { text: "› Ingesting 10 active brand guidelines & Evidence Vault candidate proofs...", cls: "dim" },
       { text: "› Running deterministic terminology checks...", cls: "dim" },
       { text: "› Rule TONE-01 flagged: \"guarantees\" (Prohibited absolute guarantee)", cls: "hl" },
       { text: "  ↳ Suggested fix: \"helps deliver\" [Intent Preserved: Audience, Purpose, CTA]", cls: "hl" },
@@ -55,7 +55,7 @@ const SAMPLE_DEMOS = [
       { text: "  ↳ Source: Lumina Benchmark Report 2025 v1, p.2 · Owner: Infrastructure Team", cls: "dim" },
       { text: "  ↳ Status: CURRENT (Valid until 2026-12-31)", cls: "ok" },
       { text: "✓ 0 rule violations · 0 approval blockers · 100% citation valid", cls: "ok" },
-      { text: "✓ Ready for human sign-off: Route Senior Reviewer", cls: "ok" },
+      { text: "✓ Ready for human sign-off: Routed to Senior Reviewer", cls: "ok" },
     ],
   },
 ];
@@ -69,45 +69,46 @@ export const AppleIntro: React.FC<Props> = ({
 
   return (
     <div className="apple-intro">
-      {/* 1. APPLE HERO SECTION */}
+      {/* 1. HERO SECTION */}
       <header className="hero" id="top">
         <div className="wrap">
-          <div className="eyebrow" style={{ marginBottom: 12 }}>
-            SPELL-CHECK FOR YOUR BRAND
+          <div className="hero-eyebrow-chip">
+            <span className="chip-badge">ENTERPRISE REVIEW DESK</span>
+            <span className="chip-text">Spell-Check for Your Brand</span>
           </div>
           <h1>Every claim verified. Every approval human.</h1>
           <p className="lead">
-            Upload approved guidelines and evidence, test marketing drafts against deterministic and
-            AI checks, inspect proof passports, and obtain senior human sign-off before publishing.
+            BrandLint connects every promotional claim to verified evidence, flags guideline
+            violations with intent-preserving fixes, and enforces human sign-off gates before publication.
           </p>
           <div className="cta">
             <button
-              className="btn"
+              className="btn btn-primary"
               onClick={() => onLaunchDraft(1, "casey@lumina.demo")}
             >
-              Try Hero Demo (40% Claim) ›
+              Try Hero Demo Draft (40% Claim) →
             </button>
             <button
-              className="btn ghost"
+              className="btn"
               onClick={() => onOpenScreen("review")}
             >
               Open Review Desk
             </button>
             <button
-              className="btn ghost"
+              className="btn btn-ghost"
               onClick={() => onOpenScreen("vault")}
             >
-              Evidence Vault ›
+              Inspect Evidence Vault →
             </button>
           </div>
         </div>
 
-        {/* 2. THE STAGE (Apple Curvature + Glowing Terminal) */}
+        {/* 2. REAL-TIME ENGINE CONSOLE */}
         <div className="wrap">
           <div className="stage">
-            {/* Interactive Draft Selector Pills */}
+            {/* Draft Selector Tabs */}
             <div className="term-picker">
-              <span className="term-picker-label">CHOOSE A MARKETING DRAFT:</span>
+              <span className="term-picker-label">SELECT A MARKETING DRAFT TO TEST:</span>
               <div className="term-picker-pills">
                 {SAMPLE_DEMOS.map((d) => (
                   <button
@@ -115,21 +116,23 @@ export const AppleIntro: React.FC<Props> = ({
                     className={`term-pill ${selectedDemo.id === d.id ? "active" : ""}`}
                     onClick={() => setSelectedDemo(d)}
                   >
-                    Draft #{d.id}: {d.quote}
+                    Draft #{d.id}: “{d.quote}”
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Apple Terminal Window */}
-            <div className="term" role="region" aria-label="BrandLint Realtime Engine Terminal">
+            {/* Terminal Window */}
+            <div className="term" role="region" aria-label="BrandLint Verification Console">
               <div className="bar">
-                <i></i>
-                <i></i>
-                <i></i>
-                <span className="term-title">brandlint-engine · v1.2</span>
+                <div className="bar-dots">
+                  <i></i>
+                  <i></i>
+                  <i></i>
+                </div>
+                <span className="term-title">brandlint-cli · v1.2.0 (compliance-engine)</span>
                 <span className="term-status">
-                  <span className="ai-dot"></span> LIVE EVALUATION
+                  <span className="ai-dot"></span> LIVE ENGINE ACTIVE
                 </span>
               </div>
               <pre key={selectedDemo.id}>
@@ -137,7 +140,7 @@ export const AppleIntro: React.FC<Props> = ({
                   <span
                     key={idx}
                     className={`line ${line.cls}`}
-                    style={{ animationDelay: `${idx * 0.12 + 0.1}s` }}
+                    style={{ animationDelay: `${idx * 0.08 + 0.05}s` }}
                   >
                     {line.text}
                   </span>
@@ -146,13 +149,13 @@ export const AppleIntro: React.FC<Props> = ({
 
               <div className="term-footer">
                 <span className="term-quote">
-                  Active Draft: <strong>"{selectedDemo.quote}"</strong>
+                  Active Draft: <strong>“{selectedDemo.quote}”</strong>
                 </span>
                 <button
-                  className="btn btn-sm btn-term-launch"
+                  className="btn btn-sm btn-primary"
                   onClick={() => onLaunchDraft(selectedDemo.draftId, selectedDemo.persona)}
                 >
-                  Inspect in Review Desk ↗
+                  Open in Review Desk →
                 </button>
               </div>
             </div>
@@ -160,56 +163,64 @@ export const AppleIntro: React.FC<Props> = ({
         </div>
       </header>
 
-      {/* 3. APPLE BENTO TILES (The 3 Flagship USPs) */}
+      {/* 3. THREE CORE PILLARS (Bento Grid) */}
       <section id="features">
         <div className="wrap">
-          <div className="eyebrow">THE THREE FLAGSHIP INNOVATIONS</div>
-          <h2>Everything your brand needs to stay compliant.</h2>
-          <p className="sub">
-            BrandLint connects every finding to a rule, every promotional claim to evidence, and
-            every approval to a human reviewer.
-          </p>
+          <div className="section-head">
+            <span className="eyebrow">THE THREE ARCHITECTURAL PILLARS</span>
+            <h2>Complete compliance without sacrificing creator control.</h2>
+            <p className="sub">
+              Built on strict backend approval gates: every edit creates a new revision and
+              automatically revokes prior approvals.
+            </p>
+          </div>
 
           <div className="bento">
             {/* Tile A: Claim Evidence Passport */}
             <div
               className="tile t-a"
               onClick={() => onOpenScreen("vault")}
-              style={{ cursor: "pointer" }}
             >
               <div>
-                <span className="tile-eyebrow">USP #1 · CITATIONS BECOME APPROVAL GATES</span>
-                <h3>Claim Evidence Passport</h3>
+                <span className="tile-eyebrow">USP #1 · CITATION AS AN APPROVAL GATE</span>
+                <h3>Claim Evidence Passports</h3>
                 <p>
                   Every promotional claim links to an approved source, exact supporting excerpt,
-                  evidence owner, and validity date. Missing or expired evidence strictly blocks
-                  approval and cannot be overridden.
+                  evidence owner, and validity date. Missing or expired evidence blocks approval and
+                  cannot be overridden.
                 </p>
-                <div style={{ marginTop: 20 }}>
-                  <button className="btn btn-sm">Inspect Evidence Vault ›</button>
+                <div className="tile-action">
+                  <span className="tile-link">Inspect Evidence Vault →</span>
                 </div>
               </div>
-              <div className="big">100%</div>
+              <div className="tile-stat-box">
+                <div className="big">100%</div>
+                <div className="stat-sub">Citation Validity</div>
+              </div>
             </div>
 
             {/* Tile B: Intent-Preserving Fixes */}
             <div
               className="tile t-b t-dark"
               onClick={() => onOpenScreen("review")}
-              style={{ cursor: "pointer" }}
             >
               <div>
                 <span className="tile-eyebrow" style={{ color: "var(--mint)" }}>
-                  USP #2 · CREATOR CONTROL
+                  USP #2 · CREATOR EMPOWERMENT
                 </span>
                 <h3>Intent-Preserving Fixes</h3>
                 <p>
                   Captures the draft's audience, purpose, and CTA. Shows visible before/after diffs
-                  while protecting product names, numbers, and facts with explicit review gates.
+                  while guarding product names, numbers, and facts for explicit confirmation.
                 </p>
               </div>
-              <div className="big" style={{ fontSize: 44 }}>
-                Diffs
+              <div className="tile-stat-box">
+                <div className="big" style={{ fontSize: 36, color: "var(--mint)" }}>
+                  Diffs
+                </div>
+                <div className="stat-sub" style={{ color: "#9aa4c4" }}>
+                  Protected Guards
+                </div>
               </div>
             </div>
 
@@ -217,35 +228,35 @@ export const AppleIntro: React.FC<Props> = ({
             <div
               className="tile t-c"
               onClick={() => onOpenScreen("insights")}
-              style={{ cursor: "pointer" }}
             >
               <div>
-                <span className="tile-eyebrow">USP #3 · SELF-IMPROVING RULES</span>
+                <span className="tile-eyebrow">USP #3 · GOVERNANCE EVOLUTION</span>
                 <h3>Guideline Health</h3>
                 <p>
                   Tracks which rules reviewers repeatedly override and why. Suggests clearer wording
-                  requiring brand-owner approval without automatic rule changes.
+                  for brand-owner approval without automatic rule changes.
                 </p>
               </div>
-              <div className="big">v1 → v2</div>
+              <div className="tile-stat-box">
+                <div className="big">v1 → v2</div>
+                <div className="stat-sub">Continuous Tuning</div>
+              </div>
             </div>
 
-            {/* Tile D: Dual-Engine & Schema Validator */}
+            {/* Tile D: Deterministic Pre-Flight & AI Schema */}
             <div
               className="tile t-d"
               onClick={() => onOpenScreen("library")}
-              style={{ cursor: "pointer" }}
             >
               <div>
-                <span className="tile-eyebrow">DUAL-ENGINE ACCELERATION</span>
-                <h3>Deterministic Terminology + Strict AI Validation</h3>
+                <span className="tile-eyebrow">HYBRID EVALUATION ENGINE</span>
+                <h3>Deterministic Checks + Strict Schema Validation</h3>
                 <p>
-                  Fast regex terminology and expiry checks run first. AI findings and rewrites are
-                  strictly validated against JSON schemas—rejecting invented citations and prompt
-                  injections.
+                  Fast regex terminology and expiry checks run first. LLM outputs are strictly
+                  validated against JSON schemas, rejecting hallucinated source IDs and prompt injections.
                 </p>
-                <div style={{ marginTop: 16 }}>
-                  <button className="btn btn-sm ghost">Inspect Brand Library ›</button>
+                <div className="tile-action">
+                  <span className="tile-link">View Ingested Rules in Library →</span>
                 </div>
               </div>
               <div className="bars" aria-hidden="true">
@@ -265,59 +276,63 @@ export const AppleIntro: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* 4. APPLE DARK BAND: SCALE & GOVERNANCE */}
+      {/* 4. MEASURED BENCHMARKS (Enterprise Grade) */}
       <section className="dark" id="scale">
         <div className="wrap">
-          <div className="eyebrow" style={{ color: "var(--mint)" }}>
-            MEASURED BENCHMARKS & GOVERNANCE
+          <div className="section-head">
+            <span className="eyebrow" style={{ color: "var(--mint)" }}>
+              MEASURED BENCHMARK EVALUATION
+            </span>
+            <h2 style={{ color: "#fff" }}>Rigorous, measured verification.</h2>
+            <p className="sub" style={{ color: "#94a3b8" }}>
+              Tested against 18 labeled drafts across edge cases, unsupported claims, expired evidence,
+              and compliant examples.
+            </p>
           </div>
-          <h2>Built for strict enterprise compliance.</h2>
-          <p className="sub">
-            Verified across 18 benchmark drafts with zero false alarms and 100% citation integrity.
-          </p>
 
           <div className="grid3">
-            <div>
+            <div className="stat-card">
               <div className="stat">100%</div>
               <h4>Citation Validity</h4>
-              <p>Every claim links to an approved source excerpt or is marked as missing/expired.</p>
+              <p>Every claim links to an approved source excerpt; zero invented or invalid citation IDs.</p>
             </div>
-            <div>
+            <div className="stat-card">
               <div className="stat">0%</div>
               <h4>False Alarm Rate</h4>
-              <p>Clean, guideline-compliant drafts produce 0 blocking findings or false positives.</p>
+              <p>Clean, guideline-compliant drafts produce zero blocking findings or false flags.</p>
             </div>
-            <div>
+            <div className="stat-card">
               <div className="stat">100%</div>
-              <h4>Enforceable Approval Gates</h4>
-              <p>Edits create new revisions and instantly invalidate previous human approval.</p>
+              <h4>Approval Gate Enforcement</h4>
+              <p>Edits create new revisions and instantly invalidate previous human sign-offs on the backend.</p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 5. STEP-BY-STEP PITCH WALKTHROUGH */}
+      {/* 5. 5-STEP WALKTHROUGH */}
       <section id="walkthrough">
         <div className="wrap">
-          <div className="eyebrow">REPEATABLE HACKATHON PITCH</div>
-          <h2>Step-by-step review journey.</h2>
-          <p className="sub">
-            Follow the complete review desk lifecycle: check a draft, inspect evidence, accept fixes,
-            and sign off as a senior reviewer.
-          </p>
+          <div className="section-head">
+            <span className="eyebrow">STEP-BY-STEP REVIEW DESK LIFECYCLE</span>
+            <h2>The Repeatable Pitch Journey</h2>
+            <p className="sub">
+              Experience the end-to-end workflow from checking a draft to senior human approval:
+            </p>
+          </div>
 
           <div className="pitch-cards">
             {[
               {
                 step: 1,
                 title: "Check the Hero Draft",
-                desc: "Submit “Our platform guarantees 40% higher productivity.” and run BrandLint checks.",
+                desc: "Select “Launch email - productivity claim” and run BrandLint checks.",
                 action: () => onLaunchStep(0),
               },
               {
                 step: 2,
                 title: "Inspect Expired Proof",
-                desc: "Open EV-4 passport. Accept tone fix, then test approval gate—expired proof still blocks!",
+                desc: "Open EV-4 passport. Accept tone fix, then test approval gate—expired proof blocks sign-off!",
                 action: () => onLaunchStep(1),
               },
               {
@@ -343,9 +358,8 @@ export const AppleIntro: React.FC<Props> = ({
                 key={card.step}
                 className="pitch-card"
                 onClick={card.action}
-                style={{ cursor: "pointer" }}
               >
-                <div className="pitch-card-step">0{card.step}</div>
+                <div className="pitch-card-step">STEP 0{card.step}</div>
                 <h4>{card.title}</h4>
                 <p>{card.desc}</p>
                 <span className="pitch-card-link">Launch step →</span>
@@ -355,36 +369,36 @@ export const AppleIntro: React.FC<Props> = ({
         </div>
       </section>
 
-      {/* 6. FINAL APPLE CTA SECTION */}
+      {/* 6. FINAL ACTION SECTION */}
       <section className="final dark" id="launch">
         <div className="wrap">
-          <div className="eyebrow" style={{ color: "var(--mint)" }}>
-            TRY BRANDLINT NOW
-          </div>
-          <h2>Spell-check your brand before the world reads it.</h2>
-          <div className="cta">
+          <span className="eyebrow" style={{ color: "var(--mint)" }}>
+            READY FOR REVIEW
+          </span>
+          <h2 style={{ color: "#fff" }}>Inspect, verify, and approve with confidence.</h2>
+          <div className="cta" style={{ marginTop: 28 }}>
             <button
-              className="btn"
+              className="btn btn-primary"
               onClick={() => onLaunchDraft(1, "casey@lumina.demo")}
             >
-              Launch Hero Demo Draft ›
+              Launch Hero Demo Draft →
             </button>
             <button
-              className="btn ghost"
+              className="btn btn-ghost"
               onClick={() => onOpenScreen("library")}
-              style={{ color: "#8fb0ff" }}
+              style={{ color: "#8fb0ff", borderColor: "rgba(143, 176, 255, 0.3)" }}
             >
-              Upload Brand Guidelines ›
+              Upload Brand Guidelines →
             </button>
           </div>
         </div>
       </section>
 
-      {/* 7. APPLE-STYLE FOOTER */}
+      {/* 7. FOOTER */}
       <footer>
         <div className="wrap">
-          <span>© 2026 BrandLint, Inc. · Built for Hackathon Demo</span>
-          <span>Citations · Intent Preservation · Guideline Health</span>
+          <span>BrandLint Enterprise Review Desk · Hackathon MVP</span>
+          <span>Verified Citations · Intent Preservation · Guideline Health</span>
         </div>
       </footer>
     </div>

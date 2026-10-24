@@ -86,7 +86,7 @@ export const AppleIntro: React.FC<Props> = ({
               </div>
 
               <h1 className="crypgo-hero-title">
-                Fast and Secure Brand Governance Exchange
+                Fast and Secure Brand Governance Platform
               </h1>
 
               <p className="crypgo-hero-lead">

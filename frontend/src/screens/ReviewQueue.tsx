@@ -167,10 +167,17 @@ export const ReviewQueue: React.FC<Props> = ({
     <div className="screen-container">
       <div className="screen-header">
         <div>
-          <div className="eyebrow">ROLE-BASED GOVERNANCE & AUDIT TRAIL</div>
-          <h2>Review Queue</h2>
+          <div className="draft-desk-eyebrow-row">
+            <span className="eyebrow" style={{ color: "#22c55e", fontWeight: 800 }}>
+              HUMAN REVIEW DESK
+            </span>
+            <span className="desk-sub-badge">Review Queue</span>
+            <span className="live-engine-pill">
+              <span className="pulse-dot"></span> AUDIT TRAIL LIVE
+            </span>
+          </div>
           <p className="subtitle">
-            Two-tier governance workflow routing routine copy to standard review and protected claims to senior sign-off.
+            Two-tier reviewer routes, deterministic pre-flight gates & immutable audit logs.
           </p>
         </div>
       </div>
@@ -214,34 +221,37 @@ export const ReviewQueue: React.FC<Props> = ({
               <div className="muted">Loading queue...</div>
             ) : (
               <div className="queue-list">
-                {queue.map((item) => (
-                  <div
-                    key={item.id}
-                    className={`queue-row ${detail?.id === item.id ? "active" : ""}`}
-                    onClick={() => onSelectDraft(item.id)}
-                  >
-                    <div className="queue-row-top">
-                      <strong>{item.title}</strong>
-                      {item.seeded && <span className="pill pill-seeded">SEEDED SAMPLE</span>}
-                      {item.actionable && (
-                        <span className="pill pill-ev-supported">Actionable by you</span>
-                      )}
-                    </div>
-                    <div className="btn-row" style={{ marginTop: 6 }}>
-                      <span className={`pill pill-status-${item.status}`}>
-                        {item.status.replace("_", " ")}
-                      </span>
-                      {item.route && (
-                        <span className={`pill pill-route-${item.route}`}>
-                          Route: {item.route}
+                {queue.map((item) => {
+                  const cleanTitle = item.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim();
+                  return (
+                    <div
+                      key={item.id}
+                      className={`queue-row ${detail?.id === item.id ? "active" : ""}`}
+                      onClick={() => onSelectDraft(item.id)}
+                    >
+                      <div className="queue-row-top">
+                        <strong>{cleanTitle}</strong>
+                        {item.seeded && <span className="pill pill-seeded">SEEDED</span>}
+                        {item.actionable && (
+                          <span className="pill pill-ev-supported">Actionable</span>
+                        )}
+                      </div>
+                      <div className="btn-row" style={{ marginTop: 6 }}>
+                        <span className={`pill pill-status-${item.status}`}>
+                          {item.status.replace("_", " ")}
                         </span>
-                      )}
-                      <span className="muted-sm">
-                        Rev #{item.revision} · by {item.author}
-                      </span>
+                        {item.route && (
+                          <span className={`pill pill-route-${item.route}`}>
+                            Route: {item.route}
+                          </span>
+                        )}
+                        <span className="muted-sm">
+                          Rev #{item.revision} · {item.author}
+                        </span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
@@ -250,18 +260,18 @@ export const ReviewQueue: React.FC<Props> = ({
         {/* RIGHT: Selected draft review packet + approval gate + history */}
         <div className="desk-right">
           {!detail ? (
-            <div className="card">Select a draft to inspect its review packet.</div>
+            <div className="card">Select a draft to inspect review packet.</div>
           ) : (
             <>
               <div className="card">
                 <div className="card-header">
                   <div>
                     <div className="eyebrow">
-                      REVIEW PACKET · REVISION #{detail.revision} (ID {detail.revision_id})
+                      REVIEW PACKET · REVISION #{detail.revision}
                     </div>
                     <h3>
-                      {detail.title}{" "}
-                      {detail.seeded && <span className="pill pill-seeded">SEEDED SAMPLE</span>}
+                      {detail.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}{" "}
+                      {detail.seeded && <span className="pill pill-seeded">SEEDED</span>}
                     </h3>
                   </div>
                   <button className="btn btn-sm" onClick={() => onOpenEditor(detail.id)}>
@@ -292,7 +302,7 @@ export const ReviewQueue: React.FC<Props> = ({
                 {detail.findings.filter((f) => f.is_claim).length > 0 && (
                   <div style={{ marginBottom: 12 }}>
                     <div className="meta-label" style={{ marginBottom: 6 }}>
-                      PROMOTIONAL CLAIMS & EVIDENCE PASSPORTS IN THIS DRAFT
+                      PROMOTIONAL CLAIMS & EVIDENCE PASSPORTS
                     </div>
                     {detail.findings
                       .filter((f) => f.is_claim)
@@ -337,24 +347,23 @@ export const ReviewQueue: React.FC<Props> = ({
                   </div>
                 ) : (
                   <div className="banner banner-ok">
-                    ✓ All claims have current approved Evidence Passports and all medium/high
-                    findings are resolved.
+                    ✓ All claims have valid Evidence Passports · Zero gate blockers.
                   </div>
                 )}
 
                 {/* Reviewer Decision Box */}
                 <div className="decision-box">
-                  <div className="eyebrow">HUMAN REVIEWER DECISION GATE</div>
-                  <p className="muted-sm" style={{ marginBottom: 8 }}>
-                    Current state: <strong>{detail.status}</strong> · Required route:{" "}
-                    <strong>{detail.route || detail.computed_route || "standard"}</strong> · Your
-                    role: <strong>{role}</strong>. You can click <strong>Approve</strong> even when
-                    blocked or with the wrong role to watch the backend enforce the gate and log the
-                    denial in the audit trail.
-                  </p>
+                  <div className="eyebrow">HUMAN REVIEWER SIGN-OFF GATE</div>
+                  <div className="btn-row" style={{ marginBottom: 8 }}>
+                    <span className="pill">State: {detail.status}</span>
+                    <span className={`pill pill-route-${detail.route || detail.computed_route || "standard"}`}>
+                      Route: {detail.route || detail.computed_route || "standard"}
+                    </span>
+                    <span className="pill">Role: {role}</span>
+                  </div>
                   <textarea
                     rows={2}
-                    placeholder="Reviewer reason / sign-off note (mandatory for approval or requesting changes)..."
+                    placeholder="Sign-off note or reason for changes..."
                     value={decisionNote}
                     onChange={(e) => setDecisionNote(e.target.value)}
                   />
@@ -383,7 +392,7 @@ export const ReviewQueue: React.FC<Props> = ({
                   <div className="card">
                     <div className="card-header">
                       <div>
-                        <div className="eyebrow">HUMAN DECISIONS & COMMENTS</div>
+                        <div className="eyebrow">HUMAN DECISIONS</div>
                         <h3>Review History ({history.decisions.length})</h3>
                       </div>
                     </div>
@@ -394,7 +403,7 @@ export const ReviewQueue: React.FC<Props> = ({
                             <span className={`pill pill-status-${d.kind}`}>{d.kind}</span>
                             <strong>{d.by}</strong>
                             {d.route && <span className="pill">route: {d.route}</span>}
-                            {d.seeded && <span className="pill pill-seeded">SEEDED SAMPLE</span>}
+                            {d.seeded && <span className="pill pill-seeded">SEEDED</span>}
                             <span className="muted-sm">
                               {new Date(d.at).toLocaleTimeString([], {
                                 hour: "2-digit",
@@ -409,7 +418,7 @@ export const ReviewQueue: React.FC<Props> = ({
                     <form onSubmit={handleAddComment} className="btn-row" style={{ marginTop: 12 }}>
                       <input
                         type="text"
-                        placeholder="Add a review comment..."
+                        placeholder="Add review comment..."
                         value={comment}
                         onChange={(e) => setComment(e.target.value)}
                       />
@@ -422,14 +431,10 @@ export const ReviewQueue: React.FC<Props> = ({
                   <div className="card">
                     <div className="card-header">
                       <div>
-                        <div className="eyebrow">PRIVACY-PRESERVING GOVERNANCE LOG</div>
+                        <div className="eyebrow">IMMUTABLE AUDIT LOG</div>
                         <h3>Audit Events ({history.audit.length})</h3>
                       </div>
                     </div>
-                    <p className="muted-sm" style={{ marginBottom: 8 }}>
-                      Draft copy is excluded from audit logs — only revision numbers, content hashes,
-                      finding counts and pinned rule versions are recorded.
-                    </p>
                     <div className="timeline">
                       {history.audit.map((a) => (
                         <div key={a.id} className="timeline-item">

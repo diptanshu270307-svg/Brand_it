@@ -100,10 +100,17 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
     <div className="screen-container">
       <div className="screen-header">
         <div>
-          <div className="eyebrow">CLAIM EVIDENCE PASSPORTS</div>
-          <h2>Evidence Vault</h2>
+          <div className="draft-desk-eyebrow-row">
+            <span className="eyebrow" style={{ color: "#22c55e", fontWeight: 800 }}>
+              CLAIM EVIDENCE PASSPORTS
+            </span>
+            <span className="desk-sub-badge">Evidence Vault</span>
+            <span className="live-engine-pill">
+              <span className="pulse-dot"></span> AUDIT-GRADE REPO
+            </span>
+          </div>
           <p className="subtitle">
-            Cryptographically verified promotional claims linked to research source documents, owners, and expiration dates.
+            Verified claim passports linked to research sources, owners & expiry horizons.
           </p>
         </div>
         <div className="btn-row">
@@ -123,7 +130,7 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
             <span className="pill pill-status-approved">Catalog</span>
           </div>
           <div className="metric-title">Total Passports</div>
-          <div className="metric-desc">Registered promotional claims</div>
+          <div className="metric-desc">Registered claims</div>
         </div>
 
         <div className="metric-box" onClick={() => setStateFilter("current")}>
@@ -134,7 +141,7 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
             <span className="pill pill-ok">Valid</span>
           </div>
           <div className="metric-title">Approved & Current</div>
-          <div className="metric-desc">Unlocks human approval gates</div>
+          <div className="metric-desc">Unlocks approval gates</div>
         </div>
 
         <div className="metric-box metric-highlight-danger" onClick={() => setStateFilter("expired")}>
@@ -156,7 +163,7 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
             <span className="pill pill-warn">Sign-Off Req.</span>
           </div>
           <div className="metric-title">Pending Owner</div>
-          <div className="metric-desc">Awaiting human verification</div>
+          <div className="metric-desc">Awaiting verification</div>
         </div>
       </div>
 
@@ -188,15 +195,15 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
           { key: "all", label: `All Passports (${records.length})` },
           {
             key: "current",
-            label: `Current & Approved (${records.filter((r) => r.state === "current").length})`,
+            label: `Valid (${records.filter((r) => r.state === "current").length})`,
           },
           {
             key: "expired",
-            label: `Expired — Blocks Approval (${records.filter((r) => r.state === "expired").length})`,
+            label: `Expired (${records.filter((r) => r.state === "expired").length})`,
           },
           {
             key: "pending",
-            label: `Pending Owner Approval (${records.filter((r) => r.state === "pending").length})`,
+            label: `Pending (${records.filter((r) => r.state === "pending").length})`,
           },
         ].map((t) => (
           <button
@@ -322,18 +329,18 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
               </div>
 
               <div className="vault-section">
-                <span className="meta-label">APPROVED CLAIM WORDING</span>
+                <span className="meta-label">APPROVED CLAIM</span>
                 <div className="vault-claim">{ev.claim_text}</div>
               </div>
 
               <div className="vault-section">
-                <span className="meta-label">EXACT SUPPORTING EXCERPT (VERIFIED IN SOURCE)</span>
+                <span className="meta-label">VERIFIED SOURCE EXCERPT</span>
                 <div className="vault-excerpt">“{ev.excerpt}”</div>
               </div>
 
               <div className="vault-meta-grid">
                 <div>
-                  <span className="meta-label">SOURCE DOCUMENT & PAGE</span>
+                  <span className="meta-label">SOURCE DOCUMENT</span>
                   <div>
                     <strong>
                       {ev.document.title} v{ev.document.version}
@@ -350,7 +357,7 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
                   <div>
                     {ev.valid_from || "—"} → <strong>{ev.valid_until || "No expiry"}</strong>
                     {ev.state === "expired" && (
-                      <span className="inline-warn"> (EXPIRED — blocks claim approval)</span>
+                      <span className="inline-warn"> (EXPIRED — BLOCKS GATE)</span>
                     )}
                   </div>
                 </div>

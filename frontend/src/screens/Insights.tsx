@@ -91,17 +91,24 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
     <div className="screen-container">
       <div className="screen-header">
         <div>
-          <div className="eyebrow">GUIDELINE HEALTH & GOVERNANCE ANALYTICS</div>
-          <h2>Insights & Policy Health</h2>
+          <div className="draft-desk-eyebrow-row">
+            <span className="eyebrow" style={{ color: "#22c55e", fontWeight: 800 }}>
+              POLICY GOVERNANCE
+            </span>
+            <span className="desk-sub-badge">Guideline Health</span>
+            <span className="live-engine-pill">
+              <span className="pulse-dot"></span> CONTINUOUS LEARNING
+            </span>
+          </div>
           <p className="subtitle">
-            Rule performance metrics, reviewer override frequency, and human-in-the-loop guideline clarifications.
+            Rule override telemetry, human feedback & automated wording clarifications.
           </p>
         </div>
       </div>
 
       {data && (
         <div className="banner banner-info">
-          <strong>Sample History Transparency:</strong> {data.note}
+          <strong>Audited History:</strong> {data.note}
         </div>
       )}
 
@@ -109,19 +116,19 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
       {bannerMsg && <div className="banner banner-ok">{bannerMsg}</div>}
 
       {loading || !data ? (
-        <div className="card">Loading Insights & Guideline Health...</div>
+        <div className="card">Loading Guideline Health...</div>
       ) : (
         <>
-          {/* USP #3: Guideline Health */}
+          {/* Guideline Health */}
           <div className="card">
             <div className="card-header">
               <div>
-                <div className="eyebrow">FLAGSHIP FEATURE · IMPROVE THE GUIDELINES THEMSELVES</div>
-                <h3>Guideline Health — Reviewer Overrides, Reasons & Proposed Clarifications</h3>
+                <div className="eyebrow">FEEDBACK TELEMETRY</div>
+                <h3>Guideline Health & Reviewer Overrides</h3>
               </div>
               {!isOwner && (
                 <span className="pill pill-warn">
-                  Switch to Olivia Brooks (Brand Owner) to approve proposed rule wording
+                  Switch to Olivia (Brand Owner) to approve wording proposals
                 </span>
               )}
             </div>
@@ -159,34 +166,34 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                         className="pill pill-warn"
                         title={`Fewer than ${h.min_sample} overrides (${h.overrides}/${h.min_sample})`}
                       >
-                        ⚠️ Insufficient History ({h.overrides}/{h.min_sample} min sample)
+                        ⚠️ Insufficient History ({h.overrides}/{h.min_sample})
                       </span>
                     ) : (
                       <span className="pill pill-ev-expired">
-                        High Override Pattern ({h.overrides} overrides ·{" "}
-                        {Math.round((h.override_rate || 0) * 100)}% override rate)
+                        High Overrides ({h.overrides} ·{" "}
+                        {Math.round((h.override_rate || 0) * 100)}%)
                       </span>
                     )}
                   </div>
 
                   <div className="quote-box" style={{ marginTop: 8 }}>
-                    <span className="meta-label">CURRENT ACTIVE WORDING (v{h.version})</span>
+                    <span className="meta-label">ACTIVE WORDING (v{h.version})</span>
                     <div>{h.rule_text}</div>
                   </div>
 
                   <div className="health-stats">
                     <span>
-                      <strong>{h.overrides}</strong> total overrides ({h.live_overrides} live ·{" "}
+                      <strong>{h.overrides}</strong> overrides ({h.live_overrides} live ·{" "}
                       <span className="pill pill-seeded">
-                        {h.seeded_overrides} seeded sample
+                        {h.seeded_overrides} seeded
                       </span>
                       )
                     </span>
                     <span>
-                      <strong>{h.accepted}</strong> accepted fixes
+                      <strong>{h.accepted}</strong> accepted
                     </span>
                     <span>
-                      Override rate:{" "}
+                      Rate:{" "}
                       <strong>
                         {h.override_rate !== null ? `${Math.round(h.override_rate * 100)}%` : "—"}
                       </strong>
@@ -195,7 +202,7 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
 
                   <div className="two-col" style={{ marginTop: 10 }}>
                     <div>
-                      <span className="meta-label">WHY REVIEWERS OVERRODE THIS RULE</span>
+                      <span className="meta-label">OVERRIDE REASONS</span>
                       <ul className="compact-list">
                         {h.reasons.map((r, idx) => (
                           <li key={idx}>
@@ -205,7 +212,7 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                       </ul>
                     </div>
                     <div>
-                      <span className="meta-label">OVERRIDDEN DRAFT EXAMPLES</span>
+                      <span className="meta-label">OVERRIDDEN EXAMPLES</span>
                       <ul className="compact-list">
                         {h.examples.map((ex, idx) => (
                           <li key={idx}>
@@ -221,7 +228,7 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                   {h.proposal ? (
                     <div className="proposal-box">
                       <div className="eyebrow">
-                        PENDING BRAND OWNER APPROVAL · DOES NOT AUTO-MODIFY RULES
+                        PROPOSED CLARIFICATION · REQUIRES BRAND OWNER APPROVAL
                       </div>
                       <p className="muted-sm" style={{ marginBottom: 6 }}>
                         <strong>Rationale:</strong> {h.proposal.rationale}
@@ -238,7 +245,7 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                       {isOwner && (
                         <label style={{ display: "block", marginTop: 8 }}>
                           <span className="meta-label">
-                            Edit proposed wording before approving (optional):
+                            Edit wording before approving:
                           </span>
                           <textarea
                             rows={2}
@@ -260,7 +267,7 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                             handleProposalDecision(h.proposal!.id, h.rule_key, "approve")
                           }
                         >
-                          ✓ Approve & Publish {h.rule_key}@{h.version + 1} (Brand Owner)
+                          ✓ Publish v{h.version + 1}
                         </button>
                         <button
                           className="btn btn-danger btn-sm"
@@ -269,7 +276,7 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                             handleProposalDecision(h.proposal!.id, h.rule_key, "reject")
                           }
                         >
-                          ✕ Reject Proposal
+                          ✕ Reject
                         </button>
                       </div>
                     </div>

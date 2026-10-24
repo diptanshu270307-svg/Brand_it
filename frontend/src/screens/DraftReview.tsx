@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, ApiError, DraftDetail, DraftSummary, FindingItem, Passport } from "../api";
 import { SourceModal } from "../components/SourceModal";
-import { ComplianceScoreGauge, DraftReviewFlowchart } from "../components/Flowcharts";
+import { ComplianceScoreGauge, DraftComparisonGraph, DraftReviewFlowchart } from "../components/Flowcharts";
 
 interface Props {
   brandId: number;
@@ -520,6 +520,42 @@ export const DraftReview: React.FC<Props> = ({
               )}
             </div>
           </div>
+
+          {/* Draft Compliance Before vs. After Comparison Graph */}
+          <DraftComparisonGraph
+            scoreBefore={
+              detail.findings.length === 0
+                ? 100
+                : Math.max(35, 100 - detail.findings.length * 18)
+            }
+            scoreAfter={100}
+            blockersBefore={
+              detail.findings.filter(
+                (f) =>
+                  f.severity === "critical" ||
+                  f.is_claim ||
+                  f.evidence_status === "expired"
+              ).length
+            }
+            blockersAfter={0}
+            citationsBefore={
+              detail.findings.some((f) => f.evidence_status === "expired")
+                ? "0 Valid · 1 Expired (EV-4)"
+                : detail.findings.some((f) => f.is_claim)
+                ? "Uncited Claim Found"
+                : "100% Valid (EV-1 Cited)"
+            }
+            citationsAfter="100% Valid (EV-1 Cited)"
+            gateBefore={
+              detail.blockers.length > 0 ? "BLOCKED ⛔" : "READY FOR SIGN-OFF ✓"
+            }
+            gateAfter="READY FOR SIGN-OFF ✓"
+            canApply={detail.can_edit && detail.findings.length > 0}
+            onApplyFix={() => {
+              const firstFinding = detail.findings.find((f) => f.suggestion);
+              if (firstFinding) handleAcceptFix(firstFinding);
+            }}
+          />
 
           <div className="desk-grid">
             {/* LEFT PANE: Draft Editor & Highlighted Preview */}

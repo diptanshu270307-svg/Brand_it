@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, DocumentItem, Passport } from "../api";
 import { SourceModal } from "../components/SourceModal";
-import { EvidenceVaultFlowchart } from "../components/Flowcharts";
+import { EvidenceTimelineGraph, EvidenceVaultFlowchart } from "../components/Flowcharts";
 
 interface Props {
   brandId: number;
@@ -162,6 +162,24 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
 
       {/* Visual Passport Lifecycle Flowchart */}
       <EvidenceVaultFlowchart />
+
+      {/* Evidence Passport Validity Timeline Graph */}
+      <EvidenceTimelineGraph
+        passports={records.map((r) => ({
+          id: r.id,
+          claim: r.claim_text,
+          owner: r.owner,
+          validUntil: r.valid_until,
+          state: (r.state === "current" || r.state === "expired" || r.state === "pending" || r.state === "rejected")
+            ? r.state
+            : "pending",
+          sourceDoc: r.document ? `${r.document.title}, p.${r.page}` : `Page ${r.page}`,
+        }))}
+        onSelectPassport={(id) => {
+          const found = records.find((r) => r.id === id);
+          if (found) setInspectPassport(found);
+        }}
+      />
 
       {error && <div className="banner banner-error">{error}</div>}
 

@@ -570,3 +570,469 @@ export const SecuritySealsRow: React.FC = () => {
     </div>
   );
 };
+
+// ============================================================================
+// 8. Draft Compliance Before vs. After Comparison Graph
+// ============================================================================
+export interface DraftComparisonProps {
+  scoreBefore?: number;
+  scoreAfter?: number;
+  blockersBefore?: number;
+  blockersAfter?: number;
+  citationsBefore?: string;
+  citationsAfter?: string;
+  gateBefore?: string;
+  gateAfter?: string;
+  onApplyFix?: () => void;
+  canApply?: boolean;
+}
+
+export const DraftComparisonGraph: React.FC<DraftComparisonProps> = ({
+  scoreBefore = 38,
+  scoreAfter = 100,
+  blockersBefore = 2,
+  blockersAfter = 0,
+  citationsBefore = "0 Valid · 1 Expired (EV-4)",
+  citationsAfter = "100% Valid (EV-1 Cited)",
+  gateBefore = "BLOCKED ⛔",
+  gateAfter = "READY FOR SIGN-OFF ✓",
+  onApplyFix,
+  canApply = false,
+}) => {
+  const [activeTab, setActiveTab] = useState<"metrics" | "intent">("metrics");
+
+  return (
+    <div className="comparison-graph-card">
+      <div className="comparison-header">
+        <div className="comparison-title-group">
+          <span className="comparison-badge">COMPLIANCE COMPARISON BENCHMARK</span>
+          <h4 className="comparison-heading">Before vs. After Policy Verification</h4>
+        </div>
+        <div className="comparison-tab-pills">
+          <button
+            type="button"
+            className={`comp-pill-btn ${activeTab === "metrics" ? "active" : ""}`}
+            onClick={() => setActiveTab("metrics")}
+          >
+            Dual Metric Comparison
+          </button>
+          <button
+            type="button"
+            className={`comp-pill-btn ${activeTab === "intent" ? "active" : ""}`}
+            onClick={() => setActiveTab("intent")}
+          >
+            Protected Fact Diff
+          </button>
+        </div>
+      </div>
+
+      {activeTab === "metrics" ? (
+        <div className="comparison-body-grid">
+          {/* BEFORE COLUMN */}
+          <div className="comparison-column col-before">
+            <div className="col-header-row">
+              <span className="state-tag tag-before">BEFORE FIX · REVISION 1</span>
+              <span className="score-num num-before">{scoreBefore}%</span>
+            </div>
+
+            <div className="progress-track-wrap">
+              <div
+                className="progress-bar-fill fill-before"
+                style={{ width: `${scoreBefore}%` }}
+              />
+            </div>
+
+            <div className="metric-rows-group">
+              <div className="comp-row">
+                <span className="comp-lbl">Active Policy Violations:</span>
+                <span className="comp-val val-danger">
+                  {blockersBefore} Blockers (TONE-01 & EV-4)
+                </span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-lbl">Evidence Passport Match:</span>
+                <span className="comp-val val-danger">{citationsBefore}</span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-lbl">Deterministic Gate:</span>
+                <span className="comp-val val-danger">{gateBefore}</span>
+              </div>
+            </div>
+
+            <div className="sample-diff-quote diff-before">
+              <span className="quote-badge">FLAGGED COPY</span>
+              “Our platform <span className="hl-red">guarantees</span>{" "}
+              <span className="hl-red">40% higher productivity</span>.”
+            </div>
+          </div>
+
+          {/* DELTA ARROW IN CENTER */}
+          <div className="comparison-delta-col">
+            <div className="delta-circle">
+              <span className="delta-plus">+62%</span>
+              <span className="delta-sub">COMPLIANCE DELTA</span>
+            </div>
+            <svg
+              className="delta-arrow-svg"
+              width="36"
+              height="20"
+              viewBox="0 0 36 20"
+              fill="none"
+            >
+              <path
+                d="M2 10H30M30 10L22 2M30 10L22 18"
+                stroke="#22c55e"
+                strokeWidth="2.5"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              />
+            </svg>
+          </div>
+
+          {/* AFTER COLUMN */}
+          <div className="comparison-column col-after">
+            <div className="col-header-row">
+              <span className="state-tag tag-after">AFTER FIX · VERIFIED</span>
+              <span className="score-num num-after">{scoreAfter}%</span>
+            </div>
+
+            <div className="progress-track-wrap">
+              <div
+                className="progress-bar-fill fill-after"
+                style={{ width: `${scoreAfter}%` }}
+              />
+            </div>
+
+            <div className="metric-rows-group">
+              <div className="comp-row">
+                <span className="comp-lbl">Active Policy Violations:</span>
+                <span className="comp-val val-ok">
+                  {blockersAfter} Violations (0 Absolute Claims)
+                </span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-lbl">Evidence Passport Match:</span>
+                <span className="comp-val val-ok">{citationsAfter}</span>
+              </div>
+              <div className="comp-row">
+                <span className="comp-lbl">Deterministic Gate:</span>
+                <span className="comp-val val-ok">{gateAfter}</span>
+              </div>
+            </div>
+
+            <div className="sample-diff-quote diff-after">
+              <span className="quote-badge badge-green">VERIFIED REWRITE</span>
+              “Our platform <span className="hl-green">helps deliver</span>{" "}
+              <span className="hl-green">up to 18% higher throughput</span>.”
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="intent-preservation-box">
+          <div className="intent-cols-2">
+            <div className="intent-box">
+              <div className="intent-head">
+                <span className="intent-num">01</span>
+                <strong>Core Business Intent Preserved</strong>
+              </div>
+              <p>
+                Productivity & throughput acceleration message retained without
+                overstepping into prohibited legal warranties. Audience (Enterprise
+                IT) and Call-to-Action (Request Benchmark Demo) are completely
+                intact.
+              </p>
+            </div>
+            <div className="intent-box">
+              <div className="intent-head">
+                <span className="intent-num">02</span>
+                <strong>Protected Facts & Citations Guardrail</strong>
+              </div>
+              <p>
+                Expired citation (40% Whitepaper EV-4) safely substituted with
+                peer-reviewed benchmark report (18% Throughput EV-1, p.2). Fact
+                alteration requires explicit Creator confirmation.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {canApply && onApplyFix && (
+        <div className="comparison-footer-action">
+          <span>Apply verified rewrite to replace expired claims with EV-1 and clear all gate blockers:</span>
+          <button
+            type="button"
+            className="btn-crypgo-green btn-sm"
+            onClick={onApplyFix}
+          >
+            Apply Verified Fix (100% Score) →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// ============================================================================
+// 9. Evidence Timeline & Validity Horizon Graph
+// ============================================================================
+export interface TimelinePassport {
+  id: number;
+  claim: string;
+  owner: string;
+  validUntil: string | null;
+  state: "current" | "expired" | "pending" | "rejected";
+  sourceDoc?: string;
+}
+
+export const EvidenceTimelineGraph: React.FC<{
+  passports?: TimelinePassport[];
+  onSelectPassport?: (id: number) => void;
+}> = ({ passports, onSelectPassport }) => {
+  // Default sample records if none provided
+  const items: TimelinePassport[] = passports && passports.length > 0 ? passports : [
+    {
+      id: 1,
+      claim: "Lumina Cloud helps teams improve throughput by up to 18%",
+      owner: "Infrastructure Team",
+      validUntil: "2026-12-31",
+      state: "current",
+      sourceDoc: "Lumina Benchmark Report 2025 v1, p.2",
+    },
+    {
+      id: 2,
+      claim: "Sub-50ms p99 storage latency on enterprise clusters",
+      owner: "Storage Engineering Group",
+      validUntil: "2026-12-31",
+      state: "current",
+      sourceDoc: "Storage Performance Audit Q1 2025, p.4",
+    },
+    {
+      id: 3,
+      claim: "99.99% multi-region uptime SLA guarantee",
+      owner: "Compliance Operations",
+      validUntil: "2025-12-31",
+      state: "current",
+      sourceDoc: "Enterprise SLA Master Agreement 2025, p.7",
+    },
+    {
+      id: 4,
+      claim: "Our platform guarantees 40% higher productivity",
+      owner: "Data Science Group",
+      validUntil: "2024-12-31",
+      state: "expired",
+      sourceDoc: "Lumina Cloud Whitepaper 2024 v1, p.4",
+    },
+  ];
+
+  return (
+    <div className="timeline-graph-card">
+      <div className="timeline-header">
+        <div>
+          <span className="comparison-badge">PASSPORT VALIDITY TIMELINE</span>
+          <h4 className="timeline-title">Evidence Lifecycles & Horizon Horizon (2024 – 2027)</h4>
+        </div>
+        <div className="timeline-legend">
+          <span className="legend-item"><span className="legend-dot dot-valid" /> Active Valid Proof</span>
+          <span className="legend-item"><span className="legend-dot dot-warn" /> Expiring Soon</span>
+          <span className="legend-item"><span className="legend-dot dot-expired" /> Expired (Approval Blocker)</span>
+        </div>
+      </div>
+
+      <div className="timeline-container">
+        {/* Years Axis */}
+        <div className="timeline-axis-row">
+          <span className="axis-year">2024 Q1-Q4</span>
+          <span className="axis-year">2025 Q1-Q4 (TODAY)</span>
+          <span className="axis-year">2026 Q1-Q4</span>
+          <span className="axis-year">2027 Horizon</span>
+        </div>
+
+        {/* Visual timeline bars */}
+        <div className="timeline-bars-list">
+          {/* Vertical marker for 'TODAY' */}
+          <div className="timeline-today-marker">
+            <span className="marker-badge">CURRENT ACTIVE GATE</span>
+          </div>
+
+          {items.map((p) => {
+            const isExpired = p.state === "expired";
+            return (
+              <div
+                key={p.id}
+                className={`timeline-row-item ${isExpired ? "row-expired" : "row-current"}`}
+                onClick={() => onSelectPassport?.(p.id)}
+              >
+                <div className="timeline-info-col">
+                  <div className="passport-id-tag">
+                    <span className="p-id">EV-{p.id}</span>
+                    <span className={`p-badge ${isExpired ? "badge-exp" : "badge-cur"}`}>
+                      {isExpired ? "⛔ EXPIRED" : "✓ CURRENT"}
+                    </span>
+                  </div>
+                  <div className="passport-claim-quote">“{p.claim}”</div>
+                  <div className="passport-meta-sub">
+                    Source: {p.sourceDoc || "Verified Document"} · Owner: {p.owner}
+                  </div>
+                </div>
+
+                <div className="timeline-visual-bar-wrap">
+                  {isExpired ? (
+                    <div className="bar-track">
+                      <div className="bar-fill bar-expired" style={{ width: "32%" }}>
+                        <span className="bar-date-label">Expired {p.validUntil}</span>
+                      </div>
+                      <div className="bar-gap-blocker">
+                        <span className="blocker-warning-text">⛔ BLOCKS REVIEWS</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="bar-track">
+                      <div
+                        className="bar-fill bar-current"
+                        style={{
+                          width: p.validUntil?.includes("2025") ? "60%" : "88%",
+                        }}
+                      >
+                        <span className="bar-date-label">Valid to {p.validUntil}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// ============================================================================
+// 10. Rule Overrides & Governance Evolution Bar Chart
+// ============================================================================
+export interface RuleHealthChartItem {
+  rule_key: string;
+  title: string;
+  overrides: number;
+  accepted: number;
+  override_rate: number | null;
+  version: number;
+}
+
+export const RuleOverrideBarChart: React.FC<{
+  items?: RuleHealthChartItem[];
+  onSelectRule?: (ruleKey: string) => void;
+}> = ({ items, onSelectRule }) => {
+  const chartData: RuleHealthChartItem[] = items && items.length > 0 ? items : [
+    {
+      rule_key: "TONE-01",
+      title: "Prohibit absolute guarantees without evidence",
+      overrides: 6,
+      accepted: 8,
+      override_rate: 0.43,
+      version: 1,
+    },
+    {
+      rule_key: "TERM-01",
+      title: "Capitalize product name as Nimbus Cloud",
+      overrides: 2,
+      accepted: 7,
+      override_rate: 0.22,
+      version: 1,
+    },
+    {
+      rule_key: "CLAIM-01",
+      title: "Promotional statistics require approved citation",
+      overrides: 0,
+      accepted: 5,
+      override_rate: 0.0,
+      version: 1,
+    },
+    {
+      rule_key: "TONE-02",
+      title: "Avoid budget descriptors ('cheap')",
+      overrides: 1,
+      accepted: 3,
+      override_rate: 0.25,
+      version: 1,
+    },
+  ];
+
+  const maxTotal = Math.max(
+    ...chartData.map((d) => d.overrides + d.accepted),
+    1
+  );
+
+  return (
+    <div className="rule-chart-card">
+      <div className="rule-chart-header">
+        <div>
+          <span className="comparison-badge">POLICY EVOLUTION ANALYTICS</span>
+          <h4 className="timeline-title">Rule Override Frequency vs. Accepted Fixes</h4>
+        </div>
+        <div className="timeline-legend">
+          <span className="legend-item"><span className="legend-dot dot-valid" /> Accepted Fixes</span>
+          <span className="legend-item"><span className="legend-dot dot-expired" /> Reviewer Overrides</span>
+        </div>
+      </div>
+
+      <div className="rule-bars-table">
+        {chartData.map((r) => {
+          const total = r.overrides + r.accepted;
+          const overridePct = r.override_rate !== null ? Math.round(r.override_rate * 100) : 0;
+          const acceptedPct = 100 - overridePct;
+          const isHighOverride = (r.override_rate || 0) >= 0.35 && total >= 5;
+
+          return (
+            <div
+              key={r.rule_key}
+              className={`rule-bar-row ${isHighOverride ? "row-highlight-clarify" : ""}`}
+              onClick={() => onSelectRule?.(r.rule_key)}
+            >
+              <div className="rule-label-col">
+                <div className="rule-code-wrap">
+                  <span className="rule-code-badge">{r.rule_key}@v{r.version}</span>
+                  {isHighOverride && (
+                    <span className="clarify-pill">Clarification Needed</span>
+                  )}
+                  {r.rule_key === "CLAIM-01" && (
+                    <span className="gate-locked-pill">Zero Bypass Gate</span>
+                  )}
+                </div>
+                <div className="rule-desc-text">{r.title}</div>
+              </div>
+
+              <div className="rule-stacked-bar-col">
+                <div className="stacked-track">
+                  {/* Accepted bar */}
+                  <div
+                    className="stacked-accepted"
+                    style={{ width: `${(r.accepted / maxTotal) * 100}%` }}
+                    title={`${r.accepted} Accepted fixes (${acceptedPct}%)`}
+                  >
+                    {r.accepted > 0 && <span className="bar-inner-num">{r.accepted}</span>}
+                  </div>
+                  {/* Overrides bar */}
+                  <div
+                    className="stacked-overrides"
+                    style={{ width: `${(r.overrides / maxTotal) * 100}%` }}
+                    title={`${r.overrides} Overrides (${overridePct}%)`}
+                  >
+                    {r.overrides > 0 && <span className="bar-inner-num">{r.overrides}</span>}
+                  </div>
+                </div>
+                <div className="rule-rate-legend">
+                  <span className="rate-item accepted-item">✓ {r.accepted} fixes</span>
+                  <span className="rate-item override-item">
+                    ⚠ {r.overrides} overrides ({overridePct}%)
+                  </span>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+};

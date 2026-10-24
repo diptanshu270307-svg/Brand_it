@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { api, EvaluationData, GuidelineHealthItem, InsightsData } from "../api";
+import { RuleOverrideBarChart } from "../components/Flowcharts";
 
 interface Props {
   brandId: number;
@@ -124,6 +125,18 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                 </span>
               )}
             </div>
+
+            {/* Visual Comparative Bar Chart for Overrides vs Accepted Fixes */}
+            <RuleOverrideBarChart
+              items={data.health.map((h) => ({
+                rule_key: h.rule_key,
+                title: h.title,
+                overrides: h.overrides,
+                accepted: h.accepted,
+                override_rate: h.override_rate,
+                version: h.version,
+              }))}
+            />
 
             <div className="health-grid">
               {data.health.map((h: GuidelineHealthItem) => (

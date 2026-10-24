@@ -143,16 +143,16 @@ export const AppleIntro: React.FC<Props> = ({
                   {/* Device Header */}
                   <div className="device-header">
                     <div>
-                      <div className="device-sublabel">Statistic</div>
-                      <div className="device-title">Ethereum <span className="stat-pill">+84.56%</span></div>
+                      <div className="device-sublabel">Policy Health</div>
+                      <div className="device-title">Compliance Score <span className="stat-pill">+94.8%</span></div>
                     </div>
                     {/* Glowing Circular Progress Ring */}
                     <div className="device-circle-meter">
                       <svg width="44" height="44" viewBox="0 0 40 40">
                         <circle cx="20" cy="20" r="16" fill="transparent" stroke="rgba(255,255,255,0.1)" strokeWidth="3" />
-                        <circle cx="20" cy="20" r="16" fill="transparent" stroke="#22c55e" strokeWidth="3" strokeDasharray="100" strokeDashoffset="24" strokeLinecap="round" transform="rotate(-90 20 20)" />
+                        <circle cx="20" cy="20" r="16" fill="transparent" stroke="#22c55e" strokeWidth="3" strokeDasharray="100" strokeDashoffset="6" strokeLinecap="round" transform="rotate(-90 20 20)" />
                       </svg>
-                      <span className="meter-val">+76%</span>
+                      <span className="meter-val">100%</span>
                     </div>
                   </div>
 
@@ -176,47 +176,51 @@ export const AppleIntro: React.FC<Props> = ({
                   {/* Device Bottom List */}
                   <div className="device-bottom-list">
                     <div className="device-list-item">
-                      <div className="coin-dot dot-btc">₿</div>
+                      <div className="coin-dot dot-btc">✓</div>
                       <div className="item-info">
                         <span className="item-name">Rule TONE-01</span>
-                        <span className="item-sub">Zero Absolutes</span>
+                        <span className="item-sub">Zero Absolutes · Intent Preserved</span>
                       </div>
-                      <span className="item-status status-ok">Verified</span>
+                      <span className="item-status status-ok">Enforced</span>
                     </div>
                     <div className="device-list-item">
-                      <div className="coin-dot dot-eth">Ξ</div>
+                      <div className="coin-dot dot-eth">🛡</div>
                       <div className="item-info">
                         <span className="item-name">Passport EV-1</span>
-                        <span className="item-sub">18% Throughput</span>
+                        <span className="item-sub">18% Throughput Benchmark</span>
                       </div>
-                      <span className="item-status status-ok">Active</span>
+                      <span className="item-status status-ok">Verified</span>
                     </div>
                   </div>
                 </div>
 
-                {/* Floating Dark VISA Passport Card matching reference */}
+                {/* Floating Claim Evidence Passport Card */}
                 <div className="floating-visa-card">
                   <div className="visa-top-row">
                     <div className="visa-chip">
                       <svg width="28" height="22" viewBox="0 0 28 22" fill="none">
-                        <rect width="28" height="22" rx="4" fill="#d97706" />
-                        <line x1="0" y1="11" x2="28" y2="11" stroke="#b45309" />
-                        <line x1="14" y1="0" x2="14" y2="22" stroke="#b45309" />
+                        <rect width="28" height="22" rx="4" fill="#22c55e" />
+                        <line x1="0" y1="11" x2="28" y2="11" stroke="#15803d" />
+                        <line x1="14" y1="0" x2="14" y2="22" stroke="#15803d" />
                       </svg>
                     </div>
-                    <span className="visa-wordmark">VISA</span>
+                    <span className="visa-wordmark" style={{ fontSize: "11px", letterSpacing: "0.1em", color: "#4ade80" }}>
+                      PASSPORT EV-1
+                    </span>
                   </div>
 
-                  <div className="visa-card-number">3455 4562 7710 3507</div>
+                  <div className="visa-card-number" style={{ fontSize: "11.5px" }}>
+                    EV-2025-BENCHMARK-01
+                  </div>
 
                   <div className="visa-bottom-row">
                     <div>
-                      <div className="visa-label">CARD HOLDER</div>
-                      <div className="visa-val">John Carter</div>
+                      <div className="visa-label">PROOF CLAIM</div>
+                      <div className="visa-val" style={{ fontSize: "9.5px", maxWidth: "120px" }}>18% Throughput p.2</div>
                     </div>
                     <div>
-                      <div className="visa-label">EXPIRES</div>
-                      <div className="visa-val">02/30</div>
+                      <div className="visa-label">VALIDITY</div>
+                      <div className="visa-val" style={{ color: "#22c55e" }}>DEC 2026</div>
                     </div>
                   </div>
                 </div>
@@ -230,92 +234,92 @@ export const AppleIntro: React.FC<Props> = ({
       <section className="crypgo-trust-section">
         <div className="crypgo-wrap">
           <div className="trust-label">
-            Trusted by top <span style={{ color: "#22c55e" }}>crypto & compliance platforms</span>
+            Trusted by enterprise marketing & compliance teams at
           </div>
 
           <div className="trust-logos-row">
             <div className="trust-logo-item">
-              <span className="logo-symbol">❖</span> logoipsum
+              <span className="logo-symbol">❖</span> Lumina
             </div>
             <div className="trust-logo-item">
-              <span className="logo-symbol green">✦</span> LOGOIPSUM
+              <span className="logo-symbol green">✦</span> DataCore
             </div>
             <div className="trust-logo-item">
-              <span className="logo-symbol orange">☼</span> Logoipsum
+              <span className="logo-symbol orange">☼</span> CloudScale
             </div>
             <div className="trust-logo-item">
-              <span className="logo-symbol purple">◒</span> Logoipsum
+              <span className="logo-symbol purple">◒</span> Veloce
             </div>
             <div className="trust-logo-item">
-              <span className="logo-symbol cyan">◎</span> logoipsum
+              <span className="logo-symbol cyan">◎</span> Apex Cloud
             </div>
             <div className="trust-logo-item">
-              <span className="logo-symbol lime">◉</span> logoipsum
+              <span className="logo-symbol lime">◉</span> Horizon
             </div>
           </div>
         </div>
       </section>
 
-      {/* 3. 4 FEATURED GOVERNANCE CARDS IN A ROW matching reference crypto coins */}
+      {/* 3. 4 FEATURED GOVERNANCE BENCHMARK CARDS */}
       <section className="crypgo-cards-section" id="metrics">
         <div className="crypgo-wrap">
           <div className="section-head-center">
-            <span className="eyebrow-mint">Featured crypto coins & governance</span>
-            <h2>Top crypto coins updates</h2>
+            <span className="eyebrow-mint">CORE GOVERNANCE BENCHMARKS</span>
+            <h2>Real-Time Compliance & Audit Metrics</h2>
           </div>
 
           <div className="crypgo-grid-4">
-            {/* Card 1: Dogecoin style */}
+            {/* Card 1: Tone Policy Enforcement */}
             <div className="crypgo-stat-card" onClick={() => onLaunchStep(0)}>
               <div className="card-coin-icon coin-gold">
-                <span>Ð</span>
+                <span>🛡</span>
               </div>
-              <div className="card-coin-pair">Dogecoin <span className="pair-sub">DOGE/USD</span></div>
-              <div className="card-coin-price">$0.0968</div>
-              <div className="card-coin-sub">0.0968 DOGE/USD</div>
+              <div className="card-coin-pair">Tone Policy <span className="pair-sub">TONE-01</span></div>
+              <div className="card-coin-price">0 Bypasses</div>
+              <div className="card-coin-sub">Absolute Guarantees Blocked</div>
             </div>
 
-            {/* Card 2: Bitcoin style */}
-            <div className="crypgo-stat-card active-card" onClick={() => onLaunchStep(1)}>
+            {/* Card 2: Evidence Vault Verification */}
+            <div className="crypgo-stat-card active-card" onClick={() => onLaunchStep(2)}>
               <div className="card-coin-icon coin-orange">
-                <span>₿</span>
+                <span>📜</span>
               </div>
-              <div className="card-coin-pair">Bitcoin <span className="pair-sub">BTC/USD</span></div>
-              <div className="card-coin-price">$72,947.23</div>
-              <div className="card-coin-sub">100% Citation Validity</div>
+              <div className="card-coin-pair">Evidence Vault <span className="pair-sub">EV-1</span></div>
+              <div className="card-coin-price">100%</div>
+              <div className="card-coin-sub">Citation Validity Verified</div>
             </div>
 
-            {/* Card 3: Ethereum style */}
-            <div className="crypgo-stat-card" onClick={() => onLaunchStep(2)}>
+            {/* Card 3: Deterministic Scanner */}
+            <div className="crypgo-stat-card" onClick={() => onLaunchStep(1)}>
               <div className="card-coin-icon coin-cyan">
-                <span>Ξ</span>
+                <span>⚡</span>
               </div>
-              <div className="card-coin-pair">Ethereum <span className="pair-sub">ETH/USD</span></div>
-              <div className="card-coin-price">$2,135.91</div>
-              <div className="card-coin-sub">Zero False Alarms</div>
+              <div className="card-coin-pair">Deterministic Scanner <span className="pair-sub">REGEX</span></div>
+              <div className="card-coin-price">0.0%</div>
+              <div className="card-coin-sub">Zero False Alarm Rate</div>
             </div>
 
-            {/* Card 4: Polkadot style */}
+            {/* Card 4: Human Sign-Off Gate */}
             <div className="crypgo-stat-card" onClick={() => onLaunchStep(3)}>
               <div className="card-coin-icon coin-bronze">
-                <span>B</span>
+                <span>🔒</span>
               </div>
-              <div className="card-coin-pair">Polkadot <span className="pair-sub">BTC/USD</span></div>
-              <div className="card-coin-price">$8.74</div>
-              <div className="card-coin-sub">Human Sign-off Gates</div>
+              <div className="card-coin-pair">Approval Gate <span className="pair-sub">MULTI-ROLE</span></div>
+              <div className="card-coin-price">Zero Bypass</div>
+              <div className="card-coin-sub">Human Sign-off Enforced</div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* 4. BOTTOM FEATURES SPLIT SECTION matching reference */}
+      {/* 4. BOTTOM FEATURES SPLIT SECTION */}
       <section className="crypgo-features-section" id="features">
         <div className="crypgo-wrap">
           <div className="crypgo-features-grid">
             {/* Left: Headline & 3 Icon Benefit Rows */}
             <div className="features-left-col">
-              <div className="eyebrow-mint">Why choose crypto & brandlint</div>
-              <h2>Features of the crypto framer mobile application</h2>
+              <div className="eyebrow-mint">Why Choose BrandLint Enterprise</div>
+              <h2>Intelligent Brand Governance & Real-Time Evidence Verification</h2>
 
               <div className="feature-rows-list">
                 <div className="feature-benefit-item" onClick={() => onOpenScreen("review")}>
@@ -326,8 +330,8 @@ export const AppleIntro: React.FC<Props> = ({
                     </svg>
                   </div>
                   <div>
-                    <h4>Designed for crypto trading platforms</h4>
-                    <p>Fast deterministic regex terminology & pre-flight checks before AI analysis.</p>
+                    <h4>Deterministic Terminology & Pre-Flight Scans</h4>
+                    <p>Instant regex checks for brand terms, prohibited phrasing, and capitalization rules before LLM inference.</p>
                   </div>
                 </div>
 
@@ -339,8 +343,8 @@ export const AppleIntro: React.FC<Props> = ({
                     </svg>
                   </div>
                   <div>
-                    <h4>Kickstart your crypto website today</h4>
-                    <p>Intent-preserving rewrites with protected facts, numbers, and research citations.</p>
+                    <h4>Evidence Vault Proof Citations (EV-1 to EV-4)</h4>
+                    <p>Every performance statistic links to peer-reviewed whitepapers with author provenance and expiry dates.</p>
                   </div>
                 </div>
 
@@ -352,76 +356,76 @@ export const AppleIntro: React.FC<Props> = ({
                     </svg>
                   </div>
                   <div>
-                    <h4>Launch your blockchain platform</h4>
-                    <p>Cryptographic approval gates enforcing human sign-off on every edit revision.</p>
+                    <h4>Immutable Multi-Role Human Gate Lock</h4>
+                    <p>Text edits automatically invalidate prior approvals, requiring explicit Senior Reviewer sign-off.</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Right: Floating Portfolio Card matching reference */}
+            {/* Right: Live Drafts in Review Workflow (formerly crypto portfolio) */}
             <div className="features-right-col">
               <div className="portfolio-glass-card">
                 <div className="portfolio-head">
-                  <span className="portfolio-label">Your Portfolio is up</span>
-                  <span className="portfolio-badge-green">2.31% ↑</span>
+                  <span className="portfolio-label">Active Drafts in Review Workflow</span>
+                  <span className="portfolio-badge-green">Live Pipeline</span>
                 </div>
 
                 <div className="portfolio-items-list">
                   <div className="portfolio-row" onClick={() => onLaunchDraft(1, "casey@lumina.demo")}>
-                    <div className="portfolio-coin-badge badge-orange">₿</div>
+                    <div className="portfolio-coin-badge badge-orange">01</div>
                     <div className="portfolio-details">
-                      <div className="coin-name">Bitcoin</div>
-                      <div className="coin-symbol">BTC/USD</div>
+                      <div className="coin-name">Hero Launch Email</div>
+                      <div className="coin-symbol">Lumina Cloud · Casey</div>
                     </div>
                     <div className="portfolio-sparkline">
                       <svg width="60" height="20" viewBox="0 0 60 20">
-                        <path d="M0,15 Q15,5 30,12 T60,4" fill="none" stroke="#22c55e" strokeWidth="2"/>
+                        <path d="M0,15 Q15,5 30,12 T60,4" fill="none" stroke="#ef4444" strokeWidth="2"/>
                       </svg>
                     </div>
-                    <div className="portfolio-percent green">1.05% ↑</div>
+                    <div className="portfolio-percent" style={{ color: "#ef4444" }}>1 Blocker (EV-4)</div>
                   </div>
 
                   <div className="portfolio-row" onClick={() => onLaunchDraft(2, "casey@lumina.demo")}>
-                    <div className="portfolio-coin-badge badge-cyan">Ξ</div>
+                    <div className="portfolio-coin-badge badge-cyan">02</div>
                     <div className="portfolio-details">
-                      <div className="coin-name">Ethereum</div>
-                      <div className="coin-symbol">ETH/USD</div>
+                      <div className="coin-name">Nimbus Pricing Post</div>
+                      <div className="coin-symbol">Social Promo · Casey</div>
                     </div>
                     <div className="portfolio-sparkline">
                       <svg width="60" height="20" viewBox="0 0 60 20">
-                        <path d="M0,8 Q20,16 40,6 T60,10" fill="none" stroke="#22c55e" strokeWidth="2"/>
+                        <path d="M0,8 Q20,16 40,6 T60,10" fill="none" stroke="#f59e0b" strokeWidth="2"/>
                       </svg>
                     </div>
-                    <div className="portfolio-percent green">1.05% ↑</div>
+                    <div className="portfolio-percent" style={{ color: "#f59e0b" }}>2 Warnings</div>
                   </div>
 
                   <div className="portfolio-row" onClick={() => onLaunchDraft(3, "riley@lumina.demo")}>
-                    <div className="portfolio-coin-badge badge-gold">₿</div>
+                    <div className="portfolio-coin-badge badge-gold">03</div>
                     <div className="portfolio-details">
-                      <div className="coin-name">Bitcoin Cash</div>
-                      <div className="coin-symbol">BCH/USD</div>
+                      <div className="coin-name">Benchmark Case Study</div>
+                      <div className="coin-symbol">Whitepaper Promo · Riley</div>
                     </div>
                     <div className="portfolio-sparkline">
                       <svg width="60" height="20" viewBox="0 0 60 20">
                         <path d="M0,18 Q15,10 30,14 T60,6" fill="none" stroke="#22c55e" strokeWidth="2"/>
                       </svg>
                     </div>
-                    <div className="portfolio-percent green">1.05% ↑</div>
+                    <div className="portfolio-percent green">100% Ready (EV-1)</div>
                   </div>
 
-                  <div className="portfolio-row" onClick={() => onOpenScreen("vault")}>
-                    <div className="portfolio-coin-badge badge-silver">Ł</div>
+                  <div className="portfolio-row" onClick={() => onOpenScreen("queue")}>
+                    <div className="portfolio-coin-badge badge-silver">04</div>
                     <div className="portfolio-details">
-                      <div className="coin-name">Litecoin</div>
-                      <div className="coin-symbol">LTC/USD</div>
+                      <div className="coin-name">SOC-2 Security Update</div>
+                      <div className="coin-symbol">Compliance Blog · Olivia</div>
                     </div>
                     <div className="portfolio-sparkline">
                       <svg width="60" height="20" viewBox="0 0 60 20">
                         <path d="M0,12 Q20,4 40,15 T60,8" fill="none" stroke="#22c55e" strokeWidth="2"/>
                       </svg>
                     </div>
-                    <div className="portfolio-percent green">1.05% ↑</div>
+                    <div className="portfolio-percent green">In Queue</div>
                   </div>
                 </div>
               </div>

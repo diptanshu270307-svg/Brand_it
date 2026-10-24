@@ -119,6 +119,13 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-shell">
+      {/* Top Harbor Progress Bar */}
+      <div
+        className="progress"
+        aria-hidden="true"
+        style={{ transform: `scaleX(${((activeStep + 1) / DEMO_STEPS.length)})` }}
+      ></div>
+
       {/* Top Header */}
       <header className="top-nav">
         <div className="brand-mark">

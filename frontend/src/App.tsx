@@ -13,8 +13,9 @@ import { DraftReview } from "./screens/DraftReview";
 import { EvidenceVault } from "./screens/EvidenceVault";
 import { Insights } from "./screens/Insights";
 import { ReviewQueue } from "./screens/ReviewQueue";
+import { AppleIntro } from "./screens/AppleIntro";
 
-type Screen = "library" | "review" | "vault" | "queue" | "insights";
+type Screen = "intro" | "library" | "review" | "vault" | "queue" | "insights";
 
 const DEMO_STEPS = [
   {
@@ -58,7 +59,7 @@ export const App: React.FC = () => {
   const [user, setUser] = useState<UserInfo | null>(null);
   const [brand, setBrand] = useState<BrandInfo | null>(null);
   const [privacy, setPrivacy] = useState<PrivacyInfo | null>(null);
-  const [screen, setScreen] = useState<Screen>("review");
+  const [screen, setScreen] = useState<Screen>("intro");
   const [selectedDraftId, setSelectedDraftId] = useState<number | null>(1);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showGuide, setShowGuide] = useState(true);
@@ -148,6 +149,12 @@ export const App: React.FC = () => {
 
         <nav className="main-tabs" aria-label="Main Navigation">
           <button
+            className={`nav-tab ${screen === "intro" ? "active" : ""}`}
+            onClick={() => setScreen("intro")}
+          >
+            <span className="tab-num"></span> Overview
+          </button>
+          <button
             className={`nav-tab ${screen === "library" ? "active" : ""}`}
             onClick={() => setScreen("library")}
           >
@@ -230,8 +237,8 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Guided Hackathon Demo Strip */}
-      {showGuide && (
+      {/* Guided Hackathon Demo Strip (visible on Review Desk screens) */}
+      {showGuide && screen !== "intro" && (
         <div className="demo-strip">
           <div className="demo-strip-head">
             <div className="demo-strip-title-row">
@@ -273,7 +280,28 @@ export const App: React.FC = () => {
       {error && <div className="banner banner-error">{error}</div>}
 
       {/* Main Screen Content */}
-      <main className="main-area" key={refreshKey}>
+      <main className={screen === "intro" ? "main-intro-wrap" : "main-area"} key={refreshKey}>
+        {screen === "intro" && (
+          <AppleIntro
+            onOpenScreen={(s) => setScreen(s)}
+            onLaunchDraft={async (draftId, persona) => {
+              setSelectedDraftId(draftId);
+              if (persona && user.email !== persona) {
+                await switchPersona(persona);
+              }
+              setScreen("review");
+            }}
+            onLaunchStep={async (idx) => {
+              setActiveStep(idx);
+              const s = DEMO_STEPS[idx];
+              if (user.email !== s.persona) {
+                await switchPersona(s.persona);
+              }
+              if (s.step <= 4) setSelectedDraftId(1);
+              setScreen(s.screen);
+            }}
+          />
+        )}
         {screen === "library" && <BrandLibrary brandId={brand.id} role={brand.role} />}
         {screen === "review" && (
           <DraftReview

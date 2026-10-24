@@ -1124,3 +1124,904 @@ body {
   font-size: 11.5px;
   color: #64748b;
 }
+
+
+/* ============================================================================
+   8. REFERENCE DESIGN: CRYPGO-THEMED FRONT PAGE & THREE-DOT DROPDOWN
+   ============================================================================ */
+/* Top Nav Modernization */
+.top-nav-modern {
+  background: #070a13 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  padding: 12px 28px !important;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(16px);
+}
+
+.nav-center-links {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.nav-link-item {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 14.5px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 6px;
+  transition: all 0.2s ease;
+  text-decoration: none;
+}
+
+.nav-link-item:hover,
+.nav-link-item.active {
+  color: #ffffff;
+}
+
+/* Three-Dot Dropdown Menu */
+.three-dots-menu-wrap {
+  position: relative;
+}
+
+.btn-three-dots {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: #11182c;
+  color: #cbd5e1;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 7px 12px;
+  border-radius: 9999px;
+  font-size: 13.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-three-dots:hover,
+.btn-three-dots.active {
+  background: #18223c;
+  color: #ffffff;
+  border-color: #22c55e;
+  box-shadow: 0 0 12px rgba(34, 197, 94, 0.25);
+}
+
+.three-dots-label {
+  font-size: 13px;
+}
+
+.three-dots-arrow {
+  font-size: 10px;
+  color: #94a3b8;
+}
+
+.dropdown-popover {
+  position: absolute;
+  top: calc(100% + 10px);
+  right: 0;
+  width: 320px;
+  background: rgba(12, 17, 34, 0.96);
+  backdrop-filter: blur(24px);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 14px;
+  padding: 14px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(34, 197, 94, 0.2);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: blRise 0.25s var(--ease) both;
+}
+
+.dropdown-section-title {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: #64748b;
+  padding: 4px 8px;
+}
+
+.dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 9px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+
+.dropdown-item:hover,
+.dropdown-item.item-active {
+  background: rgba(255, 255, 255, 0.07);
+}
+
+.dropdown-item.item-active {
+  border-left: 3px solid #22c55e;
+}
+
+.dropdown-item-icon {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.dropdown-item-text {
+  flex: 1;
+}
+
+.dropdown-item-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.pill-dot {
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.15);
+  padding: 1px 6px;
+  border-radius: 4px;
+}
+
+.dropdown-item-sub {
+  font-size: 12px;
+  color: #94a3b8;
+  margin-top: 2px;
+}
+
+.dropdown-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 6px 0;
+}
+
+.dropdown-actions-row {
+  display: flex;
+  gap: 6px;
+  padding-top: 4px;
+}
+
+/* Primary Green Pill Button matching reference 'Explore More' / 'Sign Up' */
+.btn-crypgo-green {
+  background: #22c55e !important;
+  color: #000000 !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  padding: 8px 20px !important;
+  border-radius: 9999px !important;
+  border: none !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 8px !important;
+  box-shadow: 0 0 20px rgba(34, 197, 94, 0.35) !important;
+  transition: all 0.25s var(--ease) !important;
+}
+
+.btn-crypgo-green:hover {
+  background: #16a34a !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 0 28px rgba(34, 197, 94, 0.55) !important;
+}
+
+.btn-crypgo-ghost {
+  background: rgba(255, 255, 255, 0.05);
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  font-size: 14px;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 9999px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-crypgo-ghost:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.btn-hero {
+  padding: 12px 28px !important;
+  font-size: 15.5px !important;
+}
+
+/* ============================================================================
+   CRYPGO FRONT PAGE LAYOUT & SECTIONS
+   ============================================================================ */
+.crypgo-page {
+  background: #070a13;
+  color: #ffffff;
+  overflow-x: hidden;
+  font-family: var(--sans);
+}
+
+.crypgo-wrap {
+  max-width: 1220px;
+  margin: 0 auto;
+  padding: 0 24px;
+}
+
+/* 1. Hero */
+.crypgo-hero {
+  padding: 72px 0 96px;
+  position: relative;
+  background: radial-gradient(ellipse at 80% 20%, rgba(34, 197, 94, 0.08), transparent 60%);
+}
+
+.crypgo-hero-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  align-items: center;
+  gap: 48px;
+}
+
+.crypgo-pill-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(34, 197, 94, 0.1);
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  padding: 6px 14px;
+  border-radius: 9999px;
+  margin-bottom: 20px;
+}
+
+.pill-dot-green {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #22c55e;
+  box-shadow: 0 0 10px #22c55e;
+}
+
+.pill-text-mint {
+  font-size: 13px;
+  font-weight: 600;
+  color: #4ade80;
+}
+
+.crypgo-hero-title {
+  font-size: clamp(38px, 5.2vw, 62px);
+  font-weight: 800;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+  color: #ffffff;
+  margin-bottom: 20px;
+}
+
+.crypgo-hero-lead {
+  font-size: 17px;
+  line-height: 1.6;
+  color: #94a3b8;
+  margin-bottom: 32px;
+  max-width: 520px;
+}
+
+.crypgo-hero-cta {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 40px;
+  flex-wrap: wrap;
+}
+
+.crypgo-hero-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.mini-stat-num {
+  font-size: 22px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.02em;
+}
+
+.mini-stat-lbl {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.mini-stat-div {
+  width: 1px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Device showcase & Floating VISA card */
+.device-showcase-wrap {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.device-frame {
+  width: 320px;
+  height: 460px;
+  background: #0d1322;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 34px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.06);
+  padding: 24px 20px;
+  position: relative;
+  overflow: hidden;
+}
+
+.device-top-notch {
+  width: 76px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  margin: 0 auto 18px;
+}
+
+.device-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 18px;
+}
+
+.device-sublabel {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+}
+
+.device-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.stat-pill {
+  font-size: 11px;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.12);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: 6px;
+}
+
+.device-circle-meter {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meter-val {
+  position: absolute;
+  font-size: 9.5px;
+  font-weight: 800;
+  color: #22c55e;
+}
+
+.device-chart-area {
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 18px;
+}
+
+.device-chart-svg {
+  width: 100%;
+  height: 70px;
+}
+
+.chart-timeline-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #64748b;
+  margin-top: 8px;
+}
+
+.time-active {
+  color: #22c55e;
+  font-weight: 700;
+}
+
+.device-bottom-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.device-list-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  padding: 9px 12px;
+  border-radius: 9px;
+}
+
+.coin-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.dot-btc { background: #f59e0b; color: #ffffff; }
+.dot-eth { background: #06b6d4; color: #ffffff; }
+
+.item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.item-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.item-sub {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.status-ok {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+/* Floating VISA card */
+.floating-visa-card {
+  position: absolute;
+  right: -24px;
+  top: 140px;
+  width: 230px;
+  height: 136px;
+  background: linear-gradient(135deg, #18223c, #0b1122 75%);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(34, 197, 94, 0.25);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  z-index: 10;
+  animation: blFloat 8s ease-in-out infinite alternate;
+}
+
+.visa-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.visa-wordmark {
+  font-weight: 800;
+  font-size: 15px;
+  letter-spacing: 0.06em;
+  color: #ffffff;
+}
+
+.visa-card-number {
+  font-family: var(--mono);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: #e2e8f0;
+}
+
+.visa-bottom-row {
+  display: flex;
+  justify-content: space-between;
+}
+
+.visa-label {
+  font-size: 7.5px;
+  font-weight: 800;
+  color: #64748b;
+  letter-spacing: 0.06em;
+}
+
+.visa-val {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+/* 2. Trust Logos Row */
+.crypgo-trust-section {
+  padding: 44px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.015);
+}
+
+.trust-label {
+  text-align: center;
+  font-size: 14px;
+  color: #94a3b8;
+  margin-bottom: 24px;
+}
+
+.trust-logos-row {
+  display: flex;
+  justify-content: center;
+  gap: 44px;
+  flex-wrap: wrap;
+}
+
+.trust-logo-item {
+  font-weight: 800;
+  font-size: 17px;
+  color: rgba(255, 255, 255, 0.65);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.logo-symbol { font-size: 20px; }
+.logo-symbol.green { color: #22c55e; }
+.logo-symbol.orange { color: #f97316; }
+.logo-symbol.purple { color: #a855f7; }
+.logo-symbol.cyan { color: #06b6d4; }
+.logo-symbol.lime { color: #84cc16; }
+
+/* 3. 4 Featured Cards */
+.crypgo-cards-section {
+  padding: 84px 0;
+}
+
+.section-head-center {
+  text-align: center;
+  margin-bottom: 44px;
+}
+
+.eyebrow-mint {
+  font-size: 12.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #22c55e;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 8px;
+}
+
+.section-head-center h2 {
+  font-size: clamp(28px, 4.2vw, 42px);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+}
+
+.crypgo-grid-4 {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+}
+
+.crypgo-stat-card {
+  background: #0d1324;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  padding: 26px 22px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.crypgo-stat-card:hover {
+  border-color: rgba(34, 197, 94, 0.45);
+  transform: translateY(-4px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.45);
+}
+
+.card-coin-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  margin: 0 auto 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 800;
+}
+
+.coin-gold { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+.coin-orange { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+.coin-cyan { background: rgba(6, 182, 212, 0.15); color: #22d3ee; border: 1px solid rgba(6, 182, 212, 0.3); }
+.coin-bronze { background: rgba(168, 85, 247, 0.15); color: #c084fc; border: 1px solid rgba(168, 85, 247, 0.3); }
+
+.card-coin-pair {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 6px;
+}
+
+.pair-sub {
+  font-size: 11px;
+  color: #64748b;
+  margin-left: 4px;
+}
+
+.card-coin-price {
+  font-size: 30px;
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  margin-bottom: 4px;
+}
+
+.card-coin-sub {
+  font-size: 12.5px;
+  color: #94a3b8;
+}
+
+/* 4. Features Section */
+.crypgo-features-section {
+  padding: 84px 0;
+  background: #090d19;
+}
+
+.crypgo-features-grid {
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  align-items: center;
+  gap: 48px;
+}
+
+.features-left-col h2 {
+  font-size: clamp(28px, 4vw, 40px);
+  font-weight: 800;
+  color: #ffffff;
+  letter-spacing: -0.03em;
+  margin: 10px 0 28px;
+}
+
+.feature-rows-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.feature-benefit-item {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.feature-benefit-item:hover {
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.benefit-icon-box {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+  border: 1px solid rgba(34, 197, 94, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.feature-benefit-item h4 {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+  margin-bottom: 4px;
+}
+
+.feature-benefit-item p {
+  font-size: 13.5px;
+  color: #94a3b8;
+  line-height: 1.5;
+}
+
+/* Portfolio Card */
+.portfolio-glass-card {
+  background: #0d1324;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 20px;
+  padding: 26px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.portfolio-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.portfolio-label {
+  font-size: 15.5px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.portfolio-badge-green {
+  font-size: 12px;
+  font-weight: 700;
+  color: #22c55e;
+  background: rgba(34, 197, 94, 0.14);
+  border: 1px solid rgba(34, 197, 94, 0.3);
+  padding: 3px 8px;
+  border-radius: 6px;
+}
+
+.portfolio-items-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.portfolio-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.portfolio-row:hover {
+  background: rgba(255, 255, 255, 0.07);
+  transform: translateX(4px);
+}
+
+.portfolio-coin-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 800;
+  font-size: 14px;
+}
+
+.badge-orange { background: #f97316; color: #ffffff; }
+.badge-cyan { background: #06b6d4; color: #ffffff; }
+.badge-gold { background: #eab308; color: #ffffff; }
+.badge-silver { background: #94a3b8; color: #ffffff; }
+
+.portfolio-details {
+  flex: 1;
+}
+
+.coin-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.coin-symbol {
+  font-size: 11px;
+  color: #64748b;
+}
+
+.portfolio-percent.green {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #22c55e;
+}
+
+/* Console Section */
+.crypgo-console-section {
+  padding: 72px 0;
+  background: #070a13;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.console-expand-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 24px;
+  background: #0d1324;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 18px 24px;
+}
+
+/* Footer */
+.crypgo-footer {
+  padding: 40px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  background: #05070f;
+}
+
+.footer-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.footer-brand {
+  font-size: 14px;
+  font-weight: 700;
+  color: #ffffff;
+  display: block;
+}
+
+.footer-tag {
+  font-size: 12px;
+  color: #64748b;
+}
+
+.footer-links {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.footer-link-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  transition: color 0.15s ease;
+}
+
+.footer-link-btn:hover {
+  color: #22c55e;
+}
+
+@media (max-width: 900px) {
+  .crypgo-hero-grid,
+  .crypgo-features-grid {
+    grid-template-columns: 1fr;
+  }
+  .nav-center-links {
+    display: none;
+  }
+  .floating-visa-card {
+    right: 0;
+    top: 180px;
+  }
+}

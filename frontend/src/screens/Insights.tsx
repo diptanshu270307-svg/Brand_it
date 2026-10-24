@@ -90,12 +90,10 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
     <div className="screen-container">
       <div className="screen-header">
         <div>
-          <div className="eyebrow">SCREEN 5 · GUIDELINE HEALTH & GOVERNANCE ANALYTICS</div>
-          <h2>Insights — Override Patterns, Guideline Health & Measured Evaluation</h2>
+          <div className="eyebrow">GUIDELINE HEALTH & GOVERNANCE ANALYTICS</div>
+          <h2>Insights & Policy Health</h2>
           <p className="subtitle">
-            BrandLint tracks which rules reviewers repeatedly override and why, suggests clearer
-            wording for the Brand Owner to approve, and labels small samples as{" "}
-            <strong>Insufficient History</strong>. Rules are never changed automatically.
+            Rule performance metrics, reviewer override frequency, and human-in-the-loop guideline clarifications.
           </p>
         </div>
       </div>

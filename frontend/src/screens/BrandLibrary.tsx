@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, DocumentItem, RuleItem } from "../api";
 import { SourceModal } from "../components/SourceModal";
+import { BrandLibraryArchitectureFlowchart } from "../components/Flowcharts";
 
 interface Props {
   brandId: number;
@@ -21,6 +22,10 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
   const [error, setError] = useState("");
   const [uploadNotes, setUploadNotes] = useState<string[]>([]);
   const [lastUploadedDoc, setLastUploadedDoc] = useState<DocumentItem | null>(null);
+
+  // Tab switcher inside Brand Library
+  const [activeTab, setActiveTab] = useState<"rules" | "ingest" | "docs">("rules");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   // Upload form
   const [kind, setKind] = useState<"guideline" | "evidence">("guideline");
@@ -76,6 +81,7 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
       setExpiresOn("");
       setFile(null);
       await load();
+      setActiveTab("docs");
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {
@@ -98,79 +104,149 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
   const active = rules.filter((r) => r.status === "active");
   const isOwner = role === "brand_owner";
 
+  const filteredRules = active.filter((r) => {
+    if (categoryFilter === "all") return true;
+    return r.category.toLowerCase() === categoryFilter.toLowerCase();
+  });
+
   return (
     <div className="screen-container">
+      {/* 1. Header with reduced text */}
       <div className="screen-header">
         <div>
-          <div className="eyebrow">SCREEN 1 · SOURCE OF TRUTH</div>
-          <h2>Brand Library — Guidelines, Extracted Rules & Source Documents</h2>
+          <div className="eyebrow">SOURCE OF TRUTH</div>
+          <h2>Brand Library</h2>
           <p className="subtitle">
-            Upload text-based PDFs or paste brand guidelines. Extracted rules stay in{" "}
-            <strong>Proposed</strong> state until a Brand Owner approves them. Uploaded documents are
-            treated strictly as untrusted data, never as AI instructions.
+            Single repository for brand voice guidelines, extracted rules, and verified source documents.
           </p>
-        </div>
-        <div className="stat-strip">
-          <div className="stat-chip">
-            <span className="stat-num">{active.length}</span>
-            <span className="stat-lbl">Active Rules</span>
-          </div>
-          <div className="stat-chip">
-            <span className="stat-num">{proposed.length}</span>
-            <span className="stat-lbl">Proposed Rules</span>
-          </div>
-          <div className="stat-chip">
-            <span className="stat-num">{documents.length}</span>
-            <span className="stat-lbl">Source Docs</span>
-          </div>
         </div>
       </div>
 
       {error && <div className="banner banner-error">{error}</div>}
 
-      {lastUploadedDoc && (
-        <div className={`banner ${lastUploadedDoc.suspicious ? "banner-warn" : "banner-ok"}`}>
-          <div>
-            <strong>
-              Ingested {lastUploadedDoc.title} (v{lastUploadedDoc.version}, {lastUploadedDoc.pages}{" "}
-              page{lastUploadedDoc.pages > 1 ? "s" : ""}).
-            </strong>
-            {lastUploadedDoc.suspicious && (
-              <div style={{ marginTop: 6 }}>
-                <strong>Untrusted Content Guardrail triggered:</strong> Instruction-like text was
-                detected and isolated as plain data:
-                <ul>
-                  {lastUploadedDoc.suspicious_notes.map((n, i) => (
-                    <li key={i}>{n}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            {uploadNotes.length > 0 && (
-              <div style={{ marginTop: 6 }}>
-                <strong>Extraction validation notes:</strong>
-                <ul>
-                  {uploadNotes.map((n, i) => (
-                    <li key={i}>{n}</li>
-                  ))}
-                </ul>
-              </div>
+      {/* 2. Top Metric Cards */}
+      <div className="metrics-grid-4">
+        <div className="metric-box" onClick={() => setActiveTab("rules")}>
+          <div className="metric-value-row">
+            <span className="metric-large-number">{active.length}</span>
+            <span className="pill pill-status-approved">Enforced</span>
+          </div>
+          <div className="metric-title">Active Rules</div>
+          <div className="metric-desc">Live in deterministic & AI check engine</div>
+        </div>
+
+        <div
+          className={`metric-box ${proposed.length > 0 ? "metric-highlight-warn" : ""}`}
+          onClick={() => setActiveTab("rules")}
+        >
+          <div className="metric-value-row">
+            <span className="metric-large-number">{proposed.length}</span>
+            {proposed.length > 0 ? (
+              <span className="pill pill-warn">Human Gate</span>
+            ) : (
+              <span className="pill pill-muted">Zero Pending</span>
             )}
           </div>
+          <div className="metric-title">Proposed Rules</div>
+          <div className="metric-desc">Awaiting Brand Owner approval</div>
         </div>
-      )}
 
-      {/* Proposed rules awaiting human approval */}
+        <div className="metric-box" onClick={() => setActiveTab("docs")}>
+          <div className="metric-value-row">
+            <span className="metric-large-number">{documents.length}</span>
+            <span className="pill pill-ev-supported">Versioned</span>
+          </div>
+          <div className="metric-title">Source Documents</div>
+          <div className="metric-desc">PDF guidelines & evidence repositories</div>
+        </div>
+
+        <div className="metric-box">
+          <div className="metric-value-row">
+            <span className="metric-large-number" style={{ color: "var(--ok)", fontSize: "28px" }}>
+              Active
+            </span>
+            <span className="pill pill-ok">Isolated</span>
+          </div>
+          <div className="metric-title">Prompt Defense</div>
+          <div className="metric-desc">Untrusted data sandbox immune to injection</div>
+        </div>
+      </div>
+
+      {/* 3. Visual Architecture Flowchart */}
+      <BrandLibraryArchitectureFlowchart />
+
+      {/* 4. Tab Navigation Strip */}
+      <div className="library-subnav-bar">
+        <div className="library-subtabs">
+          <button
+            type="button"
+            className={`subtab-btn ${activeTab === "rules" ? "active" : ""}`}
+            onClick={() => setActiveTab("rules")}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+            </svg>
+            <span>Active Rulebook</span>
+            <span className="subtab-count">{active.length}</span>
+          </button>
+
+          <button
+            type="button"
+            className={`subtab-btn ${activeTab === "ingest" ? "active" : ""}`}
+            onClick={() => setActiveTab("ingest")}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <span>Ingestion Studio & AI Extractor</span>
+          </button>
+
+          <button
+            type="button"
+            className={`subtab-btn ${activeTab === "docs" ? "active" : ""}`}
+            onClick={() => setActiveTab("docs")}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+            </svg>
+            <span>Source Documents</span>
+            <span className="subtab-count">{documents.length}</span>
+          </button>
+        </div>
+
+        {activeTab === "rules" && (
+          <div className="filter-chips-row">
+            {["all", "terminology", "tone", "claims"].map((cat) => (
+              <button
+                key={cat}
+                type="button"
+                className={`filter-chip ${categoryFilter === cat ? "active" : ""}`}
+                onClick={() => setCategoryFilter(cat)}
+              >
+                {cat === "all" ? "All Categories" : cat.toUpperCase()}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 5. Proposed Rules Alert Gate */}
       {proposed.length > 0 && (
-        <div className="card card-accent">
+        <div className="card card-accent" style={{ borderColor: "#f59e0b" }}>
           <div className="card-header">
             <div>
-              <div className="eyebrow">HUMAN-IN-THE-LOOP ACTIVATION GATE</div>
-              <h3>Proposed Rules Awaiting Approval ({proposed.length})</h3>
+              <div className="eyebrow" style={{ color: "#d97706" }}>HUMAN ACTIVATION GATE</div>
+              <h3>Proposed Rules Awaiting Human Sign-Off ({proposed.length})</h3>
             </div>
             {!isOwner && (
               <span className="pill pill-warn">
-                Switch persona to Olivia (Brand Owner) in top bar to approve or reject rules
+                Switch to Olivia (Brand Owner) to activate or reject proposed rules
               </span>
             )}
           </div>
@@ -181,15 +257,13 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
                   <span className="rule-key">{r.ref}</span>
                   <span className={`pill pill-sev-${r.severity}`}>{r.severity}</span>
                   <span className="pill">{r.category}</span>
-                  <span className="pill pill-warn">PROPOSED (INACTIVE)</span>
+                  <span className="pill pill-warn">Proposed</span>
                 </div>
                 <h4>{r.title}</h4>
                 <p className="rule-text">{r.text}</p>
                 {r.source && (
                   <div className="rule-source">
-                    <span>
-                      Source: {r.source.title} v{r.source.version}, p.{r.source.page || 1}
-                    </span>
+                    <span>Source: {r.source.title} v{r.source.version}, p.{r.source.page || 1}</span>
                     <button
                       className="btn-link"
                       onClick={() =>
@@ -200,17 +274,17 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
                         })
                       }
                     >
-                      Inspect excerpt in source →
+                      Inspect Source →
                     </button>
                   </div>
                 )}
-                <div className="btn-row" style={{ marginTop: 10 }}>
+                <div className="btn-row" style={{ marginTop: 12 }}>
                   <button
                     className="btn btn-primary btn-sm"
                     disabled={!isOwner}
                     onClick={() => handleRuleDecision(r.id, "approve")}
                   >
-                    ✓ Approve & Activate Rule
+                    ✓ Approve & Activate
                   </button>
                   <button
                     className="btn btn-danger btn-sm"
@@ -226,45 +300,130 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
         </div>
       )}
 
-      <div className="two-col">
-        {/* Upload PDF or paste guidelines */}
+      {/* 6. TAB: RULES */}
+      {activeTab === "rules" && (
         <div className="card">
           <div className="card-header">
             <div>
-              <div className="eyebrow">INGESTION & RULE EXTRACTION</div>
-              <h3>Upload PDF or Paste Guidelines / Evidence</h3>
+              <div className="eyebrow">ACTIVE GOVERNANCE POLICIES</div>
+              <h3>Enforced Brand Rules ({filteredRules.length})</h3>
             </div>
-            <button
-              type="button"
-              className="btn btn-sm"
-              onClick={() => {
-                setKind("guideline");
-                setTitle("Nimbus Co. Brand Guidelines");
-                setText(SAMPLE_PASTE_GUIDELINES);
-                setFile(null);
-              }}
-            >
-              Load Sample Guideline Text (with Injection Test)
-            </button>
           </div>
-          {!isOwner && (
-            <div className="banner banner-info" style={{ marginBottom: 12 }}>
-              Uploading source documents requires the <strong>Brand Owner</strong> role. Use the
-              persona switcher in the top bar to switch to <strong>Olivia Brooks (Brand Owner)</strong>.
+          {loading ? (
+            <div className="muted" style={{ padding: 24, fontSize: 16 }}>Loading rule catalog...</div>
+          ) : (
+            <div className="rule-grid">
+              {filteredRules.map((r) => (
+                <div key={r.id} className="rule-card">
+                  <div className="rule-top">
+                    <span className="rule-key">{r.ref}</span>
+                    <span className={`pill pill-sev-${r.severity}`}>{r.severity.toUpperCase()}</span>
+                    <span className="pill">{r.category}</span>
+                    {r.sensitive && (
+                      <span className="pill pill-route-senior">Routes to Senior Reviewer</span>
+                    )}
+                  </div>
+                  <h4>{r.title}</h4>
+                  <p className="rule-text">{r.text}</p>
+                  {r.banned.length > 0 && (
+                    <div className="rule-tags-row">
+                      <span className="tag-label">Protected Patterns:</span>
+                      {r.banned.map((b, i) => (
+                        <span key={i} className="code-pill">"{b}"</span>
+                      ))}
+                    </div>
+                  )}
+                  <div className="rule-source">
+                    {r.source ? (
+                      <>
+                        <span>{r.source.title} (v{r.source.version}, p.{r.source.page || 1})</span>
+                        <button
+                          className="btn-link"
+                          onClick={() =>
+                            setInspectDoc({
+                              docId: r.source!.document_id,
+                              page: r.source!.page || 1,
+                              excerpt: r.excerpt,
+                            })
+                          }
+                        >
+                          View in Source PDF →
+                        </button>
+                      </>
+                    ) : (
+                      <span>Clarified wording v{r.version} (approved via Guideline Health)</span>
+                    )}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
+        </div>
+      )}
+
+      {/* 7. TAB: INGESTION STUDIO */}
+      {activeTab === "ingest" && (
+        <div className="card">
+          <div className="card-header">
+            <div>
+              <div className="eyebrow">SMART INGESTION</div>
+              <h3>Upload PDF or Paste Guidelines</h3>
+            </div>
+            <div className="btn-row">
+              <button
+                type="button"
+                className="btn btn-sm"
+                onClick={() => {
+                  setKind("guideline");
+                  setTitle("Nimbus Co. Brand Guidelines");
+                  setText(SAMPLE_PASTE_GUIDELINES);
+                  setFile(null);
+                }}
+              >
+                Load Sample Guidelines (with Injection Test)
+              </button>
+            </div>
+          </div>
+
+          {!isOwner && (
+            <div className="banner banner-info" style={{ marginBottom: 16 }}>
+              Ingesting documents requires the <strong>Brand Owner</strong> role. Use the persona switcher in the top bar to switch to <strong>Olivia Brooks</strong>.
+            </div>
+          )}
+
+          {lastUploadedDoc && (
+            <div className={`banner ${lastUploadedDoc.suspicious ? "banner-warn" : "banner-ok"}`} style={{ marginBottom: 16 }}>
+              <div>
+                <strong>Ingested {lastUploadedDoc.title} (v{lastUploadedDoc.version}, {lastUploadedDoc.pages} page{lastUploadedDoc.pages > 1 ? "s" : ""}).</strong>
+                {lastUploadedDoc.suspicious && (
+                  <div style={{ marginTop: 6 }}>
+                    <strong>Untrusted Content Guardrail:</strong> Prompt injection attempt was safely neutralized into plain text.
+                  </div>
+                )}
+                {uploadNotes.length > 0 && (
+                  <ul style={{ marginTop: 6 }}>
+                    {uploadNotes.map((n, i) => (
+                      <li key={i}>{n}</li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+          )}
+
           <form onSubmit={handleUpload} className="form-stack">
             <div className="form-row">
               <label>
-                Document Type
+                Document Purpose
                 <select
                   value={kind}
                   onChange={(e) => setKind(e.target.value as "guideline" | "evidence")}
                 >
-                  <option value="guideline">Brand Guideline (extracts proposed rules)</option>
-                  <option value="evidence">Evidence Source Document (for Evidence Vault)</option>
+                  <option value="guideline">Brand Voice Guideline (Extracts Rules)</option>
+                  <option value="evidence">Evidence Source Document (For Evidence Vault)</option>
                 </select>
               </label>
+
               <label>
                 Document Title
                 <input
@@ -275,9 +434,10 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
                   required={!file}
                 />
               </label>
+
               {kind === "evidence" && (
                 <label>
-                  Source Expiry Date (optional)
+                  Expiry Date
                   <input
                     type="date"
                     value={expiresOn}
@@ -288,20 +448,25 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
             </div>
 
             <label>
-              Upload Text-based PDF (e.g. <code>demo/sample_guidelines.pdf</code>)
-              <input
-                type="file"
-                accept=".pdf,.txt"
-                onChange={(e) => {
-                  const f = e.target.files?.[0] || null;
-                  setFile(f);
-                  if (f && !title) setTitle(f.name.replace(/\.pdf$/i, ""));
-                }}
-              />
+              Upload Text-based PDF
+              <div className="file-dropzone-styled">
+                <input
+                  type="file"
+                  accept=".pdf,.txt"
+                  onChange={(e) => {
+                    const f = e.target.files?.[0] || null;
+                    setFile(f);
+                    if (f && !title) setTitle(f.name.replace(/\.pdf$/i, ""));
+                  }}
+                />
+                <div className="file-drop-text">
+                  {file ? <strong>Selected: {file.name}</strong> : "Choose PDF or drop here (demo/sample_guidelines.pdf)"}
+                </div>
+              </div>
             </label>
 
             <label>
-              Or Paste Guideline / Evidence Text (use form-feed or newline per rule)
+              Or Paste Guideline Text
               <textarea
                 rows={6}
                 placeholder="NIM-01: Always write the product name as Nimbus Cloud..."
@@ -311,38 +476,51 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
               />
             </label>
 
-            <div className="btn-row">
+            <div className="btn-row" style={{ marginTop: 8 }}>
               <button
                 type="submit"
                 className="btn btn-primary"
                 disabled={busy || !isOwner || (!file && !text.trim())}
               >
                 {busy
-                  ? "Ingesting & Extracting..."
+                  ? "Processing & Extracting Rules..."
                   : kind === "guideline"
-                  ? "Ingest & Extract Proposed Rules"
-                  : "Ingest Evidence Source Document"}
+                  ? "Ingest & Extract Proposed Rules →"
+                  : "Ingest Evidence Source Document →"}
               </button>
             </div>
           </form>
         </div>
+      )}
 
-        {/* Versioned Source Documents */}
+      {/* 8. TAB: SOURCE DOCUMENTS */}
+      {activeTab === "docs" && (
         <div className="card">
           <div className="card-header">
             <div>
-              <div className="eyebrow">VERSIONED REPOSITORY</div>
-              <h3>Source Documents ({documents.length})</h3>
+              <div className="eyebrow">VERSIONED ARCHIVE</div>
+              <h3>Source Documents & Guidelines ({documents.length})</h3>
             </div>
+            <button className="btn btn-sm btn-primary" onClick={() => setActiveTab("ingest")}>
+              + Ingest New Document
+            </button>
           </div>
-          <div className="doc-list">
+
+          <div className="doc-grid-modern">
             {documents.map((d) => (
-              <div key={d.id} className="doc-row">
-                <div>
-                  <div className="doc-title-line">
-                    <strong>
-                      {d.title} (v{d.version})
-                    </strong>
+              <div key={d.id} className="doc-card-modern">
+                <div className="doc-card-icon">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                  </svg>
+                </div>
+                <div className="doc-card-body">
+                  <div className="doc-card-title-row">
+                    <h4>{d.title}</h4>
+                    <span className="pill pill-version">v{d.version}</span>
+                  </div>
+                  <div className="doc-card-tags">
                     <span className="pill">{d.kind}</span>
                     {d.expires_on && (
                       <span
@@ -355,81 +533,23 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
                     )}
                     {d.suspicious && <span className="pill pill-warn">Untrusted prompt flagged</span>}
                   </div>
-                  <div className="muted-sm">
-                    {d.pages} page{d.pages > 1 ? "s" : ""} · Ingested{" "}
-                    {new Date(d.created_at).toLocaleDateString()}
+                  <div className="doc-card-footer">
+                    <span className="muted-sm">{d.pages} page{d.pages > 1 ? "s" : ""} · Ingested {new Date(d.created_at).toLocaleDateString()}</span>
+                    <button
+                      className="btn btn-sm"
+                      onClick={() => setInspectDoc({ docId: d.id, page: 1 })}
+                    >
+                      Open PDF →
+                    </button>
                   </div>
                 </div>
-                <button
-                  className="btn btn-sm"
-                  onClick={() => setInspectDoc({ docId: d.id, page: 1 })}
-                >
-                  Open Source
-                </button>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      )}
 
-      {/* Active Brand Rules */}
-      <div className="card">
-        <div className="card-header">
-          <div>
-            <div className="eyebrow">ACTIVE GOVERNANCE RULESET</div>
-            <h3>Active Brand Rules ({active.length})</h3>
-          </div>
-        </div>
-        {loading ? (
-          <div className="muted">Loading rules...</div>
-        ) : (
-          <div className="rule-grid">
-            {active.map((r) => (
-              <div key={r.id} className="rule-card">
-                <div className="rule-top">
-                  <span className="rule-key">{r.ref}</span>
-                  <span className={`pill pill-sev-${r.severity}`}>{r.severity}</span>
-                  <span className="pill">{r.category}</span>
-                  {r.sensitive && (
-                    <span className="pill pill-route-senior">Routes to Senior Reviewer</span>
-                  )}
-                </div>
-                <h4>{r.title}</h4>
-                <p className="rule-text">{r.text}</p>
-                {r.banned.length > 0 && (
-                  <div className="muted-sm" style={{ marginBottom: 6 }}>
-                    Deterministic check: {r.banned.join(" · ")}
-                  </div>
-                )}
-                <div className="rule-source">
-                  {r.source ? (
-                    <>
-                      <span>
-                        {r.source.title} v{r.source.version}, p.{r.source.page || 1}
-                      </span>
-                      <button
-                        className="btn-link"
-                        onClick={() =>
-                          setInspectDoc({
-                            docId: r.source!.document_id,
-                            page: r.source!.page || 1,
-                            excerpt: r.excerpt,
-                          })
-                        }
-                      >
-                        View in source →
-                      </button>
-                    </>
-                  ) : (
-                    <span>Clarified wording v{r.version} (approved via Guideline Health)</span>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
+      {/* Source Modal */}
       {inspectDoc && (
         <SourceModal
           brandId={brandId}

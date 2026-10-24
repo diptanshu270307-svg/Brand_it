@@ -15,42 +15,43 @@ import { Insights } from "./screens/Insights";
 import { ReviewQueue } from "./screens/ReviewQueue";
 import { AppleIntro } from "./screens/AppleIntro";
 import { Loader } from "./components/Loader";
+import { GlobalWorkflowFlowchart } from "./components/Flowcharts";
 
 type Screen = "intro" | "library" | "review" | "vault" | "queue" | "insights";
 
 const DEMO_STEPS = [
   {
     step: 1,
-    title: "1. Check the Hero Draft",
-    desc: "In Draft Review, select “Launch email - productivity claim” (“Our platform guarantees 40% higher productivity.”) and click Run BrandLint Checks.",
-    screen: "review" as Screen,
-    persona: "casey@lumina.demo",
+    title: "1. Ingest Guidelines & Rules",
+    desc: "Ingest brand guidelines and view active governance rules.",
+    screen: "library" as Screen,
+    persona: "olivia@lumina.demo",
   },
   {
     step: 2,
-    title: "2. Inspect Expired Proof & Accept Tone Fix",
-    desc: "Click the 40% claim to open its Expired Evidence Passport (EV-4). Accept the “guarantees → helps deliver” fix, then click Test Approval Gate — the expired claim still blocks approval!",
+    title: "2. Check Hero Draft",
+    desc: "Scan launch email, inspect deterministic flags and suggested fixes.",
     screen: "review" as Screen,
     persona: "casey@lumina.demo",
   },
   {
     step: 3,
-    title: "3. Replace with Evidence-Backed Statement",
-    desc: "Accept the TERM-01 product name fix and the evidence-backed 18% throughput rewrite (confirming the protected number change), then click Submit for Review.",
-    screen: "review" as Screen,
+    title: "3. Verify Evidence Passports",
+    desc: "Inspect EV-4 expired proof vs EV-1 approved throughput citation.",
+    screen: "vault" as Screen,
     persona: "casey@lumina.demo",
   },
   {
     step: 4,
-    title: "4. Human Approval & Audit Trail",
-    desc: "Switch to Riley Chen (Reviewer) in Review Queue, approve Revision #4 with a note, and inspect the decision & privacy-preserving audit log.",
+    title: "4. Human Sign-Off Gate",
+    desc: "Reviewer Riley Chen enforces approval gate and records audit trail.",
     screen: "queue" as Screen,
     persona: "riley@lumina.demo",
   },
   {
     step: 5,
-    title: "5. Guideline Health Clarification",
-    desc: "Open Insights, see TONE-01 overridden 6 times, click Suggest Clearer Wording, and switch to Olivia Brooks (Brand Owner) to approve TONE-01@2.",
+    title: "5. Policy Health & Clarifications",
+    desc: "Monitor rule overrides and approve v2 wording as Brand Owner.",
     screen: "insights" as Screen,
     persona: "olivia@lumina.demo",
   },
@@ -111,6 +112,16 @@ export const App: React.FC = () => {
     }
   };
 
+  const handleStepClick = async (idx: number) => {
+    setActiveStep(idx);
+    const s = DEMO_STEPS[idx];
+    if (user && user.email !== s.persona) {
+      await switchPersona(s.persona);
+    }
+    if (s.step <= 4) setSelectedDraftId(1);
+    setScreen(s.screen);
+  };
+
   const ready = !!user && !!brand;
 
   return (
@@ -129,18 +140,14 @@ export const App: React.FC = () => {
       <header className="top-nav">
         <div className="brand-mark">
           <div className="logo-badge" title="BrandLint Spell-Check">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
               <path d="m9 12 2 2 4-4"/>
             </svg>
           </div>
           <div>
             <div className="brand-title">
-              BrandLint <span className="brand-tag">Spell-check for your brand</span>
-            </div>
-            <div className="brand-pitch">
-              “BrandLint connects every finding to a rule, every claim to evidence, and every
-              approval to a human.”
+              BrandLint <span className="brand-tag">Audit-Grade Brand Desk</span>
             </div>
           </div>
         </div>
@@ -186,7 +193,7 @@ export const App: React.FC = () => {
 
         <div className="top-controls">
           <div className="persona-switcher">
-            <span className="meta-label">ACTIVE HUMAN ROLE</span>
+            <span className="meta-label">ACTIVE ROLE</span>
             <select
               value={user.email}
               onChange={(e) => switchPersona(e.target.value)}
@@ -210,7 +217,7 @@ export const App: React.FC = () => {
           </button>
 
           <button className="btn btn-sm" onClick={() => setShowGuide(!showGuide)}>
-            {showGuide ? "Hide Pitch Guide" : "Show Pitch Guide"}
+            {showGuide ? "Hide Pipeline" : "Show Pipeline"}
           </button>
 
           <button
@@ -235,44 +242,12 @@ export const App: React.FC = () => {
         </div>
       )}
 
-      {/* Guided Hackathon Demo Strip (visible on Review Desk screens) */}
+      {/* Interactive Global Workflow Pipeline (replaces bulky text demo strip) */}
       {showGuide && screen !== "intro" && (
-        <div className="demo-strip">
-          <div className="demo-strip-head">
-            <div className="demo-strip-title-row">
-              <span className="eyebrow">REPEATABLE PITCH WALKTHROUGH</span>
-              <span className="step-badge">STEP {activeStep + 1} OF {DEMO_STEPS.length}</span>
-            </div>
-            <span className="muted-sm">
-              Click any step below to instantly switch to the target screen and role:
-            </span>
-          </div>
-          <div className="demo-steps">
-            {DEMO_STEPS.map((s, idx) => (
-              <button
-                key={s.step}
-                className={`demo-step-card ${activeStep === idx ? "active" : ""}`}
-                onClick={async () => {
-                  setActiveStep(idx);
-                  if (user.email !== s.persona) {
-                    await switchPersona(s.persona);
-                  }
-                  if (s.step <= 4) setSelectedDraftId(1);
-                  setScreen(s.screen);
-                }}
-              >
-                <div className="demo-step-top">
-                  <span className="step-num-pill">{s.step}</span>
-                  <span className="step-target-role">
-                    {s.persona.includes("casey") ? "Creator" : s.persona.includes("riley") ? "Senior Reviewer" : "Brand Owner"}
-                  </span>
-                </div>
-                <div className="demo-step-title">{s.title.replace(/^\d+\.\s*/, "")}</div>
-                <div className="demo-step-desc">{s.desc}</div>
-              </button>
-            ))}
-          </div>
-        </div>
+        <GlobalWorkflowFlowchart
+          activeStep={activeStep}
+          onStepClick={handleStepClick}
+        />
       )}
 
       {error && <div className="banner banner-error">{error}</div>}
@@ -300,32 +275,37 @@ export const App: React.FC = () => {
             }}
           />
         )}
+
         {screen === "library" && <BrandLibrary brandId={brand.id} role={brand.role} />}
+
         {screen === "review" && (
           <DraftReview
             brandId={brand.id}
             role={brand.role}
             selectedDraftId={selectedDraftId}
-            onSelectDraft={setSelectedDraftId}
+            onSelectDraft={(id) => setSelectedDraftId(id)}
             onOpenQueue={(id) => {
               setSelectedDraftId(id);
               setScreen("queue");
             }}
           />
         )}
+
         {screen === "vault" && <EvidenceVault brandId={brand.id} role={brand.role} />}
+
         {screen === "queue" && (
           <ReviewQueue
             brandId={brand.id}
             role={brand.role}
             selectedDraftId={selectedDraftId}
-            onSelectDraft={setSelectedDraftId}
+            onSelectDraft={(id) => setSelectedDraftId(id)}
             onOpenEditor={(id) => {
               setSelectedDraftId(id);
               setScreen("review");
             }}
           />
         )}
+
         {screen === "insights" && <Insights brandId={brand.id} role={brand.role} />}
       </main>
     </div>

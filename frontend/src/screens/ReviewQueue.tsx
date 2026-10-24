@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, ApiError, DraftDetail, DraftSummary, HistoryData, Passport } from "../api";
 import { SourceModal } from "../components/SourceModal";
+import { ReviewQueueRoutingFlowchart } from "../components/Flowcharts";
 
 interface Props {
   brandId: number;
@@ -166,16 +167,16 @@ export const ReviewQueue: React.FC<Props> = ({
     <div className="screen-container">
       <div className="screen-header">
         <div>
-          <div className="eyebrow">SCREEN 4 · ROLE-BASED GOVERNANCE & AUDIT TRAIL</div>
-          <h2>Review Queue — Creator & Senior Reviewer Workflows, Gates & Audit Log</h2>
+          <div className="eyebrow">ROLE-BASED GOVERNANCE & AUDIT TRAIL</div>
+          <h2>Review Queue</h2>
           <p className="subtitle">
-            Routine edits stay on the <strong>Standard Route</strong> (Reviewer: Riley Chen).
-            Sensitive rules or unresolved promotional claims route to a{" "}
-            <strong>Senior Reviewer</strong> (Sam Patel). Every approval re-runs checks on the
-            current revision and enforces all gates on the backend.
+            Two-tier governance workflow routing routine copy to standard review and protected claims to senior sign-off.
           </p>
         </div>
       </div>
+
+      {/* Visual Risk-Based Routing Flowchart */}
+      <ReviewQueueRoutingFlowchart />
 
       {error && <div className="banner banner-error">{error}</div>}
 

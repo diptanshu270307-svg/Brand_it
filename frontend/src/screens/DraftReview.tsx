@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { api, ApiError, DraftDetail, DraftSummary, FindingItem, Passport } from "../api";
 import { SourceModal } from "../components/SourceModal";
+import { DraftReviewFlowchart } from "../components/Flowcharts";
 
 interface Props {
   brandId: number;
@@ -344,13 +345,10 @@ export const DraftReview: React.FC<Props> = ({
     <div className="screen-container">
       <div className="screen-header">
         <div>
-          <div className="eyebrow">SCREEN 2 · PRE-PUBLICATION REVIEW DESK</div>
-          <h2>Draft Review — Explainable Findings, Evidence Passports & Intent-Preserving Fixes</h2>
+          <div className="eyebrow">PRE-PUBLICATION REVIEW DESK</div>
+          <h2>Draft Review</h2>
           <p className="subtitle">
-            Click any highlighted phrase or claim to inspect its rule citation or{" "}
-            <strong>Claim Evidence Passport</strong>. Suggested rewrites preserve your audience,
-            purpose and CTA, and require explicit confirmation before changing numbers, product names
-            or factual claims.
+            Scan marketing copy, verify claims against Evidence Passports, and apply intent-preserving fixes.
           </p>
         </div>
         <div className="btn-row">
@@ -359,6 +357,9 @@ export const DraftReview: React.FC<Props> = ({
           </button>
         </div>
       </div>
+
+      {/* Visual Verification Flowchart */}
+      <DraftReviewFlowchart />
 
       {/* Draft Switcher Bar */}
       <div className="draft-tabs">

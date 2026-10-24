@@ -50,6 +50,7 @@ _dist = Path(__file__).resolve().parents[2] / "frontend" / "dist"
 if _dist.exists():
     app.mount("/assets", StaticFiles(directory=_dist / "assets"), name="assets")
 
+    @app.head("/{path:path}", include_in_schema=False)
     @app.get("/{path:path}", include_in_schema=False)
     def spa(path: str):
         f = _dist / path

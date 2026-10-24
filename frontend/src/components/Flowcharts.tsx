@@ -685,17 +685,17 @@ export const DraftComparisonGraph: React.FC<DraftComparisonProps> = ({
               <MiniCircMeter score={scoreBefore} color="#f87171" />
               <div className="metric-rows-group">
                 <div className="comp-row">
-                  <span className="comp-lbl">Active Policy Violations:</span>
+                  <span className="comp-lbl">Violations:</span>
                   <span className="comp-val val-danger">
                     {blockersBefore} Blockers (TONE-01 & EV-4)
                   </span>
                 </div>
                 <div className="comp-row">
-                  <span className="comp-lbl">Evidence Passport Match:</span>
+                  <span className="comp-lbl">Evidence Passport:</span>
                   <span className="comp-val val-danger">{citationsBefore}</span>
                 </div>
                 <div className="comp-row">
-                  <span className="comp-lbl">Deterministic Gate:</span>
+                  <span className="comp-lbl">Backend Gate:</span>
                   <span className="comp-val val-danger">{gateBefore}</span>
                 </div>
               </div>
@@ -726,17 +726,17 @@ export const DraftComparisonGraph: React.FC<DraftComparisonProps> = ({
               <MiniCircMeter score={scoreAfter} color="#22c55e" />
               <div className="metric-rows-group">
                 <div className="comp-row">
-                  <span className="comp-lbl">Active Policy Violations:</span>
+                  <span className="comp-lbl">Violations:</span>
                   <span className="comp-val val-ok">
                     {blockersAfter} Violations (0 Absolute Claims)
                   </span>
                 </div>
                 <div className="comp-row">
-                  <span className="comp-lbl">Evidence Passport Match:</span>
+                  <span className="comp-lbl">Evidence Passport:</span>
                   <span className="comp-val val-ok">{citationsAfter}</span>
                 </div>
                 <div className="comp-row">
-                  <span className="comp-lbl">Deterministic Gate:</span>
+                  <span className="comp-lbl">Backend Gate:</span>
                   <span className="comp-val val-ok">{gateAfter}</span>
                 </div>
               </div>
@@ -755,24 +755,19 @@ export const DraftComparisonGraph: React.FC<DraftComparisonProps> = ({
             <div className="intent-box">
               <div className="intent-head">
                 <span className="intent-num">01</span>
-                <strong>Core Business Intent Preserved</strong>
+                <strong>Core Intent Preserved</strong>
               </div>
-              <p>
-                Productivity & throughput acceleration message retained without
-                overstepping into prohibited legal warranties. Audience (Enterprise
-                IT) and Call-to-Action (Request Benchmark Demo) are completely
-                intact.
+              <p style={{ margin: 0, fontSize: "12.5px", color: "#94a3b8" }}>
+                ✓ Enterprise IT audience and CTA retained without legal liability.
               </p>
             </div>
             <div className="intent-box">
               <div className="intent-head">
                 <span className="intent-num">02</span>
-                <strong>Protected Facts & Citations Guardrail</strong>
+                <strong>Citation Upgraded</strong>
               </div>
-              <p>
-                Expired citation (40% Whitepaper EV-4) safely substituted with
-                peer-reviewed benchmark report (18% Throughput EV-1, p.2). Fact
-                alteration requires explicit Creator confirmation.
+              <p style={{ margin: 0, fontSize: "12.5px", color: "#94a3b8" }}>
+                ✓ EV-1 Study (p.2) verified · Replaces unverified 40% claim.
               </p>
             </div>
           </div>
@@ -781,13 +776,13 @@ export const DraftComparisonGraph: React.FC<DraftComparisonProps> = ({
 
       {canApply && onApplyFix && (
         <div className="comparison-footer-action">
-          <span>Apply verified rewrite to replace expired claims with EV-1 and clear all gate blockers:</span>
+          <span>Apply verified EV-1 rewrite to clear blockers:</span>
           <button
             type="button"
             className="btn-crypgo-green btn-sm"
             onClick={onApplyFix}
           >
-            Apply Verified Fix (100% Score) →
+            Apply Verified Fix →
           </button>
         </div>
       )}

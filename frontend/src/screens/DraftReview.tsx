@@ -352,9 +352,12 @@ export const DraftReview: React.FC<Props> = ({
               PRE-PUBLICATION REVIEW DESK
             </span>
             <span className="desk-sub-badge">Draft Review</span>
+            <span className="live-engine-pill">
+              <span className="pulse-dot"></span> LIVE ENGINE ACTIVE
+            </span>
           </div>
           <p className="subtitle">
-            Scan marketing copy, verify claims against Evidence Passports, and apply intent-preserving fixes.
+            Instant brand safety, claim passport matching & pre-flight gate.
           </p>
         </div>
 
@@ -366,7 +369,7 @@ export const DraftReview: React.FC<Props> = ({
             Provider: <code>{detail?.analysis?.provider ?? "mock"}</code>
           </div>
           <div className="pinned-line">
-            Revisions History:{" "}
+            Revisions:{" "}
             {detail?.revisions && detail.revisions.length > 0
               ? detail.revisions.map((r) => `v${r.number}`).join(", ")
               : "v1, v2, v3"}
@@ -379,8 +382,9 @@ export const DraftReview: React.FC<Props> = ({
         activeStep={pipelineStep}
         onStepClick={(idx) => {
           setPipelineStep(idx);
-          if (idx === 1 && !detail?.analysis) handleCheck();
+          if (idx === 1) handleCheck();
           if (idx === 2) setSevFilter("claims");
+          if (idx === 3) setSevFilter("all");
           if (idx === 4) handleAttemptApprove();
         }}
         onNewDraft={() => setShowNew(true)}
@@ -409,7 +413,7 @@ export const DraftReview: React.FC<Props> = ({
       )}
 
       {loading || !detail ? (
-        <div className="card desk-loading-card">Loading draft workspace...</div>
+        <div className="card desk-loading-card">Loading live workspace...</div>
       ) : (
         /* The 3-Column Command Center Layout */
         <div className="draft-desk-3col-grid">
@@ -420,6 +424,7 @@ export const DraftReview: React.FC<Props> = ({
             <div className="drafts-sidebar-list">
               {drafts.map((d) => {
                 const isSelected = detail?.id === d.id;
+                const cleanTitle = d.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim();
                 return (
                   <div
                     key={d.id}
@@ -427,7 +432,7 @@ export const DraftReview: React.FC<Props> = ({
                     onClick={() => onSelectDraft(d.id)}
                   >
                     <div className="draft-sidebar-card-top">
-                      <span className="draft-sidebar-card-title">{d.title}</span>
+                      <span className="draft-sidebar-card-title">{cleanTitle}</span>
                     </div>
                     <div className="draft-sidebar-card-pills">
                       {d.seeded && <span className="pill pill-seeded">SEEDED</span>}
@@ -501,7 +506,7 @@ export const DraftReview: React.FC<Props> = ({
                 disabled={busy || detail.status === "approved"}
                 onClick={handleCheck}
               >
-                {busy ? "Checking..." : "↻ Re-run BrandLint Checks"}
+                {busy ? "Checking..." : "↻ Re-run Checks"}
               </button>
               {detail.can_edit && detail.status === "checked" && (
                 <button
@@ -510,7 +515,7 @@ export const DraftReview: React.FC<Props> = ({
                   disabled={busy}
                   onClick={handleSubmitForReview}
                 >
-                  Submit for Review ({detail.computed_route === "senior" ? "Senior Route" : "Standard Route"}) →
+                  Submit for Review ({detail.computed_route === "senior" ? "Senior" : "Standard"}) →
                 </button>
               )}
               <button
@@ -539,7 +544,7 @@ export const DraftReview: React.FC<Props> = ({
             {/* 1. Protected Intent Bar */}
             <div className="intent-bar-card">
               <div className="intent-col">
-                <span className="intent-eyebrow">TARGET AUDIENCE (PROTECTED INTENT)</span>
+                <span className="intent-eyebrow">TARGET AUDIENCE</span>
                 {editing ? (
                   <input
                     className="intent-input-dark"
@@ -554,7 +559,7 @@ export const DraftReview: React.FC<Props> = ({
                 )}
               </div>
               <div className="intent-col">
-                <span className="intent-eyebrow">PURPOSE / GOAL (PROTECTED INTENT)</span>
+                <span className="intent-eyebrow">PURPOSE / GOAL</span>
                 {editing ? (
                   <input
                     className="intent-input-dark"
@@ -569,7 +574,7 @@ export const DraftReview: React.FC<Props> = ({
                 )}
               </div>
               <div className="intent-col">
-                <span className="intent-eyebrow">CALL TO ACTION — CTA (PROTECTED)</span>
+                <span className="intent-eyebrow">CALL TO ACTION</span>
                 {editing ? (
                   <input
                     className="intent-input-dark"
@@ -731,8 +736,7 @@ export const DraftReview: React.FC<Props> = ({
               {detail.blockers.length > 0 ? (
                 <div className="blocker-box-dark">
                   <div className="blocker-title">
-                    ⛔ {detail.blockers.length} Approval Blocker
-                    {detail.blockers.length > 1 ? "s" : ""} (Enforced on Backend)
+                    ⛔ {detail.blockers.length} Approval Blocker{detail.blockers.length > 1 ? "s" : ""}
                   </div>
                   <ul>
                     {detail.blockers.map((b, i) => (
@@ -742,12 +746,12 @@ export const DraftReview: React.FC<Props> = ({
                 </div>
               ) : detail.analysis ? (
                 <div className="banner-ok-dark">
-                  ✓ Zero approval blockers on Revision #{detail.revision}. Ready for human sign-off.
+                  ✓ Ready for sign-off · 0 blockers on Rev #{detail.revision}
                 </div>
               ) : (
                 <div className="banner-warn-dark">
-                  Checks have not been run on Revision #{detail.revision} yet. Click{" "}
-                  <strong>↻ Re-run BrandLint Checks</strong>.
+                  Checks pending on Rev #{detail.revision}. Click{" "}
+                  <strong>↻ Re-run Checks</strong>.
                 </div>
               )}
             </div>
@@ -769,7 +773,7 @@ export const DraftReview: React.FC<Props> = ({
                 { key: "high", label: "High" },
                 { key: "medium", label: "Medium" },
                 { key: "low", label: "Low" },
-                { key: "info", label: "Supported (Info)" },
+                { key: "info", label: "Supported" },
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -785,8 +789,8 @@ export const DraftReview: React.FC<Props> = ({
             {filteredFindings.length === 0 ? (
               <div className="finding-card-dark muted">
                 {detail.analysis
-                  ? "No findings match this filter."
-                  : "Run BrandLint Checks to inspect findings and Claim Evidence Passports."}
+                  ? "No active findings match filter."
+                  : "Run BrandLint Checks to inspect findings."}
               </div>
             ) : (
               filteredFindings.map((f) => {
@@ -805,7 +809,7 @@ export const DraftReview: React.FC<Props> = ({
                       <div className="card-action-icons">
                         <button
                           className="icon-btn"
-                          title="Copy finding quote"
+                          title="Copy quote"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigator.clipboard.writeText(f.quote);
@@ -847,7 +851,7 @@ export const DraftReview: React.FC<Props> = ({
                         </button>
                         <button
                           className="icon-btn"
-                          title="Dismiss / Override"
+                          title="Override"
                           onClick={(e) => {
                             e.stopPropagation();
                             setRejectingId(rejectingId === f.id ? null : f.id);
@@ -892,9 +896,9 @@ export const DraftReview: React.FC<Props> = ({
 
                     <div className="finding-quote-dark">“{f.quote}”</div>
 
-                    {f.passport?.excerpt && (
-                      <div className="finding-supported-excerpt">
-                        Supported by {f.passport.ref}: “{f.passport.excerpt}”
+                    {f.passport && (
+                      <div className="finding-passport-tag">
+                        <span className="dot-green"></span> Grounded in Passport {f.passport.ref}
                       </div>
                     )}
 
@@ -916,7 +920,7 @@ export const DraftReview: React.FC<Props> = ({
                     {f.suggestion && !f.disposition && (
                       <div className="diff-box-dark">
                         <div className="diff-head-dark">
-                          <span>✨ Intent-Preserving Suggested Fix</span>
+                          <span>✨ Suggested Fix</span>
                           <span className="pill-intent-dark">Preserved</span>
                         </div>
                         <div className="diff-lines">
@@ -935,7 +939,7 @@ export const DraftReview: React.FC<Props> = ({
                             onClick={(e) => e.stopPropagation()}
                           >
                             <div className="protected-title">
-                              ⚠️ Protected Content Guardrail — Explicit Review Required:
+                              ⚠️ Review Required:
                             </div>
                             <ul>
                               {f.suggestion.protected_flags.map((flag, idx) => (
@@ -953,7 +957,7 @@ export const DraftReview: React.FC<Props> = ({
                                   }))
                                 }
                               />
-                              I explicitly confirm changing these protected names, numbers or factual statements.
+                              Confirm protected statement change.
                             </label>
                           </div>
                         )}

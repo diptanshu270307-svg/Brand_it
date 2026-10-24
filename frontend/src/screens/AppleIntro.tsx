@@ -1,4 +1,5 @@
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
+import { Count, SectionRail, useIntroMotion } from "../components/Motion";
 
 interface Props {
   onOpenScreen: (screen: "library" | "review" | "vault" | "queue" | "insights") => void;
@@ -66,9 +67,12 @@ export const AppleIntro: React.FC<Props> = ({
   onLaunchStep,
 }) => {
   const [selectedDemo, setSelectedDemo] = useState(SAMPLE_DEMOS[0]);
+  const rootRef = useRef<HTMLDivElement>(null);
+  useIntroMotion(rootRef);
 
   return (
-    <div className="apple-intro">
+    <div className="apple-intro" ref={rootRef}>
+      <SectionRail items={[{id:"top",label:"Overview"},{id:"features",label:"Pillars"},{id:"scale",label:"Benchmarks"},{id:"walkthrough",label:"Journey"},{id:"launch",label:"Launch"}]} />
       {/* 1. HERO SECTION */}
       <header className="hero" id="top">
         <div className="wrap">
@@ -76,7 +80,7 @@ export const AppleIntro: React.FC<Props> = ({
             <span className="chip-badge">ENTERPRISE REVIEW DESK</span>
             <span className="chip-text">Spell-Check for Your Brand</span>
           </div>
-          <h1>Every claim verified. Every approval human.</h1>
+          <h1 className="bl-h1"><span className="ln"><b>Every claim verified.</b></span><span className="ln"><b>Every approval human.</b></span></h1>
           <p className="lead">
             BrandLint connects every promotional claim to verified evidence, flags guideline
             violations with intent-preserving fixes, and enforces human sign-off gates before publication.
@@ -105,7 +109,7 @@ export const AppleIntro: React.FC<Props> = ({
 
         {/* 2. REAL-TIME ENGINE CONSOLE */}
         <div className="wrap">
-          <div className="stage">
+          <div className="stage" data-reveal>
             {/* Draft Selector Tabs */}
             <div className="term-picker">
               <span className="term-picker-label">SELECT A MARKETING DRAFT TO TEST:</span>
@@ -163,10 +167,21 @@ export const AppleIntro: React.FC<Props> = ({
         </div>
       </header>
 
+      {/* TICKER */}
+      <section className="bl-ticker" aria-hidden="true">
+        <div className="bl-track">
+          {[0, 1].map((k) => (
+            <div key={k} className="bl-run">
+              {["TONE-01 · no absolute guarantees","TERM-01 · product names","EV-4 · expired evidence blocks approval","EV-1 · 18% throughput, valid to 2026","Protected numbers need confirmation","New edit = new revision","Human sign-off required"].map((t) => <span key={t}>{t}</span>)}
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* 3. THREE CORE PILLARS (Bento Grid) */}
       <section id="features">
         <div className="wrap">
-          <div className="section-head">
+          <div className="section-head" data-reveal>
             <span className="eyebrow">THE THREE ARCHITECTURAL PILLARS</span>
             <h2>Complete compliance without sacrificing creator control.</h2>
             <p className="sub">
@@ -178,7 +193,7 @@ export const AppleIntro: React.FC<Props> = ({
           <div className="bento">
             {/* Tile A: Claim Evidence Passport */}
             <div
-              className="tile t-a"
+              className="tile t-a" data-reveal
               onClick={() => onOpenScreen("vault")}
             >
               <div>
@@ -201,7 +216,7 @@ export const AppleIntro: React.FC<Props> = ({
 
             {/* Tile B: Intent-Preserving Fixes */}
             <div
-              className="tile t-b t-dark"
+              className="tile t-b t-dark" data-reveal
               onClick={() => onOpenScreen("review")}
             >
               <div>
@@ -226,7 +241,7 @@ export const AppleIntro: React.FC<Props> = ({
 
             {/* Tile C: Guideline Health */}
             <div
-              className="tile t-c"
+              className="tile t-c" data-reveal
               onClick={() => onOpenScreen("insights")}
             >
               <div>
@@ -245,7 +260,7 @@ export const AppleIntro: React.FC<Props> = ({
 
             {/* Tile D: Deterministic Pre-Flight & AI Schema */}
             <div
-              className="tile t-d"
+              className="tile t-d" data-reveal
               onClick={() => onOpenScreen("library")}
             >
               <div>
@@ -279,7 +294,7 @@ export const AppleIntro: React.FC<Props> = ({
       {/* 4. MEASURED BENCHMARKS (Enterprise Grade) */}
       <section className="dark" id="scale">
         <div className="wrap">
-          <div className="section-head">
+          <div className="section-head" data-reveal>
             <span className="eyebrow" style={{ color: "var(--mint)" }}>
               MEASURED BENCHMARK EVALUATION
             </span>
@@ -291,18 +306,18 @@ export const AppleIntro: React.FC<Props> = ({
           </div>
 
           <div className="grid3">
-            <div className="stat-card">
-              <div className="stat">100%</div>
+            <div className="stat-card" data-reveal>
+              <div className="stat"><Count to={100} suffix="%" /></div>
               <h4>Citation Validity</h4>
               <p>Every claim links to an approved source excerpt; zero invented or invalid citation IDs.</p>
             </div>
-            <div className="stat-card">
-              <div className="stat">0%</div>
+            <div className="stat-card" data-reveal>
+              <div className="stat"><Count to={0} suffix="%" /></div>
               <h4>False Alarm Rate</h4>
               <p>Clean, guideline-compliant drafts produce zero blocking findings or false flags.</p>
             </div>
-            <div className="stat-card">
-              <div className="stat">100%</div>
+            <div className="stat-card" data-reveal>
+              <div className="stat"><Count to={100} suffix="%" /></div>
               <h4>Approval Gate Enforcement</h4>
               <p>Edits create new revisions and instantly invalidate previous human sign-offs on the backend.</p>
             </div>
@@ -313,7 +328,7 @@ export const AppleIntro: React.FC<Props> = ({
       {/* 5. 5-STEP WALKTHROUGH */}
       <section id="walkthrough">
         <div className="wrap">
-          <div className="section-head">
+          <div className="section-head" data-reveal>
             <span className="eyebrow">STEP-BY-STEP REVIEW DESK LIFECYCLE</span>
             <h2>The Repeatable Pitch Journey</h2>
             <p className="sub">
@@ -356,7 +371,7 @@ export const AppleIntro: React.FC<Props> = ({
             ].map((card) => (
               <div
                 key={card.step}
-                className="pitch-card"
+                className="pitch-card" data-reveal
                 onClick={card.action}
               >
                 <div className="pitch-card-step">STEP 0{card.step}</div>

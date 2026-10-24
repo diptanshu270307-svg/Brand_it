@@ -14,6 +14,7 @@ import { EvidenceVault } from "./screens/EvidenceVault";
 import { Insights } from "./screens/Insights";
 import { ReviewQueue } from "./screens/ReviewQueue";
 import { AppleIntro } from "./screens/AppleIntro";
+import { Loader } from "./components/Loader";
 
 type Screen = "intro" | "library" | "review" | "vault" | "queue" | "insights";
 
@@ -110,15 +111,12 @@ export const App: React.FC = () => {
     }
   };
 
-  if (!user || !brand) {
-    return (
-      <div className="loading-shell">
-        <div className="loading-card">Loading BrandLint Review Desk...</div>
-      </div>
-    );
-  }
+  const ready = !!user && !!brand;
 
   return (
+    <>
+    <Loader ready={ready} />
+    {ready && user && brand && (
     <div className="app-shell">
       {/* Top Harbor Progress Bar */}
       <div
@@ -280,7 +278,7 @@ export const App: React.FC = () => {
       {error && <div className="banner banner-error">{error}</div>}
 
       {/* Main Screen Content */}
-      <main className={screen === "intro" ? "main-intro-wrap" : "main-area"} key={refreshKey}>
+      <main className={`${screen === "intro" ? "main-intro-wrap" : "main-area"} screen-enter`} key={`${screen}-${refreshKey}`}>
         {screen === "intro" && (
           <AppleIntro
             onOpenScreen={(s) => setScreen(s)}
@@ -331,5 +329,7 @@ export const App: React.FC = () => {
         {screen === "insights" && <Insights brandId={brand.id} role={brand.role} />}
       </main>
     </div>
+    )}
+    </>
   );
 };

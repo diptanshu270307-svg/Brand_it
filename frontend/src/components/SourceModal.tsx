@@ -75,7 +75,7 @@ export const SourceModal: React.FC<Props> = ({
               {doc ? `${doc.title} (v${doc.version})` : "Loading source..."}
             </h3>
           </div>
-          <button className="btn btn-ghost" onClick={onClose}>
+          <button className="btn btn-ghost" onClick={onClose} aria-label="Close dialog">
             Close ✕
           </button>
         </div>
@@ -84,6 +84,18 @@ export const SourceModal: React.FC<Props> = ({
 
         {passport && (
           <div className={`passport-sheet passport-${evidenceStatus || passport.state}`}>
+            <div className="passport-cert-head">
+              <span className="passport-cert-tag">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
+                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                  <path d="m9 12 2 2 4-4"/>
+                </svg>
+                OFFICIAL CITATION CERTIFICATE
+              </span>
+              <span className={`pill pill-ev-${evidenceStatus || passport.state}`}>
+                {(evidenceStatus || passport.state).toUpperCase()}
+              </span>
+            </div>
             <div className="passport-grid">
               <div>
                 <span className="meta-label">Passport Status</span>

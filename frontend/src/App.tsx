@@ -122,7 +122,12 @@ export const App: React.FC = () => {
       {/* Top Header */}
       <header className="top-nav">
         <div className="brand-mark">
-          <div className="logo-badge">BL</div>
+          <div className="logo-badge" title="BrandLint Spell-Check">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="m9 12 2 2 4-4"/>
+            </svg>
+          </div>
           <div>
             <div className="brand-title">
               BrandLint <span className="brand-tag">Spell-check for your brand</span>
@@ -134,36 +139,36 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        <nav className="main-tabs">
+        <nav className="main-tabs" aria-label="Main Navigation">
           <button
             className={`nav-tab ${screen === "library" ? "active" : ""}`}
             onClick={() => setScreen("library")}
           >
-            1. Brand Library
+            <span className="tab-num">01</span> Brand Library
           </button>
           <button
             className={`nav-tab ${screen === "review" ? "active" : ""}`}
             onClick={() => setScreen("review")}
           >
-            2. Draft Review
+            <span className="tab-num">02</span> Draft Review
           </button>
           <button
             className={`nav-tab ${screen === "vault" ? "active" : ""}`}
             onClick={() => setScreen("vault")}
           >
-            3. Evidence Vault
+            <span className="tab-num">03</span> Evidence Vault
           </button>
           <button
             className={`nav-tab ${screen === "queue" ? "active" : ""}`}
             onClick={() => setScreen("queue")}
           >
-            4. Review Queue
+            <span className="tab-num">04</span> Review Queue
           </button>
           <button
             className={`nav-tab ${screen === "insights" ? "active" : ""}`}
             onClick={() => setScreen("insights")}
           >
-            5. Insights & Health
+            <span className="tab-num">05</span> Insights & Health
           </button>
         </nav>
 
@@ -184,31 +189,33 @@ export const App: React.FC = () => {
           </div>
 
           <button
-            className="btn btn-sm"
+            className="btn btn-sm btn-nav-ai"
             onClick={() => setShowPrivacy(!showPrivacy)}
             title="Inspect AI processing & privacy posture"
           >
-            🔒 AI: {privacy?.hosted ? `Hosted (${privacy.provider})` : "Local Mock"}
+            <span className="ai-dot"></span>
+            AI: {privacy?.hosted ? `Hosted (${privacy.provider})` : "Local Engine"}
           </button>
 
           <button className="btn btn-sm" onClick={() => setShowGuide(!showGuide)}>
-            {showGuide ? "Hide Demo Guide" : "Show Demo Guide"}
+            {showGuide ? "Hide Pitch Guide" : "Show Pitch Guide"}
           </button>
 
           <button
-            className="btn btn-ghost btn-sm"
+            className="btn btn-ghost btn-sm btn-reset"
             onClick={handleResetDemo}
             title="Reset database to initial seeded demo state"
           >
-            ↺ Reset Demo
+            <span className="reset-icon">↺</span> Reset Demo
           </button>
         </div>
       </header>
 
       {showPrivacy && privacy && (
         <div className="privacy-drawer">
-          <div>
-            <strong>AI Processing & Data Privacy Disclosure:</strong> {privacy.notice}
+          <div className="privacy-content">
+            <span className="privacy-badge">🔒 PRIVACY GUARANTEE</span>
+            <span><strong>Data & Model Security:</strong> {privacy.notice}</span>
           </div>
           <button className="btn btn-ghost btn-sm" onClick={() => setShowPrivacy(false)}>
             Close ✕
@@ -220,9 +227,12 @@ export const App: React.FC = () => {
       {showGuide && (
         <div className="demo-strip">
           <div className="demo-strip-head">
-            <span className="eyebrow">REPEATABLE PITCH WALKTHROUGH</span>
+            <div className="demo-strip-title-row">
+              <span className="eyebrow">REPEATABLE PITCH WALKTHROUGH</span>
+              <span className="step-badge">STEP {activeStep + 1} OF {DEMO_STEPS.length}</span>
+            </div>
             <span className="muted-sm">
-              Click any step below to switch to the right screen and human role:
+              Click any step below to instantly switch to the target screen and role:
             </span>
           </div>
           <div className="demo-steps">
@@ -239,7 +249,13 @@ export const App: React.FC = () => {
                   setScreen(s.screen);
                 }}
               >
-                <div className="demo-step-title">{s.title}</div>
+                <div className="demo-step-top">
+                  <span className="step-num-pill">{s.step}</span>
+                  <span className="step-target-role">
+                    {s.persona.includes("casey") ? "Creator" : s.persona.includes("riley") ? "Senior Reviewer" : "Brand Owner"}
+                  </span>
+                </div>
+                <div className="demo-step-title">{s.title.replace(/^\d+\.\s*/, "")}</div>
                 <div className="demo-step-desc">{s.desc}</div>
               </button>
             ))}

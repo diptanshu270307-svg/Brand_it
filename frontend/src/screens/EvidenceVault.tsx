@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { api, DocumentItem, Passport } from "../api";
 import { SourceModal } from "../components/SourceModal";
+import { EvidenceVaultFlowchart } from "../components/Flowcharts";
 
 interface Props {
   brandId: number;
@@ -99,13 +100,10 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
     <div className="screen-container">
       <div className="screen-header">
         <div>
-          <div className="eyebrow">SCREEN 3 · CLAIM EVIDENCE PASSPORTS</div>
-          <h2>Evidence Vault — Approved Claims, Excerpts, Owners & Expiry Dates</h2>
+          <div className="eyebrow">CLAIM EVIDENCE PASSPORTS</div>
+          <h2>Evidence Vault</h2>
           <p className="subtitle">
-            Every promotional claim in a draft must link to a{" "}
-            <strong>current, approved Evidence Passport</strong> in this vault. Missing, expired or
-            insufficient evidence blocks approval on the backend. Click any record to inspect the
-            exact supporting excerpt inside its source document.
+            Cryptographically verified promotional claims linked to research source documents, owners, and expiration dates.
           </p>
         </div>
         <div className="btn-row">
@@ -116,6 +114,54 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
           )}
         </div>
       </div>
+
+      {/* 4 KPI Metrics */}
+      <div className="metrics-grid-4">
+        <div className="metric-box" onClick={() => setStateFilter("all")}>
+          <div className="metric-value-row">
+            <span className="metric-large-number">{records.length}</span>
+            <span className="pill pill-status-approved">Catalog</span>
+          </div>
+          <div className="metric-title">Total Passports</div>
+          <div className="metric-desc">Registered promotional claims</div>
+        </div>
+
+        <div className="metric-box" onClick={() => setStateFilter("current")}>
+          <div className="metric-value-row">
+            <span className="metric-large-number" style={{ color: "var(--ok)" }}>
+              {records.filter((r) => r.state === "current").length}
+            </span>
+            <span className="pill pill-ok">Valid</span>
+          </div>
+          <div className="metric-title">Approved & Current</div>
+          <div className="metric-desc">Unlocks human approval gates</div>
+        </div>
+
+        <div className="metric-box metric-highlight-danger" onClick={() => setStateFilter("expired")}>
+          <div className="metric-value-row">
+            <span className="metric-large-number" style={{ color: "var(--danger)" }}>
+              {records.filter((r) => r.state === "expired").length}
+            </span>
+            <span className="pill pill-danger">Blocks Sign-Off</span>
+          </div>
+          <div className="metric-title">Expired Proof</div>
+          <div className="metric-desc">Stops publication on backend</div>
+        </div>
+
+        <div className="metric-box" onClick={() => setStateFilter("pending")}>
+          <div className="metric-value-row">
+            <span className="metric-large-number" style={{ color: "var(--warn)" }}>
+              {records.filter((r) => r.state === "pending").length}
+            </span>
+            <span className="pill pill-warn">Sign-Off Req.</span>
+          </div>
+          <div className="metric-title">Pending Owner</div>
+          <div className="metric-desc">Awaiting human verification</div>
+        </div>
+      </div>
+
+      {/* Visual Passport Lifecycle Flowchart */}
+      <EvidenceVaultFlowchart />
 
       {error && <div className="banner banner-error">{error}</div>}
 

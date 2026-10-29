@@ -1,476 +1,114 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { api, ApiError, DraftDetail, DraftSummary, HistoryData, Passport } from "../api";
 import { SourceModal } from "../components/SourceModal";
-import { ReviewQueueRoutingFlowchart } from "../components/Flowcharts";
+import { Badge, Button, Empty, Icon, Notice, PageHeading, Panel, errorText, formatDate } from "../components/ui";
 
 interface Props {
-  brandId: number;
-  role: string;
-  selectedDraftId: number | null;
-  onSelectDraft: (id: number) => void;
-  onOpenEditor: (id: number) => void;
+  brandId: number; role: string; selectedDraftId: number | null;
+  onSelectDraft: (id: number) => void; onOpenEditor: (id: number) => void;
+  onSwitchReviewer?: (senior?: boolean) => void;
 }
-
-export const ReviewQueue: React.FC<Props> = ({
-  brandId,
-  role,
-  selectedDraftId,
-  onSelectDraft,
-  onOpenEditor,
-}) => {
+interface Gate { ok: boolean; title: string; message: string; blockers?: { code: string; message: string }[] }
+export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, onSelectDraft, onOpenEditor, onSwitchReviewer }) => {
   const [queue, setQueue] = useState<DraftSummary[]>([]);
   const [detail, setDetail] = useState<DraftDetail | null>(null);
   const [history, setHistory] = useState<HistoryData | null>(null);
+  const [userId, setUserId] = useState<number | null>(null);
   const [loading, setLoading] = useState(true);
+  const [itemLoading, setItemLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  const [gateAlert, setGateAlert] = useState<{
-    ok: boolean;
-    title: string;
-    message: string;
-    blockers?: { code: string; message: string }[];
-  } | null>(null);
-
+  const [gate, setGate] = useState<Gate | null>(null);
+  const [filter, setFilter] = useState("all");
+  const [note, setNote] = useState("");
   const [comment, setComment] = useState("");
-  const [decisionNote, setDecisionNote] = useState("");
-  const [inspectPassport, setInspectPassport] = useState<Passport | null>(null);
-
-  const loadQueue = async (pickId?: number | null) => {
-    setLoading(true);
-    setError("");
-    try {
-      const items = await api.getQueue(brandId);
-      setQueue(items);
-      const target =
-        pickId ??
-        selectedDraftId ??
-        items.find((x) => x.actionable)?.id ??
-        items.find((x) => !x.seeded)?.id ??
-        items[0]?.id ??
-        null;
-      if (target) {
-        onSelectDraft(target);
-        await loadItem(target);
-      }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load queue");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [passport, setPassport] = useState<Passport | null>(null);
+  const requestId = useRef(0);
 
   const loadItem = async (id: number) => {
+    const request = ++requestId.current;
+    setItemLoading(true); setError(""); setGate(null); setNote("");
     try {
-      const [det, hist] = await Promise.all([
-        api.getDraft(brandId, id),
-        api.getHistory(brandId, id),
-      ]);
-      setDetail(det);
-      setHistory(hist);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not load draft review packet");
-    }
+      const [packet, trail] = await Promise.all([api.getDraft(brandId, id), api.getHistory(brandId, id)]);
+      if (request !== requestId.current) return;
+      setDetail(packet); setHistory(trail);
+    } catch (e) { if (request === requestId.current) { setDetail(null); setHistory(null); setError(errorText(e)); } }
+    finally { if (request === requestId.current) setItemLoading(false); }
   };
-
   useEffect(() => {
-    loadQueue(selectedDraftId);
+    let active = true; setLoading(true); setError(""); setDetail(null); setHistory(null);
+    Promise.all([api.getQueue(brandId), api.me()]).then(([items, me]) => {
+      if (!active) return;
+      setQueue(items); setUserId(me.user.id);
+      const target = selectedDraftId || items.find(d => d.actionable)?.id || items[0]?.id;
+      if (target) { onSelectDraft(target); void loadItem(target); }
+    }).catch(e => { if (active) setError(errorText(e)); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; requestId.current++; };
   }, [brandId, role]);
-
   useEffect(() => {
-    if (selectedDraftId && detail?.id !== selectedDraftId) {
-      setGateAlert(null);
-      loadItem(selectedDraftId);
-    }
+    if (selectedDraftId && selectedDraftId !== detail?.id) void loadItem(selectedDraftId);
   }, [selectedDraftId]);
 
-  const handleApprove = async () => {
+  const refreshPacket = async (id: number) => {
+    const [items, packet, trail] = await Promise.all([api.getQueue(brandId), api.getDraft(brandId, id), api.getHistory(brandId, id)]);
+    setQueue(items); setDetail(packet); setHistory(trail);
+  };
+  const decide = async (approve: boolean) => {
     if (!detail) return;
-    setBusy(true);
-    setError("");
-    setGateAlert(null);
+    const current = detail;
+    setBusy(true); setError(""); setGate(null);
     try {
-      const note =
-        decisionNote.trim() || "Verified against brand guidelines and Evidence Vault.";
-      const updated = await api.approveDraft(brandId, detail.id, detail.revision_id, note);
-      setDetail(updated);
-      setDecisionNote("");
-      await loadQueue(detail.id);
-      setGateAlert({
-        ok: true,
-        title: `Approved Revision #${updated.revision}`,
-        message:
-          "Backend re-ran checks on the current revision, confirmed zero blockers and recorded your approval in the audit trail.",
-      });
-    } catch (e: unknown) {
-      await loadItem(detail.id);
+      const updated = approve ? await api.approveDraft(brandId, current.id, current.revision_id, note.trim()) : await api.requestChanges(brandId, current.id, note.trim());
+      await refreshPacket(updated.id); setNote("");
+      setGate({ ok: true, title: approve ? `Revision ${updated.revision} approved` : "Changes requested", message: approve ? `The server recorded human approval for revision ${updated.revision}.` : "Your feedback has been returned to the author and added to the review history." });
+    } catch (e) {
       if (e instanceof ApiError) {
-        const d = e.detail as {
-          code?: string;
-          message?: string;
-          blockers?: { code: string; message: string }[];
-        };
-        setGateAlert({
-          ok: false,
-          title: `Backend Approval Gate Denied (${d?.code || e.status})`,
-          message: d?.message || e.message,
-          blockers: d?.blockers,
-        });
-      } else {
-        setError(e instanceof Error ? e.message : "Approval failed");
-      }
-    } finally {
-      setBusy(false);
-    }
+        const value = e.detail as { code?: string; message?: string; blockers?: { code: string; message: string }[] };
+        setGate({ ok: false, title: `Decision blocked · ${value?.code || e.status}`, message: value?.message || e.message, blockers: value?.blockers });
+      } else setError(errorText(e));
+      try { await refreshPacket(current.id); } catch { /* Keep the original error visible. */ }
+    } finally { setBusy(false); }
   };
-
-  const handleRequestChanges = async () => {
-    if (!detail) return;
-    setBusy(true);
-    setError("");
-    setGateAlert(null);
-    try {
-      const reason =
-        decisionNote.trim() ||
-        "Please resolve open claim evidence blockers before resubmitting.";
-      const updated = await api.requestChanges(brandId, detail.id, reason);
-      setDetail(updated);
-      setDecisionNote("");
-      await loadQueue(detail.id);
-      setGateAlert({
-        ok: true,
-        title: "Changes Requested",
-        message: "Returned to creator with your feedback and recorded in the audit log.",
-      });
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not request changes");
-    } finally {
-      setBusy(false);
-    }
+  const addComment = async (e: React.FormEvent) => {
+    e.preventDefault(); if (!detail || !comment.trim()) return;
+    setBusy(true); setError("");
+    try { const result = await api.addComment(brandId, detail.id, comment.trim()); setHistory(result); setComment(""); }
+    catch (e) { setError(errorText(e)); } finally { setBusy(false); }
   };
+  const route = detail?.route || detail?.computed_route;
+  const self = !!detail && userId === detail.author_id;
+  const awaiting = detail?.status === "in_review" || detail?.status === "senior_review";
+  const rightRole = ["reviewer", "senior_reviewer", "brand_owner"].includes(role) && (route !== "senior" || role === "senior_reviewer");
+  const canDecide = !!detail?.can_review && rightRole && !self && awaiting;
+  const filtered = queue.filter(d => filter === "all" || filter === "actionable" && d.actionable || filter === "senior" && d.route === "senior" || filter === "approved" && d.status === "approved");
 
-  const handleAddComment = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!detail || !comment.trim()) return;
-    setBusy(true);
-    try {
-      const h = await api.addComment(brandId, detail.id, comment);
-      setHistory(h);
-      setComment("");
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Could not add comment");
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  return (
-    <div className="screen-container">
-      <div className="screen-header">
-        <div>
-          <div className="draft-desk-eyebrow-row">
-            <span className="eyebrow" style={{ color: "#22c55e", fontWeight: 800 }}>
-              HUMAN REVIEW DESK
-            </span>
-            <span className="desk-sub-badge">Review Queue</span>
-            <span className="live-engine-pill">
-              <span className="pulse-dot"></span> AUDIT TRAIL LIVE
-            </span>
-          </div>
-          <p className="subtitle">
-            Two-tier reviewer routes, deterministic pre-flight gates & immutable audit logs.
-          </p>
-        </div>
+  return <div>
+    <PageHeading eyebrow="HUMAN CONTROL / FINAL SIGN-OFF" title="The review queue" description="The evidence informs the decision. A named reviewer makes it. Inspect the checked revision and leave a clear decision trail." action={<Badge tone="accent"><Icon name="lock" size={13}/>{role.replace(/_/g, " ")}</Badge>}/>
+    {error && <Notice tone="danger" className="mb-5">{error}</Notice>}
+    <div className="mb-6 flex flex-wrap gap-2">{[["all", "All packets"], ["actionable", "Ready for your review"], ["senior", "Senior escalation"], ["approved", "Approved"]].map(([key, label]) => <Button key={key} variant={filter === key ? "primary" : "secondary"} aria-pressed={filter === key} onClick={() => setFilter(key)}>{label}{key === "all" && !loading ? ` · ${queue.length}` : ""}</Button>)}</div>
+    <div className="grid items-start gap-6 xl:grid-cols-[300px_minmax(0,1fr)]">
+      <Panel className="p-3"><div className="lv-eyebrow px-3 py-4">REVIEW PACKETS</div>{loading ? <div className="lv-muted p-4 text-sm">Loading queue…</div> : filtered.length === 0 ? <Empty title="No packets in this view">Choose another filter or submit a checked draft from the review desk.</Empty> : <div className="space-y-2">{filtered.map(item => <button type="button" key={item.id} className={`w-full rounded-xl border p-4 text-left transition-colors ${detail?.id === item.id ? "border-indigo-400/40 bg-indigo-400/10" : "border-transparent hover:bg-indigo-400/5"}`} disabled={busy} onClick={() => { onSelectDraft(item.id); if (selectedDraftId === item.id) void loadItem(item.id); }}><div className="mb-3 flex flex-wrap gap-2"><Badge tone={item.route === "senior" ? "warning" : item.status === "approved" ? "success" : "neutral"}>{item.route === "senior" ? "Senior escalation" : item.status.replace(/_/g, " ")}</Badge>{item.seeded && <Badge>Sample</Badge>}</div><h3 className="text-sm font-medium leading-6">{item.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}</h3><p className="lv-muted mt-2 font-mono text-[10px]">REV {item.revision} · {item.author}</p></button>)}</div>}</Panel>
+      <div className="min-w-0 space-y-6">
+        {itemLoading ? <Empty title="Loading the checked revision…"/> : !detail ? <Empty title="Choose a review packet">Its evidence, revision history and approval controls will appear here.</Empty> : <>
+          <Panel className="p-6 md:p-8"><div className="mb-6 flex flex-wrap items-start justify-between gap-4"><div><div className="lv-eyebrow mb-3">REVISION {detail.revision} / {detail.channel || "CHANNEL NOT SET"}</div><h2 className="font-display text-2xl font-medium tracking-tight">{detail.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}</h2><div className="mt-3 flex flex-wrap gap-2"><Badge tone={detail.status === "approved" ? "success" : "neutral"}>{detail.status.replace(/_/g, " ")}</Badge>{route && <Badge tone={route === "senior" ? "warning" : "accent"}>{route === "senior" ? "Senior escalation" : "Standard review"}</Badge>}{detail.seeded && <Badge>Sample history</Badge>}</div></div><Button onClick={() => onOpenEditor(detail.id)}>Open Review Desk<Icon name="arrow"/></Button></div>
+            <blockquote className="lv-well mb-6 whitespace-pre-wrap p-6 text-base leading-8">{detail.text}</blockquote>
+            <div className="mb-6 grid gap-4 sm:grid-cols-3">{[["Audience", detail.audience], ["Purpose", detail.purpose], ["Call to action", detail.cta]].map(([label, value]) => <div key={label}><div className="lv-label mb-2">{label}</div><p className="text-sm leading-6">{value || "Not specified"}</p></div>)}</div>
+            <div className="lv-divider mb-6 flex flex-wrap gap-x-6 gap-y-2 border-y py-4 font-mono text-[11px]"><span>CHECKED {detail.analysis ? formatDate(detail.analysis.at) : "NOT YET"}</span><span>PROVIDER {detail.analysis?.provider || "NOT AVAILABLE"}</span><span>BLOCKERS {detail.analysis ? detail.blockers.length : "UNMEASURED"}</span></div>
+            {detail.findings.some(f => f.is_claim) && <div className="mb-6 space-y-3"><div className="lv-eyebrow mb-3">CLAIMS & SUPPORTING EVIDENCE</div>{detail.findings.filter(f => f.is_claim).map(f => <div key={f.id} className="lv-well p-4"><div className="flex flex-wrap items-center justify-between gap-3"><Badge tone={f.evidence_status === "supported" && f.passport?.state === "current" ? "success" : "warning"}>{f.evidence_status?.replace(/_/g, " ") || "Needs review"}</Badge>{f.passport && <Button variant="ghost" onClick={() => setPassport(f.passport)}>Inspect {f.passport.ref}<Icon name="file" size={14}/></Button>}</div><p className="mt-3 text-sm leading-7">“{f.quote}”</p><p className="lv-muted mt-2 text-xs leading-6">{f.explanation}</p>{f.passport && f.passport.state !== "current" && <p className="lv-text-danger mt-2 text-xs">Current passport state: {f.passport.state.replace(/_/g, " ")}. Historical support does not establish current validity.</p>}</div>)}</div>}
+            {detail.blockers.length > 0 ? <Notice tone="danger"><div className="mb-2 font-medium">{detail.blockers.length} unresolved approval gate {detail.blockers.length === 1 ? "issue" : "issues"}</div><ul className="list-disc space-y-2 pl-5 text-sm">{detail.blockers.map((b, i) => <li key={i}>{b.message}</li>)}</ul></Notice> : <Notice tone={detail.analysis ? "success" : "warning"}>{detail.analysis ? `The current packet reports ${detail.blockers.length} blockers. The server will recheck before accepting approval.` : "This revision has not been checked. Return to the Review Desk before submitting."}</Notice>}
+          </Panel>
+          <Panel className="p-6 md:p-8"><div className="lv-eyebrow mb-3">YOUR DECISION</div><h2 className="mb-5 font-display text-xl font-medium">Human sign-off</h2>
+            {(!rightRole || self) && awaiting && <Notice tone="warning" className="mb-5"><div className="flex flex-wrap items-center justify-between gap-4"><p className="max-w-lg text-sm leading-6">{self ? "Authors cannot approve their own work. Switch to an independent reviewer to continue." : route === "senior" ? "This packet requires the senior reviewer. Your current role cannot approve it." : "Switch to a reviewer to sign off this revision."}</p>{onSwitchReviewer && <Button onClick={() => onSwitchReviewer(route === "senior")}>Switch to {route === "senior" ? "Senior Reviewer" : "Reviewer"}<Icon name="arrow"/></Button>}</div></Notice>}
+            {!awaiting && <Notice className="mb-5">{detail.status === "approved" ? `Revision ${detail.revision} already has a recorded approval. Edit as the author to start a new revision.` : "This packet is not awaiting review. The author must submit a checked revision."}</Notice>}
+            <label className="lv-label block">Decision note<textarea className="lv-input mt-2" rows={3} placeholder="Record what you verified, or explain the changes needed…" value={note} onChange={e => setNote(e.target.value)} disabled={!canDecide || busy}/></label>
+            <div className="mt-4 flex flex-wrap gap-3"><Button variant="primary" disabled={busy || !canDecide || note.trim().length < 3 || detail.blockers.length > 0} onClick={() => decide(true)}><Icon name="check"/>{busy ? "Recording decision…" : `Approve revision ${detail.revision}`}</Button><Button variant="danger" disabled={busy || !canDecide || note.trim().length < 3} onClick={() => decide(false)}>Request changes</Button></div><p className="lv-muted mt-3 text-xs leading-5">A decision note is required. Permissions, current revision and evidence gates are enforced by the server.</p>
+            {gate && <Notice tone={gate.ok ? "success" : "danger"} className="mt-5"><strong>{gate.title}</strong><p className="mt-2 text-sm">{gate.message}</p>{gate.blockers?.length ? <ul className="mt-2 list-disc space-y-1 pl-5 text-sm">{gate.blockers.map((b, i) => <li key={i}>{b.message}</li>)}</ul> : null}</Notice>}
+          </Panel>
+          <div className="grid items-start gap-5 lg:grid-cols-2"><Panel className="p-6"><div className="lv-eyebrow mb-3">CONVERSATION & DECISIONS</div><h2 className="mb-6 font-display text-xl font-medium">Review history</h2>{history?.decisions.length ? <ol className="space-y-6 border-l border-line pl-5">{history.decisions.map(d => <li key={d.id} className="relative"><span className="absolute -left-[25px] top-1.5 h-2 w-2 rounded-full bg-indigo-400"/><div className="flex flex-wrap items-center gap-2"><span className="text-sm font-medium">{d.by}</span><Badge tone={d.kind === "approved" ? "success" : "neutral"}>{d.kind.replace(/_/g, " ")}</Badge>{d.seeded && <Badge>Sample</Badge>}</div><p className="mt-2 whitespace-pre-wrap text-sm leading-7">{d.body}</p><p className="lv-muted mt-2 font-mono text-[10px]">{formatDate(d.at)}{d.route ? ` · ${d.route} route` : ""}</p></li>)}</ol> : <p className="lv-muted text-sm">No review decisions or comments recorded.</p>}<form onSubmit={addComment} className="lv-divider mt-6 space-y-3 border-t pt-5"><label className="lv-label block">Add a review comment<textarea className="lv-input mt-2" rows={2} value={comment} onChange={e => setComment(e.target.value)} placeholder="Leave context for the next reviewer…" required/></label><Button type="submit" disabled={busy || !comment.trim()}>Post comment<Icon name="arrow" size={14}/></Button></form></Panel>
+          <Panel className="p-6"><div className="lv-eyebrow mb-3">EVENT RECORD</div><h2 className="mb-6 font-display text-xl font-medium">Audit trail</h2>{history?.audit.length ? <ol className="space-y-5 border-l border-line pl-5">{history.audit.map(event => <li key={event.id} className="relative"><span className="absolute -left-[25px] top-1.5 h-2 w-2 rounded-full bg-fuchsia-400/60"/><div className="flex flex-wrap gap-2"><span className="font-mono text-xs">{event.action}</span>{event.seeded && <Badge>Sample</Badge>}</div><p className="lv-muted mt-1 text-xs">{event.by} · {formatDate(event.at)}</p><details className="mt-2"><summary className="lv-muted cursor-pointer text-xs">View event details</summary><pre className="lv-well mt-2 overflow-x-auto whitespace-pre-wrap break-words p-3 font-mono text-[10px] leading-5">{JSON.stringify(event.details, null, 2)}</pre></details></li>)}</ol> : <p className="lv-muted text-sm">No audit events returned.</p>}</Panel></div>
+        </>}
       </div>
-
-      {/* Visual Risk-Based Routing Flowchart */}
-      <ReviewQueueRoutingFlowchart />
-
-      {error && <div className="banner banner-error">{error}</div>}
-
-      {gateAlert && (
-        <div className={`banner ${gateAlert.ok ? "banner-ok" : "banner-error"}`}>
-          <div>
-            <strong>{gateAlert.title}:</strong> {gateAlert.message}
-            {gateAlert.blockers && gateAlert.blockers.length > 0 && (
-              <ul style={{ marginTop: 6 }}>
-                {gateAlert.blockers.map((b, i) => (
-                  <li key={i}>
-                    <code>{b.code}</code>: {b.message}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-          <button className="btn btn-ghost btn-sm" onClick={() => setGateAlert(null)}>
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      <div className="desk-grid">
-        {/* LEFT: Queue list */}
-        <div className="desk-left">
-          <div className="card">
-            <div className="card-header">
-              <div>
-                <div className="eyebrow">ACTIVE ROLE: {role.toUpperCase()}</div>
-                <h3>Drafts in Workflow ({queue.length})</h3>
-              </div>
-            </div>
-            {loading ? (
-              <div className="muted">Loading queue...</div>
-            ) : (
-              <div className="queue-list">
-                {queue.map((item) => {
-                  const cleanTitle = item.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim();
-                  return (
-                    <div
-                      key={item.id}
-                      className={`queue-row ${detail?.id === item.id ? "active" : ""}`}
-                      onClick={() => onSelectDraft(item.id)}
-                    >
-                      <div className="queue-row-top">
-                        <strong>{cleanTitle}</strong>
-                        {item.seeded && <span className="pill pill-seeded">SEEDED</span>}
-                        {item.actionable && (
-                          <span className="pill pill-ev-supported">Actionable</span>
-                        )}
-                      </div>
-                      <div className="btn-row" style={{ marginTop: 6 }}>
-                        <span className={`pill pill-status-${item.status}`}>
-                          {item.status.replace("_", " ")}
-                        </span>
-                        {item.route && (
-                          <span className={`pill pill-route-${item.route}`}>
-                            Route: {item.route}
-                          </span>
-                        )}
-                        <span className="muted-sm">
-                          Rev #{item.revision} · {item.author}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        {/* RIGHT: Selected draft review packet + approval gate + history */}
-        <div className="desk-right">
-          {!detail ? (
-            <div className="card">Select a draft to inspect review packet.</div>
-          ) : (
-            <>
-              <div className="card">
-                <div className="card-header">
-                  <div>
-                    <div className="eyebrow">
-                      REVIEW PACKET · REVISION #{detail.revision}
-                    </div>
-                    <h3>
-                      {detail.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}{" "}
-                      {detail.seeded && <span className="pill pill-seeded">SEEDED</span>}
-                    </h3>
-                  </div>
-                  <button className="btn btn-sm" onClick={() => onOpenEditor(detail.id)}>
-                    ← Open in Draft Review Desk
-                  </button>
-                </div>
-
-                <div className="quote-box" style={{ whiteSpace: "pre-wrap", marginBottom: 12 }}>
-                  {detail.text}
-                </div>
-
-                <div className="intent-bar" style={{ marginBottom: 12 }}>
-                  <div className="intent-item">
-                    <span className="meta-label">AUDIENCE</span>
-                    <div>{detail.audience || "—"}</div>
-                  </div>
-                  <div className="intent-item">
-                    <span className="meta-label">PURPOSE</span>
-                    <div>{detail.purpose || "—"}</div>
-                  </div>
-                  <div className="intent-item">
-                    <span className="meta-label">CTA</span>
-                    <div>{detail.cta || "—"}</div>
-                  </div>
-                </div>
-
-                {/* Claim passports & blockers summary */}
-                {detail.findings.filter((f) => f.is_claim).length > 0 && (
-                  <div style={{ marginBottom: 12 }}>
-                    <div className="meta-label" style={{ marginBottom: 6 }}>
-                      PROMOTIONAL CLAIMS & EVIDENCE PASSPORTS
-                    </div>
-                    {detail.findings
-                      .filter((f) => f.is_claim)
-                      .map((f) => (
-                        <div
-                          key={f.id}
-                          className={`passport-mini passport-mini-${f.evidence_status}`}
-                        >
-                          <div className="passport-mini-head">
-                            <span>
-                              <strong>“{f.quote}”</strong> —{" "}
-                              <span className={`pill pill-ev-${f.evidence_status}`}>
-                                {(f.evidence_status || "").toUpperCase()}
-                              </span>
-                            </span>
-                            {f.passport && (
-                              <button
-                                className="btn btn-sm"
-                                onClick={() => setInspectPassport(f.passport)}
-                              >
-                                Inspect Proof ({f.passport.ref}) ↗
-                              </button>
-                            )}
-                          </div>
-                          <div className="muted-sm">{f.explanation}</div>
-                        </div>
-                      ))}
-                  </div>
-                )}
-
-                {detail.blockers.length > 0 ? (
-                  <div className="blocker-box">
-                    <div className="blocker-title">
-                      ⛔ {detail.blockers.length} Backend Gate Blocker
-                      {detail.blockers.length > 1 ? "s" : ""}
-                    </div>
-                    <ul>
-                      {detail.blockers.map((b, i) => (
-                        <li key={i}>{b.message}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : (
-                  <div className="banner banner-ok">
-                    ✓ All claims have valid Evidence Passports · Zero gate blockers.
-                  </div>
-                )}
-
-                {/* Reviewer Decision Box */}
-                <div className="decision-box">
-                  <div className="eyebrow">HUMAN REVIEWER SIGN-OFF GATE</div>
-                  <div className="btn-row" style={{ marginBottom: 8 }}>
-                    <span className="pill">State: {detail.status}</span>
-                    <span className={`pill pill-route-${detail.route || detail.computed_route || "standard"}`}>
-                      Route: {detail.route || detail.computed_route || "standard"}
-                    </span>
-                    <span className="pill">Role: {role}</span>
-                  </div>
-                  <textarea
-                    rows={2}
-                    placeholder="Sign-off note or reason for changes..."
-                    value={decisionNote}
-                    onChange={(e) => setDecisionNote(e.target.value)}
-                  />
-                  <div className="btn-row" style={{ marginTop: 8 }}>
-                    <button
-                      className="btn btn-primary"
-                      disabled={busy}
-                      onClick={handleApprove}
-                    >
-                      ✓ Approve Revision #{detail.revision}
-                    </button>
-                    <button
-                      className="btn btn-danger"
-                      disabled={busy}
-                      onClick={handleRequestChanges}
-                    >
-                      ↩ Request Changes
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {/* Review Decisions & Audit Trail */}
-              {history && (
-                <div className="two-col">
-                  <div className="card">
-                    <div className="card-header">
-                      <div>
-                        <div className="eyebrow">HUMAN DECISIONS</div>
-                        <h3>Review History ({history.decisions.length})</h3>
-                      </div>
-                    </div>
-                    <div className="timeline">
-                      {history.decisions.map((d) => (
-                        <div key={d.id} className="timeline-item">
-                          <div className="timeline-top">
-                            <span className={`pill pill-status-${d.kind}`}>{d.kind}</span>
-                            <strong>{d.by}</strong>
-                            {d.route && <span className="pill">route: {d.route}</span>}
-                            {d.seeded && <span className="pill pill-seeded">SEEDED</span>}
-                            <span className="muted-sm">
-                              {new Date(d.at).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-                          <div className="timeline-body">{d.body}</div>
-                        </div>
-                      ))}
-                    </div>
-                    <form onSubmit={handleAddComment} className="btn-row" style={{ marginTop: 12 }}>
-                      <input
-                        type="text"
-                        placeholder="Add review comment..."
-                        value={comment}
-                        onChange={(e) => setComment(e.target.value)}
-                      />
-                      <button type="submit" className="btn btn-sm" disabled={busy}>
-                        Post Comment
-                      </button>
-                    </form>
-                  </div>
-
-                  <div className="card">
-                    <div className="card-header">
-                      <div>
-                        <div className="eyebrow">IMMUTABLE AUDIT LOG</div>
-                        <h3>Audit Events ({history.audit.length})</h3>
-                      </div>
-                    </div>
-                    <div className="timeline">
-                      {history.audit.map((a) => (
-                        <div key={a.id} className="timeline-item">
-                          <div className="timeline-top">
-                            <code>{a.action}</code>
-                            <strong>{a.by}</strong>
-                            {a.seeded && <span className="pill pill-seeded">SEEDED</span>}
-                            <span className="muted-sm">
-                              {new Date(a.at).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
-                            </span>
-                          </div>
-                          <pre className="audit-json">{JSON.stringify(a.details)}</pre>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      </div>
-
-      {inspectPassport && (
-        <SourceModal
-          brandId={brandId}
-          docId={inspectPassport.document.id}
-          initialPage={inspectPassport.page}
-          highlightExcerpt={inspectPassport.excerpt}
-          passport={inspectPassport}
-          onClose={() => setInspectPassport(null)}
-        />
-      )}
     </div>
-  );
+    {passport && <SourceModal brandId={brandId} docId={passport.document.id} initialPage={passport.page} highlightExcerpt={passport.excerpt} passport={passport} onClose={() => setPassport(null)}/>}
+  </div>;
 };

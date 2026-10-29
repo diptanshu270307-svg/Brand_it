@@ -1,3 +1,5 @@
+> **Lustro Velvet redesign:** Read [START-HERE.md](START-HERE.md) for current setup, frontend changes, verified checks and compatibility limits. The following is the original prototype documentation.
+
 # BrandLint — Spell-check for your brand, with a human in charge
 
 > **Pitch:** *“BrandLint connects every finding to a rule, every claim to evidence, and every approval to a human.”*

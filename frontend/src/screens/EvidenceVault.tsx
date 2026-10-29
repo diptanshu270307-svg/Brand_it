@@ -1,411 +1,89 @@
 import React, { useEffect, useState } from "react";
-import { api, DocumentItem, Passport } from "../api";
+import { api, DocumentItem, DraftDetail, Passport } from "../api";
 import { SourceModal } from "../components/SourceModal";
-import { EvidenceTimelineGraph, EvidenceVaultFlowchart } from "../components/Flowcharts";
+import { Badge, Button, Empty, Icon, Metric, Modal, Notice, PageHeading, Panel, errorText, formatDate } from "../components/ui";
 
-interface Props {
-  brandId: number;
-  role: string;
-}
-
-export const EvidenceVault: React.FC<Props> = ({ brandId, role }) => {
+interface Props { brandId: number; role: string; onOpenDraft?: (id: number) => void }
+interface Affected { draft: DraftDetail; proofs: Passport[] }
+const isInvalid = (p: Passport) => p.state !== "current";
+export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) => {
   const [records, setRecords] = useState<Passport[]>([]);
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [stateFilter, setStateFilter] = useState<string>("all");
-
-  // New evidence form
+  const [filter, setFilter] = useState("all");
+  const [busyId, setBusyId] = useState<number | null>(null);
+  const [inspected, setInspected] = useState<Passport | null>(null);
   const [showAdd, setShowAdd] = useState(false);
-  const [claimText, setClaimText] = useState("");
-  const [excerpt, setExcerpt] = useState("");
-  const [docId, setDocId] = useState<number>(0);
-  const [page, setPage] = useState<number>(1);
-  const [owner, setOwner] = useState("");
-  const [validUntil, setValidUntil] = useState("");
-  const [keywords, setKeywords] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  // Source modal
-  const [inspectPassport, setInspectPassport] = useState<Passport | null>(null);
-
+  const [saving, setSaving] = useState(false);
+  const [scanning, setScanning] = useState(false);
+  const [affected, setAffected] = useState<Affected[]>([]);
+  const [scannedAt, setScannedAt] = useState<string | null>(null);
+  const [scanNote, setScanNote] = useState("");
+  const [form, setForm] = useState({ claim: "", excerpt: "", docId: 0, page: 1, owner: "", from: "", until: "", keywords: "" });
+  const owner = role === "brand_owner";
+  const canCreate = ["brand_owner", "senior_reviewer", "reviewer"].includes(role);
   const load = async () => {
-    setLoading(true);
-    setError("");
-    try {
-      const [ev, lib] = await Promise.all([api.listEvidence(brandId), api.library(brandId)]);
-      setRecords(ev);
-      setDocs(lib.documents);
-      if (lib.documents.length > 0 && !docId) {
-        const evDoc = lib.documents.find((d) => d.kind === "evidence") || lib.documents[0];
-        setDocId(evDoc.id);
-      }
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to load Evidence Vault");
-    } finally {
-      setLoading(false);
-    }
+    const [evidence, library] = await Promise.all([api.listEvidence(brandId), api.library(brandId)]);
+    setRecords(evidence); setDocs(library.documents);
+    setForm(f => ({ ...f, docId: library.documents.some(d => d.id === f.docId) ? f.docId : (library.documents.find(d => d.kind === "evidence") || library.documents[0])?.id || 0 }));
   };
-
   useEffect(() => {
-    load();
-  }, [brandId]);
-
-  const handleDecision = async (id: number, decision: "approve" | "reject") => {
-    setError("");
+    let active = true; setLoading(true); setError(""); setAffected([]); setScannedAt(null);
+    Promise.all([api.listEvidence(brandId), api.library(brandId)]).then(([evidence, library]) => {
+      if (!active) return;
+      setRecords(evidence); setDocs(library.documents);
+      setForm(f => ({ ...f, docId: (library.documents.find(d => d.kind === "evidence") || library.documents[0])?.id || 0 }));
+    }).catch(e => { if (active) setError(errorText(e)); }).finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [brandId, role]);
+  const scan = async () => {
+    setScanning(true); setError(""); setScanNote(""); setAffected([]); setScannedAt(null);
     try {
-      await api.decideEvidence(brandId, id, decision);
-      await load();
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed to update evidence status");
-    }
+      const list = await api.listDrafts(brandId);
+      const approved = list.filter(d => d.status === "approved");
+      const results = await Promise.allSettled(approved.map(d => api.getDraft(brandId, d.id)));
+      const found: Affected[] = []; let unavailable = 0;
+      for (const result of results) {
+        if (result.status === "rejected") { unavailable++; continue; }
+        const proofs = Array.from(new Map(result.value.findings.flatMap(f => f.passport && isInvalid(f.passport) ? [[f.passport.id, f.passport] as const] : [])).values());
+        if (proofs.length) found.push({ draft: result.value, proofs });
+      }
+      setAffected(found); setScannedAt(new Date().toISOString());
+      setScanNote(`${approved.length - unavailable} of ${approved.length} visible approved drafts inspected.${unavailable ? ` ${unavailable} could not be retrieved; results are incomplete.` : ""}`);
+    } catch (e) { setScannedAt(null); setError(errorText(e)); }
+    finally { setScanning(false); }
   };
-
-  const handleAdd = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
+  const decide = async (record: Passport, decision: "approve" | "reject") => {
+    setBusyId(record.id); setError("");
+    try { await api.decideEvidence(brandId, record.id, decision); await load(); await scan(); }
+    catch (e) { setError(errorText(e)); } finally { setBusyId(null); }
+  };
+  const add = async (e: React.FormEvent) => {
+    e.preventDefault(); setSaving(true); setError("");
     try {
-      await api.addEvidence(brandId, {
-        claim_text: claimText,
-        excerpt,
-        document_id: docId,
-        page,
-        owner,
-        valid_until: validUntil || null,
-        keywords: keywords
-          .split(",")
-          .map((s) => s.trim())
-          .filter(Boolean),
-      });
-      setShowAdd(false);
-      setClaimText("");
-      setExcerpt("");
-      setOwner("");
-      setValidUntil("");
-      setKeywords("");
-      await load();
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to add evidence");
-    } finally {
-      setBusy(false);
-    }
+      await api.addEvidence(brandId, { claim_text: form.claim, excerpt: form.excerpt, document_id: form.docId, page: form.page, owner: form.owner, valid_from: form.from || null, valid_until: form.until || null, keywords: form.keywords.split(",").map(k => k.trim()).filter(Boolean) });
+      await load(); setShowAdd(false); setForm(f => ({ ...f, claim: "", excerpt: "", owner: "", from: "", until: "", keywords: "" }));
+    } catch (e) { setError(errorText(e)); } finally { setSaving(false); }
   };
-
-  const filtered = records.filter((r) => (stateFilter === "all" ? true : r.state === stateFilter));
-  const isOwner = role === "brand_owner";
-  const canCreate = role === "brand_owner" || role === "senior_reviewer" || role === "reviewer";
-
-  return (
-    <div className="screen-container">
-      <div className="screen-header">
-        <div>
-          <div className="draft-desk-eyebrow-row">
-            <span className="eyebrow" style={{ color: "#22c55e", fontWeight: 800 }}>
-              CLAIM EVIDENCE PASSPORTS
-            </span>
-            <span className="desk-sub-badge">Evidence Vault</span>
-            <span className="live-engine-pill">
-              <span className="pulse-dot"></span> AUDIT-GRADE REPO
-            </span>
-          </div>
-          <p className="subtitle">
-            Verified claim passports linked to research sources, owners & expiry horizons.
-          </p>
-        </div>
-        <div className="btn-row">
-          {canCreate && (
-            <button className="btn btn-primary" onClick={() => setShowAdd(!showAdd)}>
-              {showAdd ? "Close Form" : "+ Register Evidence Record"}
-            </button>
-          )}
-        </div>
-      </div>
-
-      {/* 4 KPI Metrics */}
-      <div className="metrics-grid-4">
-        <div className="metric-box" onClick={() => setStateFilter("all")}>
-          <div className="metric-value-row">
-            <span className="metric-large-number">{records.length}</span>
-            <span className="pill pill-status-approved">Catalog</span>
-          </div>
-          <div className="metric-title">Total Passports</div>
-          <div className="metric-desc">Registered claims</div>
-        </div>
-
-        <div className="metric-box" onClick={() => setStateFilter("current")}>
-          <div className="metric-value-row">
-            <span className="metric-large-number" style={{ color: "var(--ok)" }}>
-              {records.filter((r) => r.state === "current").length}
-            </span>
-            <span className="pill pill-ok">Valid</span>
-          </div>
-          <div className="metric-title">Approved & Current</div>
-          <div className="metric-desc">Unlocks approval gates</div>
-        </div>
-
-        <div className="metric-box metric-highlight-danger" onClick={() => setStateFilter("expired")}>
-          <div className="metric-value-row">
-            <span className="metric-large-number" style={{ color: "var(--danger)" }}>
-              {records.filter((r) => r.state === "expired").length}
-            </span>
-            <span className="pill pill-danger">Blocks Sign-Off</span>
-          </div>
-          <div className="metric-title">Expired Proof</div>
-          <div className="metric-desc">Stops publication on backend</div>
-        </div>
-
-        <div className="metric-box" onClick={() => setStateFilter("pending")}>
-          <div className="metric-value-row">
-            <span className="metric-large-number" style={{ color: "var(--warn)" }}>
-              {records.filter((r) => r.state === "pending").length}
-            </span>
-            <span className="pill pill-warn">Sign-Off Req.</span>
-          </div>
-          <div className="metric-title">Pending Owner</div>
-          <div className="metric-desc">Awaiting verification</div>
-        </div>
-      </div>
-
-      {/* Visual Passport Lifecycle Flowchart */}
-      <EvidenceVaultFlowchart />
-
-      {/* Evidence Passport Validity Timeline Graph */}
-      <EvidenceTimelineGraph
-        passports={records.map((r) => ({
-          id: r.id,
-          claim: r.claim_text,
-          owner: r.owner,
-          validUntil: r.valid_until,
-          state: (r.state === "current" || r.state === "expired" || r.state === "pending" || r.state === "rejected")
-            ? r.state
-            : "pending",
-          sourceDoc: r.document ? `${r.document.title}, p.${r.page}` : `Page ${r.page}`,
-        }))}
-        onSelectPassport={(id) => {
-          const found = records.find((r) => r.id === id);
-          if (found) setInspectPassport(found);
-        }}
-      />
-
-      {error && <div className="banner banner-error">{error}</div>}
-
-      <div className="filter-bar" style={{ marginBottom: 16 }}>
-        {[
-          { key: "all", label: `All Passports (${records.length})` },
-          {
-            key: "current",
-            label: `Valid (${records.filter((r) => r.state === "current").length})`,
-          },
-          {
-            key: "expired",
-            label: `Expired (${records.filter((r) => r.state === "expired").length})`,
-          },
-          {
-            key: "pending",
-            label: `Pending (${records.filter((r) => r.state === "pending").length})`,
-          },
-        ].map((t) => (
-          <button
-            key={t.key}
-            className={`filter-pill ${stateFilter === t.key ? "active" : ""}`}
-            onClick={() => setStateFilter(t.key)}
-          >
-            {t.label}
-          </button>
-        ))}
-      </div>
-
-      {showAdd && (
-        <div className="card card-accent" style={{ marginBottom: 16 }}>
-          <div className="card-header">
-            <div>
-              <div className="eyebrow">VERBATIM EXCERPT VERIFICATION</div>
-              <h3>Register New Claim Evidence Record</h3>
-            </div>
-          </div>
-          <form onSubmit={handleAdd} className="form-stack">
-            <div className="form-row">
-              <label>
-                Source Document
-                <select value={docId} onChange={(e) => setDocId(Number(e.target.value))}>
-                  {docs.map((d) => (
-                    <option key={d.id} value={d.id}>
-                      {d.title} (v{d.version}, {d.pages}p)
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Page Number
-                <input
-                  type="number"
-                  min={1}
-                  value={page}
-                  onChange={(e) => setPage(Number(e.target.value))}
-                  required
-                />
-              </label>
-              <label>
-                Evidence Owner
-                <input
-                  value={owner}
-                  onChange={(e) => setOwner(e.target.value)}
-                  placeholder="e.g. Priya Nair (Research)"
-                  required
-                />
-              </label>
-              <label>
-                Valid Until (Expiry Date)
-                <input
-                  type="date"
-                  value={validUntil}
-                  onChange={(e) => setValidUntil(e.target.value)}
-                />
-              </label>
-            </div>
-            <label>
-              Approved Claim Statement (what marketing is allowed to say)
-              <input
-                value={claimText}
-                onChange={(e) => setClaimText(e.target.value)}
-                placeholder="e.g. Teams using Lumina Flow reported 18% higher task throughput after 90 days."
-                required
-              />
-            </label>
-            <label>
-              Exact Supporting Excerpt (must occur verbatim on the selected page of the source
-              document — validated by the backend)
-              <textarea
-                rows={3}
-                value={excerpt}
-                onChange={(e) => setExcerpt(e.target.value)}
-                placeholder="Copy the exact supporting sentence from the source page..."
-                required
-              />
-            </label>
-            <label>
-              Retrieval Keywords (comma-separated)
-              <input
-                value={keywords}
-                onChange={(e) => setKeywords(e.target.value)}
-                placeholder="productivity, throughput, performance"
-              />
-            </label>
-            <div className="btn-row">
-              <button type="submit" className="btn btn-primary" disabled={busy}>
-                {busy ? "Verifying Excerpt & Saving..." : "Save Evidence (Starts as Pending)"}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
-
-      {loading ? (
-        <div className="card">Loading Evidence Vault...</div>
-      ) : (
-        <div className="vault-grid">
-          {filtered.map((ev) => (
-            <div key={ev.id} className={`vault-card vault-state-${ev.state}`}>
-              <div className="vault-top">
-                <div className="btn-row">
-                  <span className="rule-key">{ev.ref}</span>
-                  <span
-                    className={`pill ${
-                      ev.state === "current"
-                        ? "pill-ev-supported"
-                        : ev.state === "expired"
-                        ? "pill-ev-expired"
-                        : "pill-warn"
-                    }`}
-                  >
-                    {ev.state.toUpperCase()}
-                  </span>
-                  <span className="pill">Approval: {ev.approval_status}</span>
-                </div>
-                <button className="btn btn-sm" onClick={() => setInspectPassport(ev)}>
-                  Inspect Proof in Source ↗
-                </button>
-              </div>
-
-              <div className="vault-section">
-                <span className="meta-label">APPROVED CLAIM</span>
-                <div className="vault-claim">{ev.claim_text}</div>
-              </div>
-
-              <div className="vault-section">
-                <span className="meta-label">VERIFIED SOURCE EXCERPT</span>
-                <div className="vault-excerpt">“{ev.excerpt}”</div>
-              </div>
-
-              <div className="vault-meta-grid">
-                <div>
-                  <span className="meta-label">SOURCE DOCUMENT</span>
-                  <div>
-                    <strong>
-                      {ev.document.title} v{ev.document.version}
-                    </strong>
-                    , page {ev.page}
-                  </div>
-                </div>
-                <div>
-                  <span className="meta-label">EVIDENCE OWNER</span>
-                  <div>{ev.owner}</div>
-                </div>
-                <div>
-                  <span className="meta-label">VALIDITY WINDOW</span>
-                  <div>
-                    {ev.valid_from || "—"} → <strong>{ev.valid_until || "No expiry"}</strong>
-                    {ev.state === "expired" && (
-                      <span className="inline-warn"> (EXPIRED — BLOCKS GATE)</span>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {ev.approval_status === "pending" && (
-                <div className="vault-actions">
-                  {isOwner ? (
-                    <div className="btn-row">
-                      <button
-                        className="btn btn-primary btn-sm"
-                        onClick={() => handleDecision(ev.id, "approve")}
-                      >
-                        ✓ Approve Evidence Passport
-                      </button>
-                      <button
-                        className="btn btn-danger btn-sm"
-                        onClick={() => handleDecision(ev.id, "reject")}
-                      >
-                        ✕ Reject
-                      </button>
-                    </div>
-                  ) : (
-                    <span className="muted-sm">
-                      Awaiting Brand Owner approval (switch to Olivia Brooks to approve{" "}
-                      <code>{ev.ref}</code>).
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {inspectPassport && (
-        <SourceModal
-          brandId={brandId}
-          docId={inspectPassport.document.id}
-          initialPage={inspectPassport.page}
-          highlightExcerpt={inspectPassport.excerpt}
-          passport={inspectPassport}
-          evidenceStatus={
-            inspectPassport.state === "current" ? "supported" : inspectPassport.state
-          }
-          onClose={() => setInspectPassport(null)}
-        />
-      )}
-    </div>
-  );
+  const expired = records.filter(r => r.state === "expired" || r.state === "rejected").length;
+  const filtered = records.filter(r => filter === "all" || filter === r.state || filter === "unavailable" && isInvalid(r));
+  return <div>
+    <PageHeading eyebrow="EVIDENCE OPERATIONS / SOURCE OF TRUTH" title="Evidence Vault & Recall" description="Keep every claim connected to its proof. Find approved content whose supporting evidence has changed." action={canCreate && <Button variant="primary" onClick={() => setShowAdd(true)}><Icon name="plus"/>Register evidence</Button>}/>
+    {error && <Notice tone="danger" className="mb-5">{error}</Notice>}
+    <Panel className="relative mb-8 overflow-hidden p-6 md:p-8">
+      <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-fuchsia-500/10 blur-3xl"/>
+      <div className="relative flex flex-wrap items-start justify-between gap-5"><div><div className="lv-eyebrow mb-3 flex items-center gap-2"><Icon name="radar"/>EVIDENCE RECALL RADAR</div><h2 className="font-display text-2xl font-medium tracking-tight">Approval has a shelf life.</h2><p className="lv-muted mt-3 max-w-2xl text-sm leading-6">Inspect evidence dependencies of approved drafts visible to your role. Revoked, expired or unapproved proof needs another human review.</p></div><Button variant="primary" disabled={scanning || loading || busyId !== null} onClick={scan}><Icon name={scanning ? "refresh" : "radar"}/>{scanning ? "Inspecting dependencies…" : "Check Affected Content"}</Button></div>
+      <div className="relative my-6 grid gap-4 sm:grid-cols-3"><Metric label="Active Passports" value={loading ? "—" : records.filter(r => r.state === "current").length} note="Approved and current" tone="success"/><Metric label="Revoked / Expired" value={loading ? "—" : expired} note="Evidence requiring attention" tone="danger"/><Metric label="Approved Drafts Flagged" value={scannedAt ? affected.length : "—"} note={scannedAt ? `Checked ${new Date(scannedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Run a dependency scan"} tone={affected.length ? "danger" : "neutral"}/></div>
+      <Notice><p className="text-xs leading-5">This is a live dependency inspection, not a persisted recall action. The supplied backend retains historical approvals; opening a draft does not change its status. Create a new revision in Draft Review to invalidate approval and run fresh checks.</p></Notice>
+      {scanNote && <p className="lv-muted mt-4 font-mono text-xs">{scanNote}</p>}
+      {scannedAt && affected.length === 0 && <div className="mt-5"><Empty title="No affected drafts found in this scan">Only linked passports on the latest stored analysis were inspected. This does not measure claims that were never detected.</Empty></div>}
+      <div className="mt-5 space-y-3">{affected.map(({ draft, proofs }) => <div key={draft.id} className="rounded-2xl border border-rose-400/25 bg-rose-400/[0.07] p-5"><div className="flex flex-wrap items-start justify-between gap-4"><div><Badge tone="danger">Needs revalidation</Badge><h3 className="mt-3 font-display text-lg font-medium">{draft.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}</h3><p className="lv-muted mt-2 text-xs">Approved revision {draft.revision} · {draft.channel || "Channel not set"}{draft.seeded ? " · Sample history" : ""}</p></div>{onOpenDraft && <Button onClick={() => onOpenDraft(draft.id)}>Reopen in Review Desk<Icon name="arrow"/></Button>}</div><ul className="mt-4 space-y-2 text-sm">{proofs.map(p => <li key={p.id} className="flex items-start gap-2"><Icon name="alert" className="lv-text-danger mt-0.5" size={15}/><span><span className="font-mono text-xs">{p.ref}</span> is {p.state === "rejected" ? "revoked" : p.state.replace(/_/g, " ")} · {p.document.title}{p.valid_until ? ` · Valid until ${formatDate(p.valid_until)}` : ""}</span></li>)}</ul></div>)}</div>
+    </Panel>
+    <div className="mb-5 flex flex-wrap items-center justify-between gap-4"><div><div className="lv-eyebrow mb-2">THE EVIDENCE COLLECTION</div><h2 className="font-display text-xl font-medium">Claim passports</h2></div><div className="flex flex-wrap gap-2">{[["all", "All"], ["current", "Current"], ["pending", "Pending"], ["unavailable", "Needs attention"]].map(([key, label]) => <Button key={key} variant={filter === key ? "primary" : "secondary"} onClick={() => setFilter(key)} aria-pressed={filter === key}>{label}</Button>)}</div></div>
+    {loading ? <Empty title="Loading Evidence Vault…"/> : filtered.length === 0 ? <Empty title="No passports in this view">Register evidence or choose another filter.</Empty> : <div className="grid gap-5 lg:grid-cols-2">{filtered.map(ev => <Panel key={ev.id} className="flex flex-col p-6"><div className="mb-5 flex items-center justify-between gap-3"><span className="font-mono text-xs tracking-wider">{ev.ref}</span><Badge tone={ev.state === "current" ? "success" : ev.state === "pending" || ev.state === "not_yet_valid" ? "warning" : "danger"}>{ev.state === "rejected" ? "Revoked" : ev.state.replace(/_/g, " ")}</Badge></div><div className="lv-label mb-2">Registered claim</div><h3 className="font-display text-lg font-medium leading-7">{ev.claim_text}</h3><blockquote className="lv-well my-5 flex-1 p-4 text-sm leading-7">“{ev.excerpt}”</blockquote><div className="mb-5 grid gap-4 text-xs sm:grid-cols-2"><div><div className="lv-label mb-1">Source</div><p className="leading-5">{ev.document.title}<br/><span className="lv-muted font-mono">v{ev.document.version} · p.{ev.page}</span></p></div><div><div className="lv-label mb-1">Owner / expiry</div><p className="leading-5">{ev.owner}<br/><span className="lv-muted">{ev.valid_until ? formatDate(ev.valid_until) : "No expiry recorded"}</span></p></div></div><div className="lv-divider flex flex-wrap gap-2 border-t pt-4"><Button onClick={() => setInspected(ev)}><Icon name="file"/>Inspect source</Button>{owner && <Button variant={ev.approval_status === "approved" ? "danger" : "secondary"} disabled={busyId !== null || scanning} onClick={() => decide(ev, ev.approval_status === "approved" ? "reject" : "approve")}>{busyId === ev.id ? "Updating…" : ev.approval_status === "approved" ? "Revoke" : ev.approval_status === "rejected" ? "Restore approval" : "Approve"}</Button>}</div>{!owner && ev.approval_status !== "approved" && <p className="lv-muted mt-3 text-xs">A brand owner must approve this passport.</p>}{ev.state === "expired" && <p className="lv-text-danger mt-3 text-xs">Approval cannot extend an expired evidence window.</p>}</Panel>)}</div>}
+    {showAdd && <Modal title="Register evidence passport" onClose={() => { if (!saving) setShowAdd(false); }} wide><form onSubmit={add} className="space-y-5"><p className="lv-muted text-sm leading-6">New evidence starts pending. The source excerpt must occur on the selected page; the server verifies it before saving.</p><div className="grid gap-4 sm:grid-cols-2"><label className="lv-label">Source document<select className="lv-input mt-2" value={form.docId} required onChange={e => setForm(f => ({ ...f, docId: Number(e.target.value), page: 1 }))}><option value={0} disabled>Select a document</option>{docs.map(d => <option key={d.id} value={d.id}>{d.title} · v{d.version}</option>)}</select></label><label className="lv-label">Page number<input className="lv-input mt-2" type="number" min={1} max={docs.find(d => d.id === form.docId)?.pages} value={form.page} required onChange={e => setForm(f => ({ ...f, page: Number(e.target.value) }))}/></label></div><label className="lv-label block">Claim statement<input className="lv-input mt-2" required value={form.claim} onChange={e => setForm(f => ({ ...f, claim: e.target.value }))}/></label><label className="lv-label block">Verbatim supporting excerpt<textarea className="lv-input mt-2" rows={4} required value={form.excerpt} onChange={e => setForm(f => ({ ...f, excerpt: e.target.value }))}/></label><div className="grid gap-4 sm:grid-cols-3"><label className="lv-label">Evidence owner<input className="lv-input mt-2" required value={form.owner} onChange={e => setForm(f => ({ ...f, owner: e.target.value }))}/></label><label className="lv-label">Valid from<input className="lv-input mt-2" type="date" value={form.from} onChange={e => setForm(f => ({ ...f, from: e.target.value }))}/></label><label className="lv-label">Valid until<input className="lv-input mt-2" type="date" min={form.from || undefined} value={form.until} onChange={e => setForm(f => ({ ...f, until: e.target.value }))}/></label></div><label className="lv-label block">Retrieval keywords<input className="lv-input mt-2" value={form.keywords} placeholder="performance, throughput" onChange={e => setForm(f => ({ ...f, keywords: e.target.value }))}/></label>{error && <Notice tone="danger">{error}</Notice>}<Button type="submit" variant="primary" disabled={saving || !form.docId}>{saving ? "Verifying excerpt…" : "Save as pending evidence"}<Icon name="arrow"/></Button></form></Modal>}
+    {inspected && <SourceModal brandId={brandId} docId={inspected.document.id} initialPage={inspected.page} highlightExcerpt={inspected.excerpt} passport={inspected} onClose={() => setInspected(null)}/>}
+  </div>;
 };
+

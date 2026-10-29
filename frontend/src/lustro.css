@@ -1,0 +1,710 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --lv-bg: #0b0c16;
+  --lv-ink: 233 235 246;
+  --lv-muted: 155 163 188;
+  --lv-surface: 20 22 37;
+  --lv-well: 12 13 24;
+  --lv-line: 49 52 74;
+  --lv-success: #6ee7b7;
+  --lv-warning: #fcd34d;
+  --lv-danger: #fda4af;
+  --lv-accent: #c4b5fd;
+}
+:root[data-theme="light"] {
+  --lv-bg: #f3f2f9;
+  --lv-ink: 27 29 49;
+  --lv-muted: 91 98 125;
+  --lv-surface: 255 255 255;
+  --lv-well: 242 243 250;
+  --lv-line: 216 218 232;
+  --lv-success: #047857;
+  --lv-warning: #92400e;
+  --lv-danger: #be123c;
+  --lv-accent: #6d28d9;
+}
+body { background-color: var(--lv-bg) !important; color: rgb(var(--lv-ink)) !important; }
+.lustro-app {
+  min-height: 100vh; color: rgb(var(--lv-ink)); font: 400 14px/1.6 Inter,sans-serif;
+  background: radial-gradient(ellipse at 0% 0%,rgba(99,102,241,.12),transparent 42%),radial-gradient(ellipse at 100% 85%,rgba(217,70,239,.065),transparent 35%),var(--lv-bg);
+  isolation: isolate;
+}
+.lustro-app *, .lustro-app *::before, .lustro-app *::after { box-sizing: border-box; }
+:where(.lustro-app *, .lustro-app *::before, .lustro-app *::after) { border-width: 0; border-style: solid; border-color: rgb(var(--lv-line)); }
+:where(.lustro-app h1,.lustro-app h2,.lustro-app h3,.lustro-app h4,.lustro-app h5,.lustro-app p,.lustro-app ul,.lustro-app ol,.lustro-app blockquote,.lustro-app figure) { margin: 0; }
+:where(.lustro-app h1,.lustro-app h2,.lustro-app h3,.lustro-app h4) { color: inherit; }
+:where(.lustro-app button,.lustro-app input,.lustro-app select,.lustro-app textarea) { font: inherit; letter-spacing: inherit; }
+:where(.lustro-app button) { cursor: pointer; background-color: transparent; color: inherit; padding: 0; }
+.lustro-app :where(button):disabled { cursor: not-allowed; opacity: .45; }
+.lustro-app :focus-visible { outline: 2px solid #a5b4fc; outline-offset: 4px; }
+.lustro-app ::selection { color: rgb(var(--lv-ink)); background: rgba(129,140,248,.3); }
+:where(.lustro-app code,.lustro-app kbd) { font-family: "JetBrains Mono",monospace; }
+.lustro-app :where(input[type="checkbox"],input[type="radio"]) { width: 1rem; height: 1rem; accent-color: #a78bfa; flex-shrink: 0; }
+:where(.lustro-app table) { width:100%; border-collapse:collapse; font-size:12px; }
+:where(.lustro-app th) { text-align:left; font-weight:500; color:rgb(var(--lv-muted)); }
+:where(.lustro-app th,.lustro-app td) { padding:12px 14px; border-bottom:1px solid rgb(var(--lv-line)/.6); vertical-align:top; }
+:where(.lustro-app textarea) { resize: vertical; }
+:where(.lustro-app a) { color: inherit; }
+
+@layer components {
+  .lv-card { @apply min-w-0 rounded-2xl border border-line/70 bg-surface/85 shadow-lustro-card backdrop-blur-xl; }
+  .lv-well { @apply min-w-0 rounded-xl border border-line/60 bg-well/90; }
+  .lv-btn { @apply inline-flex min-h-10 items-center justify-center gap-2 rounded-full border border-transparent px-4 py-2 text-xs font-semibold no-underline transition duration-150; }
+  .lv-btn-primary { @apply bg-white text-[#0b0c16] shadow-lustro-white hover:bg-slate-100; }
+  .lv-btn-secondary { @apply border-line bg-surface text-ink hover:border-indigo-400/50 hover:bg-indigo-400/10; }
+  .lv-btn-ghost { @apply bg-transparent text-muted hover:bg-indigo-400/10 hover:text-ink; }
+  .lv-btn-danger { @apply border-rose-400/20 bg-rose-400/10 text-[var(--lv-danger)] hover:bg-rose-400/20; }
+  .lv-input { @apply block w-full min-w-0 rounded-xl border border-line bg-well/80 px-3 py-2.5 text-sm text-ink shadow-none placeholder:text-muted/60 focus:border-indigo-400; }
+  .lv-label { @apply mb-2 block text-xs font-medium text-muted; }
+  .lv-muted { @apply text-muted; }
+  .lv-title { @apply font-display text-3xl font-medium leading-tight tracking-[-0.04em] sm:text-4xl; }
+  .lv-eyebrow { @apply font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-[var(--lv-accent)]; }
+  .lv-kicker { @apply font-mono text-[10px] uppercase tracking-widest text-muted; }
+  .lv-divider { @apply border-line/70; }
+  .lv-metric { @apply font-display text-3xl font-medium leading-tight tracking-[-0.03em]; }
+  .lv-badge { @apply inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] leading-4; }
+  .lv-badge-neutral { @apply border-line bg-well/50 text-muted; }
+  .lv-badge-success { @apply border-emerald-400/20 bg-emerald-400/10 text-[var(--lv-success)]; }
+  .lv-badge-warning { @apply border-amber-400/20 bg-amber-400/10 text-[var(--lv-warning)]; }
+  .lv-badge-danger { @apply border-rose-400/20 bg-rose-400/10 text-[var(--lv-danger)]; }
+  .lv-badge-accent { @apply border-violet-400/20 bg-violet-400/10 text-[var(--lv-accent)]; }
+  .lv-notice { @apply rounded-xl border px-4 py-3 text-xs leading-6; }
+  .lv-notice-neutral { @apply border-line bg-well/60 text-muted; }
+  .lv-notice-success { @apply border-emerald-400/20 bg-emerald-400/5 text-[var(--lv-success)]; }
+  .lv-notice-warning { @apply border-amber-400/20 bg-amber-400/5 text-[var(--lv-warning)]; }
+  .lv-notice-danger { @apply border-rose-400/20 bg-rose-400/5 text-[var(--lv-danger)]; }
+  .lv-notice-accent { @apply border-violet-400/20 bg-violet-400/5 text-[var(--lv-accent)]; }
+  .lv-text-success { color:var(--lv-success); }
+  .lv-text-warning { color:var(--lv-warning); }
+  .lv-text-danger { color:var(--lv-danger); }
+  .lv-text-accent { color:var(--lv-accent); }
+}
+.lv-modal-overlay { position:fixed; inset:0; z-index:1000; display:flex; align-items:flex-start; justify-content:center; overflow:auto; padding:5vh 16px; background:rgba(3,4,12,.78); backdrop-filter:blur(12px); }
+.lv-modal { width:100%; max-height:90vh; overflow:auto; }
+.lv-logo { width:34px; height:34px; padding:2px; border-radius:11px; background:linear-gradient(135deg,#818cf8,#c084fc,#ec4899); box-shadow:0 0 22px rgba(129,140,248,.12); flex-shrink:0; }
+.lv-logo > span { display:grid; height:100%; place-items:center; border-radius:9px; background:var(--lv-bg); color:rgb(var(--lv-ink)); }
+.lv-nav-tab { display:inline-flex; align-items:center; gap:6px; white-space:nowrap; padding:8px 12px; border:1px solid transparent; border-radius:999px; color:rgb(var(--lv-muted)); background:transparent; font-size:11px; transition:all .15s; }
+.lv-nav-tab:hover { color:rgb(var(--lv-ink)); background:rgb(var(--lv-surface)); }
+.lv-nav-tab[aria-current="page"] { color:rgb(var(--lv-ink)); border-color:rgba(167,139,250,.3); background:linear-gradient(110deg,rgba(129,140,248,.12),rgba(192,132,252,.10)); }
+.lv-gradient-text { background:linear-gradient(100deg,#818cf8,#c084fc,#ec4899); background-clip:text; -webkit-background-clip:text; color:transparent; }
+.lv-grid-bg { background-image:linear-gradient(rgb(var(--lv-line)/.22) 1px,transparent 1px),linear-gradient(90deg,rgb(var(--lv-line)/.22) 1px,transparent 1px); background-size:42px 42px; }
+.lv-dot { width:6px; height:6px; border-radius:999px; background:currentColor; display:inline-block; flex-shrink:0; }
+.lv-studio-scroll { scrollbar-width:thin; scrollbar-color:rgb(var(--lv-line)) transparent; }
+.lv-studio-scroll::-webkit-scrollbar { width:4px; height:4px; }
+.lv-studio-scroll::-webkit-scrollbar-thumb { background:rgb(var(--lv-line)); border-radius:4px; }
+.lv-enter { animation:lvEnter .25s ease-out both; }
+@keyframes lvEnter { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+:root[data-theme="light"] .lv-btn-primary { background:#1b1d31; color:#fff; }
+:root[data-theme="light"] .lv-btn-primary:hover { background:#30334e; }
+:root[data-theme="light"] .lv-card { box-shadow:0 8px 30px -22px rgba(34,26,72,.25); }
+
+/* ==========================================================================
+   GovernanceOrbit — Lustro Holographic Orbital Architecture Explorer
+   ========================================================================== */
+@property --orbit-hue {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 232;
+}
+
+.lv-orbit-wrap {
+  --orbit-hue: 232;
+  --orbit-px: 0;
+  --orbit-py: 0;
+  border-radius: 24px;
+  border: 1px solid rgb(var(--lv-line) / 0.75);
+  background: rgb(var(--lv-surface) / 0.82);
+  box-shadow: 0 22px 60px -28px rgba(0, 0, 0, 0.72), inset 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(22px);
+  overflow: hidden;
+  transition: --orbit-hue 0.75s ease;
+}
+
+:root[data-theme="light"] .lv-orbit-wrap {
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 46px -24px rgba(34, 26, 72, 0.2), inset 0 1px #fff;
+}
+
+.lv-orbit-live-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: hsl(var(--orbit-hue) 86% 68%);
+  box-shadow: 0 0 12px hsl(var(--orbit-hue) 86% 64%);
+  flex-shrink: 0;
+}
+
+.lv-orbit-ctrl-pill,
+.lv-orbit-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--lv-line) / 0.85);
+  background: rgb(var(--lv-well) / 0.75);
+  color: rgb(var(--lv-muted));
+  font: 500 11px/1 "JetBrains Mono", monospace;
+  transition: all 0.18s ease;
+}
+
+.lv-orbit-ctrl-pill {
+  padding: 0 12px;
+}
+
+.lv-orbit-icon-btn {
+  width: 32px;
+  font-size: 13px;
+}
+
+.lv-orbit-ctrl-pill:hover,
+.lv-orbit-icon-btn:hover,
+.lv-orbit-ctrl-pill[aria-pressed="true"] {
+  color: rgb(var(--lv-ink));
+  border-color: hsl(var(--orbit-hue) 75% 65% / 0.5);
+  background: hsl(var(--orbit-hue) 70% 55% / 0.12);
+}
+
+.lv-orbit-tab {
+  white-space: nowrap;
+  padding: 6px 13px;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgb(var(--lv-muted));
+  font-size: 11.5px;
+  font-weight: 500;
+  transition: all 0.18s ease;
+}
+
+.lv-orbit-tab:hover {
+  color: rgb(var(--lv-ink));
+  background: rgb(var(--lv-well) / 0.7);
+}
+
+.lv-orbit-tab.is-active {
+  color: rgb(var(--lv-ink));
+  border-color: hsl(var(--orbit-hue) 78% 66% / 0.42);
+  background: linear-gradient(
+    115deg,
+    hsl(var(--orbit-hue) 82% 62% / 0.18),
+    rgba(192, 132, 252, 0.1)
+  );
+}
+
+.lv-orbit-stage {
+  container-type: inline-size;
+  position: relative;
+  min-height: 452px;
+  padding: 66px 20px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  isolation: isolate;
+  perspective: 1200px;
+  background:
+    radial-gradient(85% 75% at 50% 8%, hsl(var(--orbit-hue) 68% 46% / 0.17), transparent 68%),
+    rgb(var(--lv-well) / 0.72);
+}
+
+.lv-orbit-stage.is-hero {
+  min-height: 424px;
+  padding: 62px 16px 26px;
+}
+
+.lv-orbit-stage.is-compact {
+  min-height: 412px;
+  padding: 60px 18px 24px;
+}
+
+:root[data-theme="light"] .lv-orbit-stage {
+  background:
+    radial-gradient(85% 75% at 50% 8%, hsl(var(--orbit-hue) 82% 62% / 0.14), transparent 68%),
+    rgb(var(--lv-well) / 0.65);
+}
+
+.lv-orbit-aura {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: radial-gradient(
+    36% 42% at calc(50% + var(--orbit-px) * 14%) calc(44% + var(--orbit-py) * 14%),
+    hsl(var(--orbit-hue) 85% 58% / 0.2),
+    transparent 72%
+  );
+  transition: background 0.3s ease;
+}
+
+.lv-orbit-horizon {
+  position: absolute;
+  inset: auto -10% -32% -10%;
+  height: 62%;
+  pointer-events: none;
+  z-index: 0;
+  background-image:
+    linear-gradient(hsl(var(--orbit-hue) 60% 62% / 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, hsl(var(--orbit-hue) 60% 62% / 0.12) 1px, transparent 1px);
+  background-size: 40px 40px;
+  transform: perspective(520px) rotateX(64deg);
+  mask-image: radial-gradient(ellipse 65% 70% at 50% 35%, #000 10%, transparent 78%);
+  -webkit-mask-image: radial-gradient(ellipse 65% 70% at 50% 35%, #000 10%, transparent 78%);
+}
+
+.lv-orbit-arc {
+  position: absolute;
+  left: 50%;
+  bottom: -44%;
+  width: min(980px, 118%);
+  height: 76%;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  border-top: 1px solid hsl(var(--orbit-hue) 80% 68% / 0.28);
+  box-shadow: inset 0 18px 48px -22px hsl(var(--orbit-hue) 85% 60% / 0.2);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.lv-orbit-dock {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--lv-line) / 0.8);
+  background: rgb(var(--lv-surface) / 0.85);
+  backdrop-filter: blur(12px);
+}
+
+.lv-orbit-dock-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  color: rgb(var(--lv-muted));
+  transition: all 0.22s ease;
+}
+
+.lv-orbit-dock-btn:hover {
+  color: rgb(var(--lv-ink));
+}
+
+.lv-orbit-dock-btn.is-current {
+  color: #fff;
+  background: linear-gradient(135deg, hsl(var(--orbit-hue) 78% 56%), #a855f7);
+  box-shadow: 0 4px 14px hsl(var(--orbit-hue) 80% 52% / 0.45);
+}
+
+.lv-orbit-ring {
+  --sat-gap: clamp(238px, 22vw, 292px);
+  position: relative;
+  z-index: 3;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.lv-orbit-satellite {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 156px;
+  padding: 15px 13px;
+  border-radius: 20px;
+  border: 1px solid rgb(var(--lv-line) / 0.85);
+  background: linear-gradient(165deg, rgb(var(--lv-surface) / 0.92), rgb(var(--lv-well) / 0.92));
+  box-shadow: 0 18px 40px -18px rgba(0, 0, 0, 0.65), inset 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+  color: rgb(var(--lv-ink));
+  backdrop-filter: blur(14px);
+  transform:
+    translate(-50%, -50%)
+    translate3d(
+      calc(var(--d) * var(--sat-gap) + var(--orbit-px) * var(--ad) * -14px),
+      calc(var(--ad) * var(--ad) * 14px + var(--orbit-py) * var(--ad) * -10px),
+      calc(var(--ad) * -55px)
+    )
+    rotateY(calc(var(--d) * -14deg))
+    rotateZ(calc(var(--d) * 3.5deg))
+    scale(calc(1 - var(--ad) * 0.08));
+  opacity: calc(1 - var(--ad) * 0.22);
+  transition:
+    transform 0.72s cubic-bezier(0.22, 1, 0.36, 1),
+    opacity 0.45s ease,
+    border-color 0.25s ease;
+}
+
+:root[data-theme="light"] .lv-orbit-satellite {
+  background: linear-gradient(165deg, rgba(255, 255, 255, 0.95), rgba(242, 243, 252, 0.92));
+  box-shadow: 0 14px 32px -18px rgba(34, 26, 72, 0.22), inset 0 1px #fff;
+}
+
+.lv-orbit-satellite:hover {
+  border-color: hsl(var(--sat-hue) 80% 65% / 0.55);
+  opacity: 0.96;
+}
+
+.lv-orbit-satellite.is-center {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.86);
+}
+
+@container (max-width: 980px) {
+  .lv-orbit-ring {
+    --sat-gap: clamp(194px, 29cqi, 242px);
+  }
+  .lv-orbit-satellite {
+    width: 138px;
+    padding: 13px 10px;
+  }
+  .lv-orbit-satellite[style*="--ad: 2"] {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .lv-prism-card {
+    width: min(344px, 88cqi);
+    padding: 20px 20px 22px;
+  }
+}
+
+@container (max-width: 610px) {
+  .lv-orbit-satellite {
+    display: none;
+  }
+  .lv-prism-card {
+    width: min(356px, 94cqi);
+  }
+}
+
+.lv-orbit-sat-num {
+  font: 500 10px/1 "JetBrains Mono", monospace;
+  letter-spacing: 0.14em;
+  color: rgb(var(--lv-muted));
+}
+
+.lv-orbit-sat-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 13px;
+  display: grid;
+  place-items: center;
+  color: hsl(var(--sat-hue) 84% 72%);
+  background: hsl(var(--sat-hue) 78% 56% / 0.14);
+  border: 1px solid hsl(var(--sat-hue) 78% 62% / 0.28);
+}
+
+:root[data-theme="light"] .lv-orbit-sat-icon {
+  color: hsl(var(--sat-hue) 72% 38%);
+}
+
+.lv-orbit-sat-label {
+  font-family: "Space Grotesk", Inter, sans-serif;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.lv-orbit-sat-stat {
+  font: 500 9.5px/1 "JetBrains Mono", monospace;
+  color: rgb(var(--lv-muted));
+}
+
+.lv-prism-card {
+  position: relative;
+  z-index: 4;
+  width: min(372px, 90vw);
+  padding: 22px 24px 24px;
+  border-radius: 26px;
+  overflow: hidden;
+  border: 1px solid hsl(var(--orbit-hue) 78% 68% / 0.38);
+  background: linear-gradient(180deg, rgb(var(--lv-surface) / 0.94), rgb(var(--lv-well) / 0.96));
+  box-shadow:
+    0 28px 65px -24px rgba(0, 0, 0, 0.78),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset,
+    0 0 42px -14px hsl(var(--orbit-hue) 85% 58% / 0.32);
+  backdrop-filter: blur(22px);
+  animation: lvPrismIn 0.42s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+:root[data-theme="light"] .lv-prism-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.97), rgba(244, 245, 253, 0.96));
+  box-shadow:
+    0 22px 54px -22px rgba(34, 26, 72, 0.24),
+    0 0 0 1px #fff inset,
+    0 0 36px -14px hsl(var(--orbit-hue) 80% 56% / 0.22);
+}
+
+.lv-prism-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 16%;
+  right: 16%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, hsl(var(--orbit-hue) 90% 70%), transparent);
+}
+
+.lv-prism-aurora {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  opacity: 0.55;
+}
+
+:root[data-theme="light"] .lv-prism-aurora {
+  opacity: 0.3;
+}
+
+.lv-prism-aurora i {
+  position: absolute;
+  width: 190px;
+  height: 190px;
+  border-radius: 50%;
+  filter: blur(34px);
+  left: -24px;
+  top: -36px;
+  background: radial-gradient(circle, hsl(var(--orbit-hue) 88% 58% / 0.42), transparent 70%);
+  animation: lvAuroraFloat 6s ease-in-out infinite alternate;
+}
+
+.lv-prism-aurora i:nth-child(2) {
+  left: auto;
+  right: -30px;
+  top: 38%;
+  animation-delay: -2s;
+  animation-duration: 7.4s;
+  background: radial-gradient(circle, hsl(calc(var(--orbit-hue) + 42) 84% 56% / 0.34), transparent 70%);
+}
+
+.lv-prism-aurora i:nth-child(3) {
+  left: 26%;
+  top: auto;
+  bottom: -54px;
+  width: 150px;
+  height: 150px;
+  animation-delay: -3.6s;
+}
+
+.lv-prism-emblem {
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  display: grid;
+  place-items: center;
+  color: hsl(var(--orbit-hue) 90% 76%);
+  background: linear-gradient(
+    145deg,
+    hsl(var(--orbit-hue) 82% 58% / 0.22),
+    hsl(calc(var(--orbit-hue) + 36) 76% 52% / 0.12)
+  );
+  border: 1px solid hsl(var(--orbit-hue) 85% 68% / 0.36);
+  box-shadow: 0 10px 28px -8px hsl(var(--orbit-hue) 85% 52% / 0.42);
+}
+
+:root[data-theme="light"] .lv-prism-emblem {
+  color: hsl(var(--orbit-hue) 74% 36%);
+}
+
+.lv-prism-detail {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 5px 11px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--lv-line) / 0.75);
+  background: rgb(var(--lv-well) / 0.68);
+  font: 500 10px/1.2 "JetBrains Mono", monospace;
+  color: rgb(var(--lv-muted));
+}
+
+.lv-prism-detail .lv-dot {
+  color: hsl(var(--orbit-hue) 85% 66%);
+}
+
+.lv-prism-next-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--lv-line));
+  background: rgb(var(--lv-well) / 0.85);
+  color: rgb(var(--lv-ink));
+  font-size: 12px;
+  font-weight: 600;
+  transition: all 0.18s ease;
+}
+
+.lv-prism-next-chip:hover {
+  border-color: hsl(var(--orbit-hue) 80% 65% / 0.55);
+  background: hsl(var(--orbit-hue) 75% 56% / 0.14);
+}
+
+@keyframes lvPrismIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes lvAuroraFloat {
+  from {
+    transform: translate(-8%, -6%) rotate(0deg) scale(0.94);
+  }
+  to {
+    transform: translate(18%, 14%) rotate(140deg) scale(1.16);
+  }
+}
+
+/* ==========================================================================
+   Legacy CSS Shield & Lustro Architectural Footer
+   Neutralizes !important bare-tag rules from legacy theme.css/styles.css
+   while keeping Loader.tsx (.bl-loader*) 100% untouched.
+   ========================================================================== */
+.lustro-app footer {
+  background: transparent !important;
+  border-top: 0 !important;
+  color: rgb(var(--lv-muted)) !important;
+  padding-top: 0.5rem;
+  padding-bottom: 2.5rem;
+}
+
+.lustro-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea).lv-input {
+  background: rgb(var(--lv-well) / 0.85) !important;
+  border: 1px solid rgb(var(--lv-line)) !important;
+  color: rgb(var(--lv-ink)) !important;
+  border-radius: 0.75rem !important;
+  box-shadow: none !important;
+}
+
+.lustro-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea).lv-input.\!rounded-full {
+  border-radius: 9999px !important;
+}
+
+.lustro-app :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea).lv-input:focus {
+  border-color: #818cf8 !important;
+  box-shadow: 0 0 0 3px rgba(129, 140, 248, 0.18) !important;
+  outline: none !important;
+}
+
+.lustro-app table {
+  border-color: rgb(var(--lv-line) / 0.6) !important;
+}
+
+.lustro-app th {
+  background: rgb(var(--lv-well) / 0.72) !important;
+  color: rgb(var(--lv-muted)) !important;
+  border-bottom: 1px solid rgb(var(--lv-line) / 0.6) !important;
+}
+
+.lustro-app td {
+  color: rgb(var(--lv-ink)) !important;
+  border-bottom: 1px solid rgb(var(--lv-line) / 0.5) !important;
+}
+
+.lustro-app tr:hover td {
+  background: rgb(var(--lv-ink) / 0.025) !important;
+}
+
+.lv-footer-shell {
+  position: relative;
+  overflow: hidden;
+  border-radius: 22px;
+  border: 1px solid rgb(var(--lv-line) / 0.72);
+  background:
+    radial-gradient(ellipse at 92% 0%, rgba(167, 139, 250, 0.09), transparent 46%),
+    radial-gradient(ellipse at 8% 100%, rgba(99, 102, 241, 0.07), transparent 45%),
+    rgb(var(--lv-surface) / 0.85);
+  box-shadow: 0 20px 50px -28px rgba(0, 0, 0, 0.62), inset 0 1px rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(20px);
+}
+
+.lv-footer-shell::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent 4%, rgba(129, 140, 248, 0.5), rgba(192, 132, 252, 0.5), rgba(236, 72, 153, 0.35), transparent 96%);
+  pointer-events: none;
+}
+
+:root[data-theme="light"] .lv-footer-shell {
+  background:
+    radial-gradient(ellipse at 92% 0%, rgba(139, 92, 246, 0.07), transparent 48%),
+    radial-gradient(ellipse at 8% 100%, rgba(99, 102, 241, 0.05), transparent 45%),
+    rgba(255, 255, 255, 0.88);
+  box-shadow: 0 14px 36px -24px rgba(34, 26, 72, 0.22), inset 0 1px rgba(255, 255, 255, 0.85);
+}
+
+.lv-footer-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--lv-line) / 0.72);
+  background: rgb(var(--lv-well) / 0.65);
+  color: rgb(var(--lv-muted));
+  font-size: 12px;
+  font-weight: 500;
+  transition: all 0.16s ease;
+}
+
+.lv-footer-link:hover {
+  color: rgb(var(--lv-ink));
+  border-color: rgba(129, 140, 248, 0.45);
+  background: rgba(129, 140, 248, 0.1);
+  transform: translateY(-1px);
+}
+
+.lv-footer-link[aria-current="page"] {
+  color: rgb(var(--lv-ink));
+  border-color: rgba(167, 139, 250, 0.42);
+  background: linear-gradient(110deg, rgba(129, 140, 248, 0.14), rgba(192, 132, 252, 0.11));
+}
+
+.lv-footer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 30px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgb(var(--lv-line) / 0.75);
+  background: rgb(var(--lv-surface) / 0.75);
+  color: rgb(var(--lv-muted));
+  font: 500 10.5px/1 "JetBrains Mono", monospace;
+  transition: all 0.16s ease;
+}
+
+.lv-footer-status:hover {
+  color: rgb(var(--lv-ink));
+  border-color: rgba(129, 140, 248, 0.45);
+  background: rgba(129, 140, 248, 0.1);
+}
+
+@media (prefers-reduced-motion: reduce) { .lustro-app *, .lustro-app *::before, .lustro-app *::after { animation:none!important; transition:none!important; scroll-behavior:auto!important; } }

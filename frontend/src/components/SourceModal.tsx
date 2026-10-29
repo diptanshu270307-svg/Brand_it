@@ -1,190 +1,53 @@
 import React, { useEffect, useState } from "react";
 import { api, DocumentItem, Passport } from "../api";
+import { Badge, Button, Empty, Icon, Modal, Notice, errorText, formatDate } from "./ui";
 
 interface Props {
-  brandId: number;
-  docId: number;
-  initialPage?: number;
-  highlightExcerpt?: string;
-  passport?: Passport | null;
-  claimQuote?: string;
-  evidenceStatus?: string | null;
-  onClose: () => void;
+  brandId: number; docId: number; initialPage?: number; highlightExcerpt?: string;
+  passport?: Passport | null; claimQuote?: string; evidenceStatus?: string | null; onClose: () => void;
 }
-
-function renderHighlightedPage(text: string, excerpt?: string) {
-  if (!excerpt || !excerpt.trim()) return <pre className="source-pre">{text}</pre>;
-  const idx = text.toLowerCase().indexOf(excerpt.trim().toLowerCase());
-  if (idx < 0) return <pre className="source-pre">{text}</pre>;
-  const before = text.slice(0, idx);
-  const match = text.slice(idx, idx + excerpt.trim().length);
-  const after = text.slice(idx + excerpt.trim().length);
-  return (
-    <pre className="source-pre">
-      {before}
-      <mark className="source-highlight">{match}</mark>
-      {after}
-    </pre>
-  );
-}
-
-export const SourceModal: React.FC<Props> = ({
-  brandId,
-  docId,
-  initialPage = 1,
-  highlightExcerpt,
-  passport,
-  claimQuote,
-  evidenceStatus,
-  onClose,
-}) => {
+export const SourceModal: React.FC<Props> = ({ brandId, docId, initialPage = 1, highlightExcerpt, passport, claimQuote, evidenceStatus, onClose }) => {
   const [doc, setDoc] = useState<DocumentItem | null>(null);
-  const [page, setPage] = useState<number>(initialPage || 1);
-  const [error, setError] = useState<string>("");
-
+  const [page, setPage] = useState(initialPage);
+  const [error, setError] = useState("");
   useEffect(() => {
     let active = true;
-    api
-      .getDocument(brandId, docId)
-      .then((d) => {
-        if (active) {
-          setDoc(d);
-          setPage(Math.min(Math.max(1, initialPage || 1), d.pages || 1));
-        }
-      })
-      .catch((e) => {
-        if (active) setError(e.message || "Could not load document");
-      });
-    return () => {
-      active = false;
-    };
+    setDoc(null); setError("");
+    api.getDocument(brandId, docId).then(d => {
+      if (!active) return;
+      setDoc(d); setPage(Math.max(1, Math.min(initialPage, d.pages || 1)));
+    }).catch(e => { if (active) setError(errorText(e)); });
+    return () => { active = false; };
   }, [brandId, docId, initialPage]);
-
-  const pages = doc?.page_text || [];
-  const currentPageText = pages[page - 1] || "";
-
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-header">
-          <div>
-            <div className="eyebrow">
-              {passport ? `CLAIM EVIDENCE PASSPORT · ${passport.ref}` : "SOURCE OF TRUTH INSPECTOR"}
-            </div>
-            <h3>
-              {doc ? `${doc.title} (v${doc.version})` : "Loading source..."}
-            </h3>
-          </div>
-          <button className="btn btn-ghost" onClick={onClose} aria-label="Close dialog">
-            Close ✕
-          </button>
-        </div>
-
-        {error && <div className="banner banner-error">{error}</div>}
-
-        {passport && (
-          <div className={`passport-sheet passport-${evidenceStatus || passport.state}`}>
-            <div className="passport-cert-head">
-              <span className="passport-cert-tag">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: 5 }}>
-                  <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-                  <path d="m9 12 2 2 4-4"/>
-                </svg>
-                OFFICIAL CITATION CERTIFICATE
-              </span>
-              <span className={`pill pill-ev-${evidenceStatus || passport.state}`}>
-                {(evidenceStatus || passport.state).toUpperCase()}
-              </span>
-            </div>
-            <div className="passport-grid">
-              <div>
-                <span className="meta-label">Passport Status</span>
-                <div>
-                  <span className={`pill pill-ev-${evidenceStatus || passport.state}`}>
-                    {(evidenceStatus || passport.state).toUpperCase()}
-                  </span>
-                </div>
-              </div>
-              <div>
-                <span className="meta-label">Evidence Owner</span>
-                <div className="meta-val">{passport.owner}</div>
-              </div>
-              <div>
-                <span className="meta-label">Valid Until / Expiry</span>
-                <div className="meta-val">
-                  {passport.valid_until || "No expiry"}
-                  {passport.state === "expired" && (
-                    <span className="inline-warn"> (EXPIRED — blocks approval)</span>
-                  )}
-                </div>
-              </div>
-              <div>
-                <span className="meta-label">Source Reference</span>
-                <div className="meta-val">
-                  {passport.document.title} v{passport.document.version}, page {passport.page}
-                </div>
-              </div>
-            </div>
-            {claimQuote && (
-              <div className="passport-row">
-                <span className="meta-label">Draft Claim</span>
-                <div className="quote-box">“{claimQuote}”</div>
-              </div>
-            )}
-            <div className="passport-row">
-              <span className="meta-label">Approved Claim Statement</span>
-              <div className="quote-box">{passport.claim_text}</div>
-            </div>
-            <div className="passport-row">
-              <span className="meta-label">Exact Supporting Excerpt</span>
-              <div className="quote-box quote-excerpt">“{passport.excerpt}”</div>
-            </div>
-          </div>
-        )}
-
-        {doc?.suspicious && (
-          <div className="banner banner-warn">
-            <strong>Untrusted Content Guardrail:</strong> This document contains instruction-like lines
-            that look like prompt injection. BrandLint treats all uploaded documents strictly as data,
-            never as instructions:
-            <ul>
-              {doc.suspicious_notes.map((n, i) => (
-                <li key={i}>{n}</li>
-              ))}
-            </ul>
-          </div>
-        )}
-
-        {doc && (
-          <div className="source-page-box">
-            <div className="source-page-bar">
-              <span>
-                Document Page {page} of {doc.pages}
-                {doc.expires_on ? ` · Source expires ${doc.expires_on}` : ""}
-              </span>
-              {doc.pages > 1 && (
-                <div className="btn-row">
-                  <button
-                    className="btn btn-sm"
-                    disabled={page <= 1}
-                    onClick={() => setPage((p) => p - 1)}
-                  >
-                    ← Prev page
-                  </button>
-                  <button
-                    className="btn btn-sm"
-                    disabled={page >= doc.pages}
-                    onClick={() => setPage((p) => p + 1)}
-                  >
-                    Next page →
-                  </button>
-                </div>
-              )}
-            </div>
-            {renderHighlightedPage(currentPageText, highlightExcerpt || passport?.excerpt)}
-          </div>
-        )}
-      </div>
+  const text = doc?.page_text?.[page - 1] || "";
+  const excerpt = (highlightExcerpt || passport?.excerpt || "").trim();
+  const index = excerpt ? text.toLowerCase().indexOf(excerpt.toLowerCase()) : -1;
+  const state = passport?.state;
+  return <Modal title="Source proof inspector" onClose={onClose} wide>
+    <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+      <div><div className="lv-eyebrow mb-2">{passport ? `EVIDENCE PASSPORT / ${passport.ref}` : "VERSIONED SOURCE"}</div><h3 className="font-display text-xl font-medium">{doc ? doc.title : "Loading source…"}</h3></div>
+      <div className="flex flex-wrap gap-2">{doc && <Badge>v{doc.version} · {doc.pages} pages</Badge>}{passport && <Badge tone={state === "current" ? "success" : state === "pending" || state === "not_yet_valid" ? "warning" : "danger"}>{state === "rejected" ? "Revoked" : state?.replace(/_/g, " ")}</Badge>}</div>
     </div>
-  );
+    {error && <Notice tone="danger" className="mb-5">{error}</Notice>}
+    {passport && <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_1.3fr]">
+      <div className="lv-well space-y-5 p-5">
+        <div><div className="lv-label">Evidence owner</div><p className="mt-1 text-sm">{passport.owner || "Not recorded"}</p></div>
+        <div><div className="lv-label">Validity window</div><p className="mt-1 font-mono text-xs">{formatDate(passport.valid_from)} → {passport.valid_until ? formatDate(passport.valid_until) : "No expiry recorded"}</p></div>
+        <div><div className="lv-label">Pinned source reference</div><p className="mt-1 text-sm leading-6">{passport.document.title}<br/><span className="lv-muted font-mono text-xs">v{passport.document.version} · page {passport.page}</span></p></div>
+        {evidenceStatus && <div><div className="lv-label">Claim check result</div><p className="mt-1 text-sm">{evidenceStatus.replace(/_/g, " ")}</p><p className="lv-muted mt-2 text-xs leading-5">A current passport and a supported claim are separate checks.</p></div>}
+      </div>
+      <div className="space-y-4">
+        {claimQuote && <div><div className="lv-label mb-2">Draft claim</div><blockquote className="lv-well p-4 text-sm leading-7">“{claimQuote}”</blockquote></div>}
+        <div><div className="lv-label mb-2">Registered claim statement</div><p className="text-sm leading-7">{passport.claim_text}</p></div>
+        <div><div className="lv-label mb-2">Exact supporting excerpt</div><blockquote className="lv-well border-l-2 border-l-indigo-400 p-4 text-sm leading-7">“{passport.excerpt}”</blockquote></div>
+      </div>
+    </div>}
+    {doc?.suspicious && <Notice tone="warning" className="mb-5"><div className="mb-2 flex items-center gap-2 font-semibold"><Icon name="shield"/>Untrusted document content</div><p className="text-sm">Instruction-like text was detected. Uploaded text is source data, not an instruction to the reviewer.</p><ul className="mt-2 list-disc space-y-1 pl-5 text-xs">{doc.suspicious_notes.map((note, i) => <li key={i}>{note}</li>)}</ul></Notice>}
+    {doc ? <section className="lv-well overflow-hidden" aria-label="Source page">
+      <div className="lv-divider flex flex-wrap items-center justify-between gap-3 border-b p-4"><div className="font-mono text-xs">PAGE {page} / {doc.pages}{doc.expires_on && <span className="lv-muted"> · Expires {formatDate(doc.expires_on)}</span>}</div><div className="flex gap-2"><Button variant="ghost" disabled={page <= 1} onClick={() => setPage(p => p - 1)} aria-label="Previous source page">← Previous</Button><Button variant="ghost" disabled={page >= doc.pages} onClick={() => setPage(p => p + 1)} aria-label="Next source page">Next →</Button></div></div>
+      <pre className="max-h-[45vh] overflow-auto whitespace-pre-wrap break-words p-6 font-sans text-sm leading-8">{index >= 0 ? <>{text.slice(0, index)}<mark className="rounded bg-indigo-400/20 px-1 text-inherit ring-1 ring-indigo-400/30">{text.slice(index, index + excerpt.length)}</mark>{text.slice(index + excerpt.length)}</> : text || "No text returned for this page."}</pre>
+      {excerpt && index < 0 && <div className="lv-muted px-6 pb-5 text-xs">The selected excerpt is not located on this displayed page. Check the pinned page reference.</div>}
+    </section> : !error && <Empty title="Retrieving the original source">Loading document text and its version reference.</Empty>}
+  </Modal>;
 };
+

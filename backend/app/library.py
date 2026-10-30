@@ -2,15 +2,18 @@
 import hashlib
 import io
 import re
+import time
 from datetime import date
+from pathlib import Path
 
-from fastapi import HTTPException
+from fastapi import HTTPException, UploadFile
 from pydantic import ValidationError
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from .analysis.schemas import RuleExtraction
 from .analysis.text import quote_in
+from .config import get_settings
 from .llm import ProviderError, get_provider
 from .models import Brand, EvidenceRecord, Rule, SourceDocument, User
 from .security import audit
@@ -39,33 +42,160 @@ def scan_suspicious(chunks: list[str]) -> list[str]:
     return notes
 
 
-def pdf_to_pages(data: bytes) -> list[str]:
-    if len(data) > MAX_PDF_BYTES:
-        raise HTTPException(413, "PDF too large (max 10 MB)")
+async def read_bounded_upload(file: UploadFile, max_bytes: int | None = None) -> bytes:
+    """Read upload chunks with strict upper byte bound before file enters memory."""
+    s = get_settings()
+    max_bytes = max_bytes or s.max_upload_size_bytes
+    chunks = []
+    total = 0
+    chunk_size = 64 * 1024
+    while True:
+        chunk = await file.read(chunk_size)
+        if not chunk:
+            break
+        total += len(chunk)
+        if total > max_bytes:
+            raise HTTPException(413, f"Upload exceeds maximum permitted size of {max_bytes // (1024 * 1024)} MB")
+        chunks.append(chunk)
+    return b"".join(chunks)
+
+
+def pdf_to_pages(data: bytes, max_bytes: int | None = None, max_pages: int | None = None,
+                 max_chars: int | None = None, timeout_seconds: float | None = None) -> list[str]:
+    """Extract pages from a text PDF with strict size, page-count, character and timeout bounds."""
+    s = get_settings()
+    max_bytes = max_bytes or s.max_upload_size_bytes
+    max_pages = max_pages or s.max_pdf_pages
+    max_chars = max_chars or s.max_extracted_text_chars
+    timeout_seconds = timeout_seconds or s.pdf_parse_timeout_seconds
+
+    if len(data) > max_bytes:
+        raise HTTPException(413, f"PDF too large (max {max_bytes // (1024 * 1024)} MB)")
+
+    # Magic byte signature check
+    if not data.startswith(b"%PDF-"):
+        raise HTTPException(400, "Invalid PDF signature. File does not have a valid %PDF- header.")
+
+    start_time = time.monotonic()
     try:
         from pypdf import PdfReader
 
         reader = PdfReader(io.BytesIO(data))
-        if len(reader.pages) > MAX_PAGES:
-            raise HTTPException(413, f"PDF has too many pages (max {MAX_PAGES})")
-        pages = [(p.extract_text() or "").strip() for p in reader.pages]
+        num_pages = len(reader.pages)
+        if num_pages > max_pages:
+            raise HTTPException(400, f"PDF has too many pages ({num_pages}). Maximum permitted is {max_pages} pages.")
+
+        pages = []
+        total_chars = 0
+        for p in reader.pages:
+            if time.monotonic() - start_time > timeout_seconds:
+                raise HTTPException(408, f"PDF parsing timed out after {timeout_seconds} seconds.")
+            txt = (p.extract_text() or "").strip()
+            total_chars += len(txt)
+            if total_chars > max_chars:
+                raise HTTPException(400, f"PDF extracted text exceeds maximum limit of {max_chars} characters.")
+            pages.append(txt)
+
     except HTTPException:
         raise
-    except Exception:
-        raise HTTPException(422, "Could not read this PDF. Only text-based PDFs are supported.")
+    except Exception as e:
+        raise HTTPException(422, f"Could not read PDF. File may be malformed or corrupted ({type(e).__name__}).")
+
     if not any(pages):
-        raise HTTPException(422, "No extractable text found. Scanned/image PDFs are not supported - paste the text instead.")
+        raise HTTPException(422, "No extractable text found. Scanned/image-only PDFs are not supported.")
     return pages
 
 
+def parse_and_validate_document(filename: str, data: bytes, content_type: str | None = None) -> tuple[str, list[str]]:
+    """Validate signatures and parse text from supported document formats (text PDFs and UTF-8 text)."""
+    s = get_settings()
+    fn_lower = filename.lower()
+
+    if fn_lower.endswith(".pdf") or data.startswith(b"%PDF-"):
+        pages = pdf_to_pages(data)
+        return "pdf", pages
+
+    ext = Path(fn_lower).suffix
+    if ext in (".txt", ".md", ".text") or (content_type and "text/plain" in content_type.lower()):
+        if b"\x00" in data:
+            raise HTTPException(400, "Binary content detected. Only UTF-8 plain text files are supported.")
+        try:
+            decoded = data.decode("utf-8")
+        except UnicodeDecodeError as e:
+            raise HTTPException(400, "Uploaded text file is not valid UTF-8.") from e
+
+        if len(decoded) > s.max_extracted_text_chars:
+            raise HTTPException(413, f"Text file exceeds maximum limit of {s.max_extracted_text_chars} characters.")
+
+        pages = [p.strip() for p in decoded.split("\f")] if "\f" in decoded else [decoded.strip()]
+        if not any(pages):
+            raise HTTPException(422, "Uploaded text file contains no extractable content.")
+        return "text", pages
+
+    raise HTTPException(400, f"Unsupported file type '{ext or 'unknown'}'. Only text-based PDFs (.pdf) and UTF-8 text (.txt, .md) are supported.")
+
+
+def store_document_file(brand_id: int, company_id: int | None, filename: str, data: bytes, content_hash: str) -> str:
+    """Store untrusted uploaded document in private, tenant-scoped storage outside public static directories."""
+    s = get_settings()
+    base_dir = Path(s.document_storage_dir).resolve()
+    co_dir = f"company_{company_id or 'default'}"
+    brand_dir = f"brand_{brand_id}"
+    target_dir = base_dir / co_dir / brand_dir
+    target_dir.mkdir(parents=True, exist_ok=True)
+
+    safe_name = re.sub(r"[^a-zA-Z0-9_.-]", "_", Path(filename).name) or "document.bin"
+    target_filename = f"{content_hash[:16]}_{safe_name}"
+    target_path = target_dir / target_filename
+    target_path.write_bytes(data)
+    try:
+        target_path.chmod(0o600)
+    except Exception:
+        pass
+    return str(target_path.relative_to(base_dir))
+
+
+def get_stored_document_path(rel_path: str) -> Path:
+    """Validate relative storage path against traversal and return resolved path."""
+    s = get_settings()
+    base_dir = Path(s.document_storage_dir).resolve()
+    target = (base_dir / rel_path).resolve()
+    try:
+        target.relative_to(base_dir)
+    except ValueError as e:
+        raise HTTPException(404, "Invalid document storage path") from e
+    if not target.is_file():
+        raise HTTPException(404, "Document storage file not found")
+    return target
+
+
 def ingest_document(db: Session, brand: Brand, user: User | None, kind: str, title: str, pages: list[str],
-                    expires_on: date | None = None, seeded: bool = False) -> SourceDocument:
+                    expires_on: date | None = None, seeded: bool = False,
+                    file_data: bytes | None = None, file_name: str | None = None) -> SourceDocument:
     version = (db.scalar(select(func.max(SourceDocument.version)).where(
         SourceDocument.brand_id == brand.id, SourceDocument.title == title, SourceDocument.kind == kind)) or 0) + 1
     notes = scan_suspicious(pages)
-    doc = SourceDocument(brand_id=brand.id, kind=kind, title=title, version=version, expires_on=expires_on, pages=pages,
-                         content_hash=hashlib.sha256("\n".join(pages).encode()).hexdigest(), suspicious=bool(notes),
-                         suspicious_notes=notes, uploaded_by=user.id if user else None, seeded=seeded)
+    content_hash = hashlib.sha256("\n".join(pages).encode()).hexdigest()
+
+    storage_path = None
+    if file_data is not None and file_name:
+        storage_path = store_document_file(brand.id, brand.company_id, file_name, file_data, content_hash)
+
+    doc = SourceDocument(
+        brand_id=brand.id,
+        kind=kind,
+        title=title,
+        version=version,
+        expires_on=expires_on,
+        pages=pages,
+        content_hash=content_hash,
+        suspicious=bool(notes),
+        suspicious_notes=notes,
+        uploaded_by=user.id if user else None,
+        seeded=seeded,
+        storage_path=storage_path,
+        file_name=file_name,
+    )
     db.add(doc)
     db.flush()
     audit(db, brand.id, user.id if user else None, "document_ingested", None,

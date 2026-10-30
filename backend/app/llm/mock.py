@@ -8,7 +8,8 @@ schema validation as a hosted model.
 import re
 from collections import Counter
 
-from ..analysis.text import content_tokens, covers, required_tokens
+from ..analysis.dimensions import compare_claim_to_evidence, extract_dimensions_from_text
+from ..analysis.text import content_tokens, covers, required_tokens, sentences
 from . import LLMProvider
 
 HYPE = re.compile(r"\b(game[- ]changing|revolutionary|unbeatable|mind[- ]blowing|life[- ]changing)\b", re.I)
@@ -21,8 +22,9 @@ class MockProvider(LLMProvider):
     # ---- contextual analysis -------------------------------------------------
     def analyze(self, ctx: dict) -> dict:
         text = ctx["draft"]["text"]
-        findings, judgements = [], []
+        findings, judgements, extracted_claims = [], [], []
 
+        # 1. Contextual Tone Review
         tone = next((r for r in ctx["rules"] if r["ref"].startswith("TONE-02")), None)
         if tone:
             for m in HYPE.finditer(text):
@@ -31,47 +33,105 @@ class MockProvider(LLMProvider):
                     "explanation": f"'{m.group(0)}' is hype language; the tone rule asks for calm, specific benefits.",
                     "source_quote": tone["text"][:120], "suggested_replacement": None})
 
+        # 2. Structured Claim Extraction (supplements fixed regexes for unfamiliar claims)
+        existing_claim_quotes = {c["quote"].strip() for c in ctx.get("claims", [])}
+        for s, e in sentences(text):
+            seg = text[s:e].strip()
+            if seg in existing_claim_quotes:
+                continue
+            # Look for factual statements regarding product architecture, storage, security, features
+            if re.search(r"\b(Lumina|Northwind|BrandLint)\s+(?:stores|encrypts|operates|maintains|processes|hosts|features|delivers|reduces|achieves)\b", seg, re.I):
+                dims = extract_dimensions_from_text(seg)
+                extracted_claims.append({
+                    "quote": seg,
+                    "kind": "factual",
+                    "product": dims["product"],
+                    "metric": dims["metric"],
+                    "population": dims["population"],
+                    "timeframe": dims["timeframe"],
+                    "qualifiers": dims["qualifiers"],
+                })
+
+        # 3. 5-Dimensional Claim Verification (No token overlap semantic simulation)
         for claim in ctx["claims"]:
             cands = ctx["evidence"].get(claim["ref"], [])
-            req = required_tokens(claim["quote"])
-            ctoks = content_tokens(claim["quote"])
-            scored = []
+            if not cands:
+                judgements.append({
+                    "claim_ref": claim["ref"],
+                    "evidence_ref": None,
+                    "verdict": "none",
+                    "supporting_quote": None,
+                    "explanation": "No approved evidence relates to this claim.",
+                    "suggested_replacement": None,
+                    "dimensions": {},
+                    "uncertainty": "No candidate evidence available in vault.",
+                })
+                continue
+
+            # Compare candidates across 5 dimensions
+            evaluated = []
             for c in cands:
-                blob = f'{c["claim_text"]} {c["excerpt"]} {" ".join(c.get("keywords", []))}'
-                topical = bool(ctoks & content_tokens(blob))
-                full_req = covers(req, f'{c["claim_text"]} {c["excerpt"]}')
-                scored.append((c, topical, full_req))
-            supporting = [c for c, topical, full in scored if topical and full]
-            supporting.sort(key=lambda c: 0 if c["state"] == "current" else 1)
+                dim_res = compare_claim_to_evidence(claim["quote"], c)
+                evaluated.append((c, dim_res))
+
+            # Look for supported evidence where all 5 dimensions hold
+            supported_candidates = [
+                (c, res) for c, res in evaluated
+                if c.get("state") == "current" and res["all_supported"]
+            ]
 
             replacement = None
-            for c, topical, _ in scored:
-                if topical and c["state"] == "current" and c["claim_text"].strip() != claim["quote"].strip():
-                    replacement = c["claim_text"]
+            for c, _ in evaluated:
+                if c.get("state") == "current" and c.get("claim_text", "").strip() != claim["quote"].strip():
+                    replacement = c.get("claim_text")
                     break
 
-            if supporting:
-                best = supporting[0]
-                judgements.append({"claim_ref": claim["ref"], "evidence_ref": best["ref"], "verdict": "supports",
-                                   "supporting_quote": best["excerpt"],
-                                   "explanation": f'{best["ref"]} states the figures used in this claim.',
-                                   "suggested_replacement": replacement if best["state"] != "current" else None})
-            elif scored and not req:
-                judgements.append({"claim_ref": claim["ref"], "evidence_ref": None, "verdict": "uncertain",
-                                   "supporting_quote": None,
-                                   "explanation": "Related evidence exists but the claim is too vague to judge automatically.",
-                                   "suggested_replacement": replacement})
-            elif scored:
-                top = next((c for c, topical, _ in scored if topical), scored[0][0])
-                judgements.append({"claim_ref": claim["ref"], "evidence_ref": top["ref"], "verdict": "insufficient",
-                                   "supporting_quote": None,
-                                   "explanation": f'{top["ref"]} is on a related topic but does not state this claim (figures/terms differ).',
-                                   "suggested_replacement": replacement})
+            if supported_candidates:
+                best, dim_res = supported_candidates[0]
+                judgements.append({
+                    "claim_ref": claim["ref"],
+                    "evidence_ref": best["ref"],
+                    "verdict": "supports",
+                    "supporting_quote": best["excerpt"],
+                    "explanation": f'{best["ref"]} backs all 5 claim dimensions (product, metric, population, timeframe, qualifiers).',
+                    "suggested_replacement": None,
+                    "dimensions": dim_res["dimensions"],
+                    "uncertainty": None,
+                })
             else:
-                judgements.append({"claim_ref": claim["ref"], "evidence_ref": None, "verdict": "none",
-                                   "supporting_quote": None, "explanation": "No approved evidence relates to this claim.",
-                                   "suggested_replacement": None})
-        return {"findings": findings, "claim_judgements": judgements}
+                # Check for explicit dimension mismatches (wrong metric, missing qualifier, etc.)
+                mismatched = [(c, res) for c, res in evaluated if res["mismatches"]]
+                if mismatched:
+                    best, dim_res = mismatched[0]
+                    judgements.append({
+                        "claim_ref": claim["ref"],
+                        "evidence_ref": best["ref"],
+                        "verdict": "insufficient",
+                        "supporting_quote": None,
+                        "explanation": f'{best["ref"]} does not support this claim: {"; ".join(dim_res["mismatches"])}',
+                        "suggested_replacement": replacement,
+                        "dimensions": dim_res["dimensions"],
+                        "uncertainty": dim_res["uncertainty"],
+                    })
+                else:
+                    # Token overlap without exact match: do NOT simulate semantic proof! Require review.
+                    best, dim_res = evaluated[0]
+                    judgements.append({
+                        "claim_ref": claim["ref"],
+                        "evidence_ref": best["ref"],
+                        "verdict": "uncertain",
+                        "supporting_quote": None,
+                        "explanation": "Claim wording differs from approved evidence; offline verifier requires human review.",
+                        "suggested_replacement": replacement,
+                        "dimensions": dim_res["dimensions"],
+                        "uncertainty": "Offline verifier does not simulate semantic proof from token overlap; human review required.",
+                    })
+
+        return {
+            "findings": findings,
+            "extracted_claims": extracted_claims,
+            "claim_judgements": judgements,
+        }
 
     # ---- rule extraction -----------------------------------------------------
     def extract_rules(self, doc_text: str, pages: list[str]) -> dict:

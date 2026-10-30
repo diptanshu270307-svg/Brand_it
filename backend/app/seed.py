@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from .config import get_settings
 from .db import Base, SessionLocal, engine, init_db
 from .library import ingest_document
-from .models import (Brand, Draft, EvidenceRecord, Membership, ReviewDecision, Rule, RuleEvent, User, utcnow)
+from .models import (Brand, Company, CompanyMembership, Draft, EvidenceRecord, Membership, ReviewDecision, Rule, RuleEvent, User, utcnow)
 from .security import audit, hash_password
 from .service import create_revision
 
@@ -80,15 +80,24 @@ def seed(db: Session) -> None:
     casey, riley, sam, olivia, noah = (user("casey@lumina.demo", "Casey Morgan"), user("riley@lumina.demo", "Riley Chen"),
                                        user("sam@lumina.demo", "Sam Patel"), user("olivia@lumina.demo", "Olivia Brooks"),
                                        user("noah@northwind.demo", "Noah Winter"))
-    brand = Brand(name="Lumina Analytics (fictional demo brand)",
+
+    # Seed the two companies as tenant boundaries
+    lumina_co = Company(name="Lumina Analytics", slug="lumina", settings={"domain": "lumina.demo", "plan": "enterprise"})
+    northwind_co = Company(name="Northwind Outfitters", slug="northwind", settings={"domain": "northwind.demo", "plan": "team"})
+    db.add_all([lumina_co, northwind_co])
+    db.flush()
+
+    brand = Brand(company_id=lumina_co.id, name="Lumina Analytics (fictional demo brand)",
                   description="Fictional B2B workflow software company used for the BrandLint demo.",
                   protected_terms=PROTECTED, competitors=COMPETITORS)
-    other = Brand(name="Northwind Outfitters (separate tenant)", description="Second tenant used to demonstrate brand isolation.",
+    other = Brand(company_id=northwind_co.id, name="Northwind Outfitters (separate tenant)", description="Second tenant used to demonstrate brand isolation.",
                   protected_terms=["Northwind"], competitors=[])
     db.add_all([brand, other])
     db.flush()
     for u, role in ((casey, "creator"), (riley, "reviewer"), (sam, "senior_reviewer"), (olivia, "brand_owner")):
+        db.add(CompanyMembership(company_id=lumina_co.id, user_id=u.id, role=role))
         db.add(Membership(user_id=u.id, brand_id=brand.id, role=role))
+    db.add(CompanyMembership(company_id=northwind_co.id, user_id=noah.id, role="brand_owner"))
     db.add(Membership(user_id=noah.id, brand_id=other.id, role="brand_owner"))
 
     # ---- guideline source + 10 active rules
@@ -169,20 +178,22 @@ def seed(db: Session) -> None:
     seeded_draft("Webinar invite", "changes_requested", "Hey guys, join our webinar. Book a demo.",
                  "changes_requested", "Please replace casual address before this goes out.", riley)
 
-    def events(key, kind, n, reasons=None, excerpts=None):
+    def events(key, kind, n, reasons=None, excerpts=None, channels=None):
         for i in range(n):
             db.add(RuleEvent(brand_id=brand.id, rule_key=key, rule_version=1, kind=kind, seeded=True,
                              reason=(reasons[i % len(reasons)] if reasons else ""),
                              excerpt=(excerpts[i % len(excerpts)] if excerpts else ""),
+                             channel=(channels[i % len(channels)] if channels else "Instagram" if i % 2 == 0 else "Investor Update"),
                              created_at=utcnow() - timedelta(days=30 - i)))
 
     events("TONE-01", "flagged", 12)
-    events("TONE-01", "accepted", 3, excerpts=["guys", "dude"])
+    events("TONE-01", "accepted", 3, excerpts=["guys", "dude"], channels=["Investor Update", "Email", "Investor Update"])
     events("TONE-01", "overridden", 6,
            reasons=["Informal greeting is on-brand for Instagram", "Informal greeting is on-brand for Instagram",
                     "Informal greeting is on-brand for Instagram", "Quoted customer language, not our own voice",
                     "Quoted customer language, not our own voice", "Regional slang is accepted in India social campaigns"],
-           excerpts=["Hey guys!", "What's up, buddy", "Thanks dude", "\"you guys rock\" - Priya, customer", "\"dude it works\" - customer review", "Grab it now, yaar"])
+           excerpts=["Hey guys!", "What's up, buddy", "Thanks dude", "\"you guys rock\" - Priya, customer", "\"dude it works\" - customer review", "Grab it now, yaar"],
+           channels=["Instagram", "Instagram", "Instagram", "Landing Page", "Landing Page", "Instagram"])
     events("TERM-01", "flagged", 9)
     events("CLAIM-03", "flagged", 8)
     events("TERM-02", "flagged", 6)
@@ -199,6 +210,12 @@ def seed(db: Session) -> None:
 
 
 def reset_and_seed() -> None:
+    settings = get_settings()
+    if settings.is_production:
+        raise RuntimeError("Database reset is strictly prohibited in production mode.")
+    if not settings.is_isolated_demo_db():
+        raise RuntimeError("Database reset is only permitted on an isolated demo or test database.")
+
     Base.metadata.drop_all(engine)
     init_db()
     with SessionLocal() as db:
@@ -206,6 +223,11 @@ def reset_and_seed() -> None:
 
 
 def seed_if_empty() -> None:
+    settings = get_settings()
+    if settings.is_production:
+        # In production, automatic demo seeding is strictly disabled
+        return
+
     init_db()
     with SessionLocal() as db:
         if db.scalar(select(User.id).limit(1)) is None:

@@ -24,6 +24,12 @@ htmlcov/
 .env.*
 !.env.example
 
+# Firebase & Cloud deployment local outputs
+.firebase/
+deploy/google-cloud/backend.run.yaml
+deploy/google-cloud/backend.generated.yaml
+backend/.dev_outbox/
+
 # Node / Frontend
 node_modules/
 frontend/dist/

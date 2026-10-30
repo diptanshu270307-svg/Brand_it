@@ -1,0 +1,49 @@
+# BrandLint Production Caddy Configuration
+# Automatic HTTPS, HTTP/3, reverse proxying, and header propagation.
+
+{
+    email {$ACME_EMAIL:admin@example.com}
+    admin off
+}
+
+{$APP_DOMAIN:brandlint.example.com} {
+    # Automatic TLS termination with Let's Encrypt / ZeroSSL
+
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
+
+    # Enable Gzip and Zstandard compression
+    encode gzip zstd
+
+    # Limit request body for PDF guideline uploads (25MB)
+    request_body {
+        max_size 25MB
+    }
+
+    # Static assets caching
+    @static {
+        path /assets/*
+    }
+    header @static Cache-Control "public, max-age=31536000, immutable"
+
+    # Reverse proxy to BrandLint FastAPI/Uvicorn backend
+    reverse_proxy backend:8000 {
+        # Transparently forward headers (X-Forwarded-For, X-Forwarded-Proto, Host)
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # Timeouts for expensive model jobs
+        transport http {
+            read_timeout 120s
+            response_header_timeout 60s
+        }
+    }
+}

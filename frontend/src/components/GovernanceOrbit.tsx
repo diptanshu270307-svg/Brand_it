@@ -129,10 +129,10 @@ function OrbitGlyph({ name, size = 20 }: { name: string; size?: number }) {
 const MODULES: ModuleSpec[] = [
   {
     id: "intro",
-    label: "Pipeline Overview",
+    label: "Overview",
     kicker: "END-TO-END GOVERNANCE ARCHITECTURE",
     headline: "Five checkpoints between a first draft and public sign-off.",
-    ctaLabel: "Open Review Desk",
+    ctaLabel: "Check content",
     target: "review",
     items: [
       {
@@ -146,8 +146,8 @@ const MODULES: ModuleSpec[] = [
       {
         name: "Evidence Passports",
         stat: "Source + page",
-        note: "Connects promotional claims to a versioned source document, page number, owner, and expiry date.",
-        detail: "Evidence Vault · verbatim proof",
+        note: "The approved source behind this claim. Connects promotional claims to a versioned source document, page number, owner, and expiry date.",
+        detail: "Approved facts · verbatim proof",
         hue: 168,
         glyph: "passport",
       },
@@ -179,10 +179,10 @@ const MODULES: ModuleSpec[] = [
   },
   {
     id: "review",
-    label: "Draft Review",
-    kicker: "01 / REVIEW STUDIO MECHANICS",
+    label: "Check content",
+    kicker: "01 / CHECK CONTENT DESK",
     headline: "Inspect inline findings, source pages, and protected edits in one desk.",
-    ctaLabel: "Go to Draft Review",
+    ctaLabel: "Check content",
     target: "review",
     items: [
       {
@@ -229,10 +229,10 @@ const MODULES: ModuleSpec[] = [
   },
   {
     id: "vault",
-    label: "Vault & Recall",
-    kicker: "02 / EVIDENCE OPERATIONS",
+    label: "Approved facts",
+    kicker: "02 / APPROVED FACTS & SOURCES",
     headline: "Track what backs every claim—and what breaks when proof changes.",
-    ctaLabel: "Open Vault & Recall",
+    ctaLabel: "View approved facts",
     target: "vault",
     items: [
       {
@@ -252,7 +252,7 @@ const MODULES: ModuleSpec[] = [
         glyph: "quote",
       },
       {
-        name: "Evidence Recall Radar",
+        name: "Claim Recall Radar",
         stat: "Dependency scan",
         note: "Scans visible approved drafts to flag packets whose linked passports were revoked or expired.",
         detail: "1-click reopen as draft author",
@@ -279,10 +279,10 @@ const MODULES: ModuleSpec[] = [
   },
   {
     id: "queue",
-    label: "Review Queue",
+    label: "Approvals",
     kicker: "03 / HUMAN SIGN-OFF DESK",
     headline: "Risk-aware routing with independent human accountability.",
-    ctaLabel: "Open Review Queue",
+    ctaLabel: "View approvals",
     target: "queue",
     items: [
       {
@@ -329,16 +329,16 @@ const MODULES: ModuleSpec[] = [
   },
   {
     id: "insights",
-    label: "Guideline Health",
-    kicker: "04 / RULEBOOK EVOLUTION",
-    headline: "Turn recurring reviewer overrides into clearer brand rules.",
-    ctaLabel: "Open Guideline Health",
+    label: "Insights",
+    kicker: "04 / GUIDELINE HEALTH",
+    headline: "Rules your team finds unclear.",
+    ctaLabel: "View insights",
     target: "insights",
     items: [
       {
         name: "Override Rate Telemetry",
         stat: "Live vs sample",
-        note: "Highlights rules frequently overridden by reviewers while keeping seeded history clearly separated.",
+        note: "Rules your team finds unclear. Highlights rules frequently overridden by reviewers while keeping seeded history clearly separated.",
         detail: "Minimum sample thresholds",
         hue: 30,
         glyph: "pulse",
@@ -379,10 +379,10 @@ const MODULES: ModuleSpec[] = [
   },
   {
     id: "library",
-    label: "Brand Library",
-    kicker: "05 / SOURCE OF TRUTH & GUARDRAILS",
+    label: "Brand rules",
+    kicker: "05 / BRAND RULES & GUARDRAILS",
     headline: "Ingest guidelines as untrusted data, never executable instructions.",
-    ctaLabel: "Open Brand Library",
+    ctaLabel: "View brand rules",
     target: "library",
     items: [
       {

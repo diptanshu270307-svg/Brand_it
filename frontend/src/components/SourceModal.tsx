@@ -25,7 +25,11 @@ export const SourceModal: React.FC<Props> = ({ brandId, docId, initialPage = 1, 
   const state = passport?.state;
   return <Modal title="Source proof inspector" onClose={onClose} wide>
     <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-      <div><div className="lv-eyebrow mb-2">{passport ? `EVIDENCE PASSPORT / ${passport.ref}` : "VERSIONED SOURCE"}</div><h3 className="font-display text-xl font-medium">{doc ? doc.title : "Loading source…"}</h3></div>
+      <div>
+        <div className="lv-eyebrow mb-2">{passport ? `EVIDENCE PASSPORT / ${passport.ref}` : "VERSIONED SOURCE"}</div>
+        <h3 className="font-display text-xl font-medium">{doc ? doc.title : "Loading source…"}</h3>
+        {passport && <p className="lv-muted mt-1 text-xs">The approved source behind this claim.</p>}
+      </div>
       <div className="flex flex-wrap gap-2">{doc && <Badge>v{doc.version} · {doc.pages} pages</Badge>}{passport && <Badge tone={state === "current" ? "success" : state === "pending" || state === "not_yet_valid" ? "warning" : "danger"}>{state === "rejected" ? "Revoked" : state?.replace(/_/g, " ")}</Badge>}</div>
     </div>
     {error && <Notice tone="danger" className="mb-5">{error}</Notice>}

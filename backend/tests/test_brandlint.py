@@ -469,7 +469,21 @@ def test_queue_roles(api):
 
 
 def test_evaluation_benchmark_and_demo_reset(api):
-    ev = api.call("riley", "GET", "/evaluation").json()
+    # Uncached benchmark read returns 404
+    r_empty = api.call("riley", "GET", "/evaluation")
+    assert r_empty.status_code == 404
+
+    # Explicit job action runs the benchmark
+    r_run = api.call("riley", "POST", "/evaluation/run")
+    assert r_run.status_code == 200
+    ev = r_run.json()
+
+    # Cached read now succeeds without re-running
+    r_cached = api.call("riley", "GET", "/evaluation")
+    assert r_cached.status_code == 200
+    cached_ev = r_cached.json()
+    assert cached_ev["drafts_total"] == ev["drafts_total"]
+
     assert ev["drafts_total"] == 18 and ev["clean_drafts"] == 5
     assert ev["clean_draft_false_alarms"] == 0
     assert ev["citation_validity_rate"] == 1.0

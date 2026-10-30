@@ -1,3 +1,5 @@
+> Cloud deployment preparation: read DEPLOY-FIREBASE.md and CLOUD-CHANGES.md first. Older prototype notes below may describe a prior release.
+
 > **Lustro Velvet redesign:** Read [START-HERE.md](START-HERE.md) for current setup, frontend changes, verified checks and compatibility limits. The following is the original prototype documentation.
 
 # BrandLint — Spell-check for your brand, with a human in charge

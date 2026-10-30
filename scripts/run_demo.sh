@@ -2,6 +2,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
+# Ensure explicit isolated-demo mode for local demonstration
+export APP_MODE="isolated-demo"
+
 if [ ! -f "$ROOT/.env" ] && [ -f "$ROOT/.env.example" ]; then
   cp "$ROOT/.env.example" "$ROOT/.env"
 fi

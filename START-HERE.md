@@ -1,3 +1,5 @@
+> Cloud deployment preparation: read DEPLOY-FIREBASE.md and CLOUD-CHANGES.md first. Older prototype notes below may describe a prior release.
+
 # BrandLint — Lustro Velvet frontend
 
 This package contains the complete supplied project with a redesigned React frontend, Tailwind CSS configuration, a reproducible npm lockfile, and a compiled `frontend/dist/` production build. The backend and its API contracts are unchanged. This is a local project ZIP; it has not been deployed.

@@ -5,5 +5,5 @@ import react from "@vitejs/plugin-react";
 // (API keys and the LLM provider stay on the server).
 export default defineConfig({
   plugins: [react()],
-  server: { port: 5173, proxy: { "/api": "http://127.0.0.1:8000" } },
+  server: { port: 5173, proxy: { "/api": "http://127.0.0.1:8001" } },
 });

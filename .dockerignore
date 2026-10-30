@@ -9,3 +9,12 @@ backend/.venv
 frontend/node_modules
 frontend/dist
 .DS_Store
+**/.dev_outbox
+data
+**/*.zip
+**/*.log
+**/.env
+**/.env.local
+.npm-cache
+outputs
+deploy/google-cloud/*.generated.yaml

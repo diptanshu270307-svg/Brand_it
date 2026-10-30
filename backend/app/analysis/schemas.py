@@ -17,6 +17,16 @@ class LLMFinding(BaseModel):
     suggested_replacement: str | None = Field(default=None, max_length=800)
 
 
+class LLMClaimExtraction(BaseModel):
+    quote: str = Field(min_length=1, max_length=600)
+    kind: str = "factual"  # numeric | compliance | superlative | guarantee | factual
+    product: str | None = None
+    metric: str | None = None
+    population: str | None = None
+    timeframe: str | None = None
+    qualifiers: str | None = None
+
+
 class LLMClaimJudgement(BaseModel):
     claim_ref: str  # "C1" ...
     evidence_ref: str | None = None  # "EV-3" - must be a candidate supplied for that claim
@@ -24,10 +34,13 @@ class LLMClaimJudgement(BaseModel):
     supporting_quote: str | None = Field(default=None, max_length=800)  # must be quoted from the evidence excerpt
     explanation: str = Field(default="", max_length=1200)
     suggested_replacement: str | None = Field(default=None, max_length=800)
+    dimensions: dict = Field(default_factory=dict)
+    uncertainty: str | None = None
 
 
 class LLMOutput(BaseModel):
     findings: list[LLMFinding] = []
+    extracted_claims: list[LLMClaimExtraction] = []
     claim_judgements: list[LLMClaimJudgement] = []
 
 

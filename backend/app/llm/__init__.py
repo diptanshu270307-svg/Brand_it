@@ -46,13 +46,18 @@ SYSTEM_COMMON = (
 )
 
 ANALYZE_TASK = """Task: contextual brand review of the draft.
-Return JSON: {"findings":[{"quote","rule_ref","category","severity","explanation","source_quote","suggested_replacement"}],
-"claim_judgements":[{"claim_ref","evidence_ref","verdict","supporting_quote","explanation","suggested_replacement"}]}
+Return JSON: {
+  "findings":[{"quote","rule_ref","category","severity","explanation","source_quote","suggested_replacement"}],
+  "extracted_claims":[{"quote","kind","product","metric","population","timeframe","qualifiers"}],
+  "claim_judgements":[{"claim_ref","evidence_ref","verdict","supporting_quote","explanation","suggested_replacement","dimensions","uncertainty"}]
+}
 - findings: only issues NOT already listed in 'already_flagged'. 'quote' is copied verbatim from the draft.
   'source_quote' is copied verbatim from the cited rule's text. severity in info|low|medium|high|critical.
-- claim_judgements: one per claim in 'claims'. verdict is 'supports' only if the evidence excerpt itself
-  (quoted in supporting_quote) backs the whole claim, including every number. Retrieved evidence is only a
-  candidate - being on-topic does not make it support. Use 'insufficient' or 'none' otherwise.
+- extracted_claims: any factual assertions in the draft not already listed in 'claims'. 'quote' must be copied verbatim from draft.
+- claim_judgements: compare Product, Metric, Population, Timeframe, and Qualifiers against evidence.
+  Verdict is 'supports' only if all 5 dimensions are substantiated by the evidence excerpt itself.
+  Matching a number or finding a quotation is not enough. If metric, population scope, or qualifiers differ,
+  verdict must be 'insufficient' or 'uncertain'. Never guess.
 - suggested_replacement must preserve the draft's audience, purpose and call to action, must not change
   product names, numbers or facts unless the evidence states them, and should be minimal.
 """
@@ -73,7 +78,13 @@ class JsonLLMProvider(LLMProvider):
         raise NotImplementedError
 
     def _call(self, task: str, payload: dict) -> dict:
-        user = task + "\n\n<<<BEGIN_INPUT_JSON>>>\n" + json.dumps(payload, ensure_ascii=False) + "\n<<<END_INPUT_JSON>>>"
+        s = get_settings()
+        payload_json = json.dumps(payload, ensure_ascii=False)
+        # Bounded model context to prevent prompt context bloat and cost explosion
+        if len(payload_json) > s.max_model_context_chars:
+            log.warning("Payload exceeded max model context (%d > %d chars); bounding payload.", len(payload_json), s.max_model_context_chars)
+            payload_json = payload_json[:s.max_model_context_chars] + "...[TRUNCATED]"
+        user = task + "\n\n<<<BEGIN_INPUT_JSON>>>\n" + payload_json + "\n<<<END_INPUT_JSON>>>"
         raw = self._complete(SYSTEM_COMMON, user)
         raw = raw.strip()
         raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.M).strip()

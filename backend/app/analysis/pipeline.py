@@ -20,6 +20,7 @@ from sqlalchemy.orm import Session
 
 from ..llm import LLMProvider, ProviderError, get_provider
 from ..models import Analysis, Brand, Draft, DraftRevision, EvidenceRecord, Finding, Rule
+from .dimensions import compare_claim_to_evidence, extract_dimensions_from_text
 from .evidence import effective_expiry, evidence_state, retrieve_candidates
 from .protected import protected_flags
 from .schemas import LLMOutput
@@ -70,6 +71,8 @@ class F:
     sensitive: bool = False
     replacement: str | None = None
     flags: list[str] = field(default_factory=list)
+    dimensions: dict = field(default_factory=dict)
+    uncertainty: str | None = None
 
 
 def fingerprint(rule_key: str | None, category: str, quote: str) -> str:
@@ -99,10 +102,45 @@ def _adapt_case(match: str, repl: str) -> str:
     return repl
 
 
-def run_matchers(text: str, rules: list[Rule]) -> list[F]:
+def is_rule_exempt_on_channel(rule: Rule, channel: str = "") -> bool:
+    ch = (channel or "").strip().lower()
+    if not ch:
+        return False
+    if any((ec or "").strip().lower() == ch for ec in (rule.exempt_channels or [])):
+        return True
+    for cond in (rule.channel_conditions or []):
+        cond_ch = (cond.get("channel") or "").strip().lower()
+        cond_act = (cond.get("action") or "exempt").lower()
+        cond_pats = cond.get("patterns") or []
+        if cond_ch == ch and cond_act in ("allow", "exempt") and not cond_pats:
+            return True
+    return False
+
+
+def run_matchers(text: str, rules: list[Rule], channel: str = "") -> list[F]:
     out = []
+    ch = (channel or "").strip().lower()
     for rule in rules:
+        if is_rule_exempt_on_channel(rule, channel):
+            continue
         for m in rule.matchers or []:
+            if ch:
+                if any((ec or "").strip().lower() == ch for ec in (m.get("exempt_channels") or [])):
+                    continue
+                if m.get("channels") and not any((tc or "").strip().lower() == ch for tc in (m.get("channels") or [])):
+                    continue
+                # Channel condition with pattern-specific exemption
+                m_exempt = False
+                for cond in (rule.channel_conditions or []):
+                    cond_ch = (cond.get("channel") or "").strip().lower()
+                    cond_act = (cond.get("action") or "exempt").lower()
+                    cond_pats = cond.get("patterns") or []
+                    if cond_ch == ch and cond_act in ("allow", "exempt") and m.get("pattern") in cond_pats:
+                        m_exempt = True
+                        break
+                if m_exempt:
+                    continue
+
             flags = 0 if m.get("case_sensitive") else re.I
             try:
                 rx = re.compile(m["pattern"], flags)
@@ -142,11 +180,12 @@ def _valid_replacement(repl: str | None, original: str, current_evidence: list[E
 
 
 def resolve_claim(claim: Claim, cands: list[EvidenceRecord], judgement, today: date, notes: list[str]):
-    """-> (status, evidence, explanation). Deterministic expiry beats the model."""
+    """-> (status, evidence, explanation, dimensions, uncertainty). Deterministic expiry beats the model."""
     req = required_tokens(claim.quote)
     states = {e.id: evidence_state(e, today) for e in cands}
     if not cands:
-        return "missing", None, "No evidence in the vault relates to this claim. An Evidence Passport is required before approval."
+        dim_res = compare_claim_to_evidence(claim.quote, None)
+        return "missing", None, "No evidence in the vault relates to this claim. An Evidence Passport is required before approval.", dim_res["dimensions"], dim_res["uncertainty"]
 
     matching = [e for e in cands if req and covers(req, f"{e.claim_text} {e.excerpt}")]
     if matching and not any(states[e.id] == "current" for e in matching):
@@ -154,41 +193,58 @@ def resolve_claim(claim: Claim, cands: list[EvidenceRecord], judgement, today: d
         if stale:
             e = stale[0]
             exp = effective_expiry(e)
-            return "expired", e, (f"Matching evidence {e.ref} ({e.source_document.title}) is no longer valid"
-                                  f"{f' (expired {exp.isoformat()})' if exp else ''}. Expired evidence cannot support approval.")
+            dim_res = compare_claim_to_evidence(claim.quote, e)
+            return ("expired", e,
+                    f"Matching evidence {e.ref} ({e.source_document.title}) is no longer valid"
+                    f"{f' (expired {exp.isoformat()})' if exp else ''}. Expired evidence cannot support approval.",
+                    dim_res["dimensions"], f"Evidence {e.ref} expired.")
         e = matching[0]
-        return "missing", e, f"Only unapproved evidence ({e.ref}, {states[e.id]}) matches this claim. A brand owner must approve it first."
+        dim_res = compare_claim_to_evidence(claim.quote, e)
+        return ("missing", e,
+                f"Only unapproved evidence ({e.ref}, {states[e.id]}) matches this claim. A brand owner must approve it first.",
+                dim_res["dimensions"], "Unapproved evidence.")
 
     usable = [e for e in cands if states[e.id] in ("current", "expired")]
     if not usable:
-        return "missing", None, "Related evidence exists but none of it is approved. A brand owner must approve it first."
+        dim_res = compare_claim_to_evidence(claim.quote, None)
+        return "missing", None, "Related evidence exists but none of it is approved. A brand owner must approve it first.", dim_res["dimensions"], "No approved evidence."
     if judgement is None:
-        return "needs_review", None, "Automated support check was unavailable or its output was rejected. A human must verify this claim."
+        best = usable[0]
+        dim_res = compare_claim_to_evidence(claim.quote, best)
+        return "needs_review", best, "Automated support check was unavailable or its output was rejected. A human must verify this claim.", dim_res["dimensions"], "Automated support check unavailable; human review required."
 
     by_ref = {e.ref: e for e in usable}
     if judgement.evidence_ref and judgement.evidence_ref not in by_ref:
         notes.append(f"Rejected model judgement for {claim.ref}: unknown evidence_ref '{judgement.evidence_ref}'.")
-        return "needs_review", None, "Model cited evidence that was not retrieved for this claim; treated as unverified."
-    ev = by_ref.get(judgement.evidence_ref) if judgement.evidence_ref else None
+        dim_res = compare_claim_to_evidence(claim.quote, usable[0]) if usable else {"dimensions": {}, "uncertainty": "Invented citation"}
+        return "needs_review", None, "Model cited evidence that was not retrieved for this claim; treated as unverified.", dim_res["dimensions"], "Model cited invented evidence reference."
+    ev = by_ref.get(judgement.evidence_ref) if judgement.evidence_ref else usable[0]
+
+    dim_res = compare_claim_to_evidence(claim.quote, ev)
 
     if judgement.verdict == "uncertain":
-        return "needs_review", ev, judgement.explanation or "Support is uncertain; human review required."
+        return "needs_review", ev, judgement.explanation or "Support is uncertain; human review required.", dim_res["dimensions"], getattr(judgement, "uncertainty", None) or dim_res.get("uncertainty") or "Support is uncertain."
     if judgement.verdict in ("none", "insufficient") or ev is None:
-        return "insufficient", ev, judgement.explanation or "Related evidence found, but it does not state this claim."
+        return "insufficient", ev, judgement.explanation or "Related evidence found, but it does not state this claim.", dim_res["dimensions"], getattr(judgement, "uncertainty", None) or dim_res.get("uncertainty") or "Evidence does not substantiate the claim."
 
-    # verdict == supports: verify the quotation and the numbers ourselves.
+    # verdict == supports: verify quotation and all 5 dimensions. Matching a number or quotation is NOT enough.
     if not judgement.supporting_quote or not quote_in(judgement.supporting_quote, ev.excerpt):
         notes.append(f"Rejected model judgement for {claim.ref}: supporting quote does not occur in {ev.ref}.")
-        return "needs_review", ev, "Model's supporting quotation could not be found in the evidence excerpt; treated as unverified."
+        return "needs_review", ev, "Model's supporting quotation could not be found in the evidence excerpt; treated as unverified.", dim_res["dimensions"], "Supporting quotation not found in evidence excerpt."
     if not req:
-        return "needs_review", ev, "This claim has no checkable figures or named standards; a human must confirm the evidence supports it."
+        return "needs_review", ev, "This claim has no checkable figures or named standards; a human must confirm the evidence supports it.", dim_res["dimensions"], "Missing checkable standard or metric."
     if not covers(req, ev.excerpt):
-        return "insufficient", ev, (f"{ev.ref} does not contain every figure/term in this claim "
-                                    f"({', '.join(sorted(req))}); related evidence is not enough.")
+        return "insufficient", ev, f"{ev.ref} does not contain every figure/term in this claim ({', '.join(sorted(req))}); related evidence is not enough.", dim_res["dimensions"], dim_res["uncertainty"]
     if states[ev.id] != "current":
         exp = effective_expiry(ev)
-        return "expired", ev, f"{ev.ref} supports this claim but expired{f' on {exp.isoformat()}' if exp else ''}."
-    return "supported", ev, ""
+        return "expired", ev, f"{ev.ref} supports this claim but expired{f' on {exp.isoformat()}' if exp else ''}.", dim_res["dimensions"], f"Evidence expired{f' on {exp.isoformat()}' if exp else ''}."
+
+    # 5-Dimensional Verification Gate: Product, Metric, Population, Timeframe, Qualifiers
+    if not dim_res["all_supported"]:
+        notes.append(f"Model judgement 'supports' rejected for {claim.ref}: dimension validation failed ({'; '.join(dim_res['mismatches'])}).")
+        return "insufficient", ev, f"{ev.ref} does not fully support this claim: {'; '.join(dim_res['mismatches'])}", dim_res["dimensions"], dim_res["uncertainty"]
+
+    return "supported", ev, "", dim_res["dimensions"], None
 
 
 def compute_route(findings, dispositions: dict) -> str:
@@ -220,7 +276,7 @@ def run_analysis(db: Session, draft: Draft, revision: DraftRevision, triggered_b
     claim_rules = {r.claim_kind: r for r in rules if r.claim_kind}
 
     # 1) deterministic terminology / prohibited wording ------------------------------
-    fs: list[F] = run_matchers(text, rules)
+    fs: list[F] = run_matchers(text, rules, channel=draft.channel or "")
 
     # 2) claims + evidence candidates -------------------------------------------------
     claims = detect_claims(text)
@@ -230,13 +286,14 @@ def run_analysis(db: Session, draft: Draft, revision: DraftRevision, triggered_b
     current_evidence = [e for e in evidence_all if evidence_state(e, today) == "current"]
 
     # 3) contextual LLM review --------------------------------------------------------
-    prompt_rules = _rank_rules(rules, text)
+    channel_rules = [r for r in rules if not is_rule_exempt_on_channel(r, draft.channel or "")]
+    prompt_rules = _rank_rules(channel_rules, text)
     rules_by_ref = {r.ref: r for r in rules}
     judgements: dict[str, object] = {}
     llm_ok = False
     if claims or rules:
         ctx = {
-            "draft": {"text": text, "audience": revision.audience, "purpose": revision.purpose, "cta": revision.cta},
+            "draft": {"text": text, "audience": revision.audience, "purpose": revision.purpose, "cta": revision.cta, "channel": draft.channel or ""},
             "rules": [{"ref": r.ref, "title": r.title, "category": r.category, "severity": r.severity,
                        "text": r.text, "excerpt": r.source_excerpt} for r in prompt_rules],
             "claims": [{"ref": c.ref, "quote": c.quote, "kind": c.kind} for c in claims],
@@ -267,6 +324,9 @@ def run_analysis(db: Session, draft: Draft, revision: DraftRevision, triggered_b
             if rule is None:
                 notes.append(f"Rejected model finding: unknown rule_ref '{lf.rule_ref[:40]}'.")
                 continue
+            if is_rule_exempt_on_channel(rule, draft.channel or ""):
+                notes.append(f"Rejected model finding for {rule.ref}: rule is exempt on channel '{draft.channel}'.")
+                continue
             idx = text.find(lf.quote)
             if idx < 0:
                 notes.append(f"Rejected model finding for {rule.ref}: quoted text does not occur in the draft.")
@@ -280,6 +340,19 @@ def run_analysis(db: Session, draft: Draft, revision: DraftRevision, triggered_b
             fs.append(F("llm", rule.category, sev, idx, idx + len(lf.quote), lf.quote, lf.explanation, rule,
                         lf.source_quote, doc_ref(rule), sensitive=rule.sensitive, replacement=lf.suggested_replacement))
 
+        # validate extracted claims (unfamiliar claims discovered by model)
+        for ec in out.extracted_claims:
+            idx = text.find(ec.quote)
+            if idx < 0:
+                notes.append(f"Rejected model claim extraction: span '{ec.quote[:40]}' does not occur in the draft.")
+                continue
+            if any(c.start <= idx and idx + len(ec.quote) <= c.end for c in claims):
+                continue
+            new_ref = f"C{len(claims) + 1}"
+            new_c = Claim(new_ref, idx, idx + len(ec.quote), ec.quote, ec.kind or "factual")
+            claims.append(new_c)
+            cands[new_ref] = retrieve_candidates(new_c.quote, evidence_all, stop, db=db, brand_id=draft.brand_id)
+
         for j in out.claim_judgements:
             if j.claim_ref not in cands:
                 notes.append(f"Rejected model judgement: unknown claim_ref '{j.claim_ref[:20]}'.")
@@ -288,7 +361,7 @@ def run_analysis(db: Session, draft: Draft, revision: DraftRevision, triggered_b
 
     # 4) resolve claims -> evidence passports ----------------------------------------
     for c in claims:
-        status, ev, expl = resolve_claim(c, cands[c.ref], judgements.get(c.ref) if llm_ok else None, today, notes)
+        status, ev, expl, dims, uncert = resolve_claim(c, cands[c.ref], judgements.get(c.ref) if llm_ok else None, today, notes)
         rule = claim_rules.get(c.kind)
         j = judgements.get(c.ref)
         repl = _valid_replacement(getattr(j, "suggested_replacement", None), c.quote, current_evidence) if status != "supported" else None
@@ -296,7 +369,8 @@ def run_analysis(db: Session, draft: Draft, revision: DraftRevision, triggered_b
             fs.append(F("evidence", "claims", "info", c.start, c.end, c.quote,
                         f"Supported by {ev.ref}: \u201c{ev.excerpt}\u201d", rule,
                         rule.source_excerpt if rule else "", doc_ref(rule) if rule else "",
-                        is_claim=True, evidence=ev, evidence_status="supported"))
+                        is_claim=True, evidence=ev, evidence_status="supported",
+                        dimensions=dims, uncertainty=uncert))
             continue
         sev = rule.severity if rule else "high"
         if SEV[sev] < SEV["high"]:
@@ -304,7 +378,7 @@ def run_analysis(db: Session, draft: Draft, revision: DraftRevision, triggered_b
         fs.append(F("evidence", "claims", sev, c.start, c.end, c.quote, expl, rule,
                     rule.source_excerpt if rule else "", doc_ref(rule) if rule else "",
                     is_claim=True, evidence=ev, evidence_status=status, needs_review=(status == "needs_review"),
-                    sensitive=True, replacement=repl))
+                    sensitive=True, replacement=repl, dimensions=dims, uncertainty=uncert))
 
     # 5) persist -----------------------------------------------------------------------
     seen: set[str] = set()
@@ -328,7 +402,8 @@ def run_analysis(db: Session, draft: Draft, revision: DraftRevision, triggered_b
             is_claim=f.is_claim, evidence_id=f.evidence.id if f.evidence else None, evidence_status=f.evidence_status,
             needs_review=f.needs_review, sensitive=f.sensitive,
             suggestion_original=orig if f.replacement is not None else None,
-            suggestion_replacement=f.replacement, protected_flags=flags))
+            suggestion_replacement=f.replacement, protected_flags=flags,
+            dimensions=f.dimensions or {}, uncertainty=f.uncertainty))
     db.add_all(findings)
 
     used_docs = {r.source_document_id: r.source_document for r in rules if r.source_document}

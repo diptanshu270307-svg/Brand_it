@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient  # noqa: E402
 from app.llm import set_provider_override  # noqa: E402
 from app.main import app  # noqa: E402
 from app.seed import reset_and_seed  # noqa: E402
+from app.throttling import reset_throttling  # noqa: E402
 
 PASSWORD = "demo1234"
 
@@ -33,6 +34,7 @@ class Api:
             r = self.c.post("/api/auth/login", json={"email": email, "password": PASSWORD})
             assert r.status_code == 200, r.text
             self.tokens[who] = r.json()["token"]
+            self.c.cookies.clear()
         return {"Authorization": f"Bearer {self.tokens[who]}"}
 
     def call(self, who, method, path, **kw):
@@ -51,9 +53,11 @@ class Api:
 @pytest.fixture()
 def api():
     set_provider_override(None)
+    reset_throttling()
     reset_and_seed()
     with TestClient(app) as client:
         yield Api(client)
+    reset_throttling()
     set_provider_override(None)
 
 

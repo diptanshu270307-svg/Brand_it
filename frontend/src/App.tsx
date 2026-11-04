@@ -21,6 +21,7 @@ import { ReviewQueue } from "./screens/ReviewQueue";
 import { AppleIntro } from "./screens/AppleIntro";
 import { Loader } from "./components/Loader";
 import { GovernanceOrbit } from "./components/GovernanceOrbit";
+import { WorkspaceTour } from "./components/WorkspaceTour";
 import { Badge, Button, Icon, Modal, Notice, StatusAnnouncer, errorText } from "./components/ui";
 
 type Screen = "intro" | "review" | "vault" | "queue" | "insights" | "library";
@@ -50,6 +51,13 @@ export const App: React.FC = () => {
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showWalkthrough, setShowWalkthrough] = useState(true);
   const [showOrbit, setShowOrbit] = useState(false);
+  const [showTour, setShowTour] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem("brandlint_hide_tour_on_start") !== "true";
+    } catch {
+      return true;
+    }
+  });
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [showReset, setShowReset] = useState(false);
   const [authView, setAuthView] = useState<"login" | "register" | "workspace" | "forgot" | "reset" | null>(null);
@@ -461,6 +469,16 @@ export const App: React.FC = () => {
           <button type="button" onClick={() => navigate("intro")} className="flex shrink-0 items-center gap-2.5 border-0 bg-transparent p-0 text-ink" aria-label="BrandLint keynote"><span className="lv-logo"><span><Icon name="shield" size={19}/></span></span><span className="hidden font-display text-base font-semibold tracking-tight sm:block">BrandLint<span className="lv-muted ml-1 text-xs font-normal">/</span></span></button>
           <nav aria-label="Workspaces" className="lv-studio-scroll flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1">{TABS.map(t => <button type="button" key={t.id} onClick={() => navigate(t.id)} className="lv-nav-tab" aria-current={screen === t.id ? "page" : undefined}><Icon name={t.icon} size={13}/>{t.label}</button>)}</nav>
           <div className="flex shrink-0 items-center gap-2">
+            <Button
+              variant="ghost"
+              onClick={() => setShowTour(true)}
+              aria-label="Open Workspace Tour & Interactive Tutorial"
+              title="Open Workspace Tour & Interactive Tutorial"
+              className="!h-9 !min-h-9 !px-2.5 !text-xs flex items-center gap-1.5 border border-violet-400/35 bg-violet-500/10 text-ink hover:bg-violet-500/20"
+            >
+              <Icon name="spark" size={14} className="text-[var(--lv-accent)]" />
+              <span className="hidden md:inline font-medium">Workspace Tour</span>
+            </Button>
             <button type="button" onClick={() => setShowPrivacy(true)} className="border-0 bg-transparent p-0" aria-label={`View AI processing details: ${privacy?.hosted ? "Live AI" : "Offline verifier"}`}><Badge tone={privacy?.hosted ? "success" : "warning"} className="!px-2"><span className="lv-dot"/><span className="hidden xl:inline">{privacy ? privacy.hosted ? "Live AI" : privacy.provider === "mock" ? "Offline verifier" : "Provider unavailable" : "Connecting"}</span></Badge></button>
             <Button variant="ghost" onClick={() => setTheme(t => t === "dark" ? "light" : "dark")} aria-label={`Switch to ${theme === "dark" ? "Daylight" : "Lustro Velvet"} theme`} title={theme === "dark" ? "Daylight" : "Lustro Velvet"} className="!h-9 !min-h-9 !px-2.5"><Icon name={theme === "dark" ? "sun" : "moon"} size={16}/></Button>
             {companies.length > 1 && (
@@ -480,20 +498,33 @@ export const App: React.FC = () => {
               </label>
             )}
             {user ? (
-              <Button
-                variant="secondary"
-                onClick={openTeamModal}
-                className="!h-9 !min-h-9 !px-3 !text-xs flex items-center gap-2 rounded-full border-line/70 hover:border-violet-400/40"
-                aria-label="Account, team and workspace settings"
-                title={`${user.name} (${activeCompany?.name || "Workspace"}) - Account & Settings`}
-              >
-                <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
-                <span className="font-medium truncate max-w-[90px] sm:max-w-[130px]">{user.name}</span>
-                <Icon name="settings" size={13} className="text-muted" />
-              </Button>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="secondary"
+                  onClick={openTeamModal}
+                  className="!h-9 !min-h-9 !px-3 !text-xs flex items-center gap-2 rounded-full border-line/70 hover:border-violet-400/40"
+                  aria-label="Account, team and workspace settings"
+                  title={`${user.name} (${activeCompany?.name || "Workspace"}) - Account & Settings`}
+                >
+                  <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
+                  <span className="font-medium truncate max-w-[90px] sm:max-w-[130px]">{user.name}</span>
+                  <Icon name="settings" size={13} className="text-muted" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => { void handleLogout(); }}
+                  disabled={switching}
+                  className="!h-9 !min-h-9 !px-2.5 !text-xs text-rose-300 hover:text-rose-200 border border-rose-500/25 rounded-full"
+                  aria-label="Log off (Sign out)"
+                  title="Log off (Sign out)"
+                >
+                  <span className="hidden sm:inline">Log off</span>
+                  <span className="sm:hidden">Out</span>
+                </Button>
+              </div>
             ) : (
               <Button variant="primary" onClick={() => { setAuthMsg(""); setAuthView("login"); }} className="!h-9 !min-h-9 !px-3.5 !text-xs">
-                Sign in
+                Log in
               </Button>
             )}
           </div>
@@ -607,6 +638,36 @@ export const App: React.FC = () => {
           </div>
         </div>
       </footer>
+      <WorkspaceTour
+        open={(ready || !!error) && showTour && !authView && !showAcceptInvite}
+        onClose={() => setShowTour(false)}
+        user={user}
+        companyName={activeCompany?.name}
+        brandName={brand?.name}
+        role={brand?.role || activeCompany?.role}
+        privacy={privacy}
+        theme={theme}
+        onToggleTheme={() => setTheme(t => (t === "dark" ? "light" : "dark"))}
+        onNavigate={navigate}
+        onOpenAuth={view => {
+          setAuthMsg("");
+          setAuthPassword("");
+          setAuthView(view);
+        }}
+        onOpenTeamModal={() => {
+          void openTeamModal();
+        }}
+        onLogout={() => {
+          void handleLogout();
+        }}
+        onSwitchPersona={email => {
+          void switchPersona(email);
+        }}
+        onOpenPrivacy={() => setShowPrivacy(true)}
+        onOpenReset={() => setShowReset(true)}
+        allowPersonaSwitch={systemMode?.allow_persona_switch !== false}
+        allowReset={!!systemMode?.allow_reset}
+      />
       {showPrivacy && <Modal title="Processing & privacy" onClose={() => setShowPrivacy(false)}><div className="space-y-5"><Badge tone={privacy?.hosted ? "success" : "warning"}>{privacy?.hosted ? "Hosted AI processing" : "Local verification"} · {privacy?.provider || "Unknown"}</Badge><p className="text-sm leading-7">{privacy?.notice || "Processing information is unavailable. Reconnect before submitting confidential content."}</p><Notice>Offline checks demonstrate the workflow. They do not establish factual truth or comprehensive claim detection. Source matches and human decisions remain visible.</Notice></div></Modal>}
       {showReset && <Modal title="Reset the demo workspace?" onClose={() => setShowReset(false)}><p className="lv-muted mb-6 text-sm leading-6">This replaces demo drafts, evidence decisions and review history with the original sample data.</p><div className="flex justify-end gap-2"><Button onClick={() => setShowReset(false)}>Cancel</Button><Button variant="danger" disabled={switching} onClick={async () => { setSwitching(true); try { await api.resetDemo(); await switchPersona(DEMO_USERS[0].email); setSelectedDraftId(null); navigate("review"); setShowReset(false); setActiveStep(null); } catch (e) { setError(errorText(e)); } finally { setSwitching(false); } }}>Reset sample data</Button></div></Modal>}
       {authView === "login" && (

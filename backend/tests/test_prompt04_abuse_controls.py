@@ -352,3 +352,23 @@ def test_private_document_storage_and_cross_tenant_rejection(api):
     # Cross-tenant download attempt by Noah in Northwind (Brand 2) on Brand 1's document is rejected
     r_cross = api.c.get(f"/api/brands/1/documents/{doc_id}/download", headers=headers_noah)
     assert r_cross.status_code == 404
+
+
+def test_scanned_pdf_and_image_ocr_fallback(api, monkeypatch):
+    """Scanned PDFs without text layer and image files use Gemini OCR fallback when configured."""
+    import app.library as lib_mod
+
+    headers_olivia = api.login("olivia")
+    scanned_pdf = _make_dummy_pdf(num_pages=1)
+
+    # Without OCR (default mock provider), scanned PDF returns 422
+    files_scan = {"file": ("scanned.pdf", scanned_pdf, "application/pdf")}
+    r_no_ocr = api.c.post("/api/brands/1/documents", data={"kind": "evidence", "title": "Scanned Doc"}, files=files_scan, headers=headers_olivia)
+    assert r_no_ocr.status_code == 422
+
+    # With OCR fallback active, scanned PDF extracts pages via Gemini OCR
+    monkeypatch.setattr(lib_mod, "ocr_with_gemini", lambda data, mime, max_chars=None: ["LUM-OCR-1: Always verify scanned optical claims before release."])
+    r_ocr = api.c.post("/api/brands/1/documents", data={"kind": "guideline", "title": "Scanned OCR Doc"}, files=files_scan, headers=headers_olivia)
+    assert r_ocr.status_code == 200
+    assert r_ocr.json()["document"]["pages"] == 1
+

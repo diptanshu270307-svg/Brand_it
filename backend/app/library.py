@@ -1,11 +1,15 @@
 """Brand Library + Evidence Vault services. Uploaded documents are UNTRUSTED content."""
+import base64
 import hashlib
 import io
+import json
+import logging
 import re
 import time
 from datetime import date
 from pathlib import Path
 
+import httpx
 from fastapi import HTTPException, UploadFile
 from pydantic import ValidationError
 from sqlalchemy import func, select
@@ -60,6 +64,56 @@ async def read_bounded_upload(file: UploadFile, max_bytes: int | None = None) ->
     return b"".join(chunks)
 
 
+log = logging.getLogger(__name__)
+
+
+def ocr_with_gemini(data: bytes, mime_type: str, max_chars: int | None = None) -> list[str]:
+    """Use Gemini Multimodal Vision OCR to extract text from scanned PDFs or images when GEMINI_API_KEY is configured."""
+    s = get_settings()
+    if s.llm_provider.lower() != "gemini" or not s.gemini_api_key:
+        return []
+    max_chars = max_chars or s.max_extracted_text_chars
+    model = s.llm_model or "gemini-2.0-flash"
+    b64 = base64.b64encode(data).decode("ascii")
+    prompt = (
+        "Extract all visible text from this document/image verbatim, page by page. "
+        "Return ONLY valid JSON of the form {\"pages\": [\"page 1 text\", \"page 2 text\"]} "
+        "preserving exact wording and numbers. Do not summarize or invent text."
+    )
+    try:
+        r = httpx.post(
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent",
+            headers={"x-goog-api-key": s.gemini_api_key},
+            json={
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [
+                            {"inlineData": {"mimeType": mime_type, "data": b64}},
+                            {"text": prompt},
+                        ],
+                    }
+                ],
+                "generationConfig": {"temperature": 0, "responseMimeType": "application/json"},
+            },
+            timeout=max(s.llm_timeout_seconds, 25.0),
+        )
+        r.raise_for_status()
+        raw = r.json()["candidates"][0]["content"]["parts"][0]["text"].strip()
+        raw = re.sub(r"^```(?:json)?|```$", "", raw, flags=re.M).strip()
+        parsed = json.loads(raw)
+        pages = [str(p).strip() for p in (parsed.get("pages") or []) if str(p).strip()]
+        total = sum(len(p) for p in pages)
+        if total > max_chars:
+            raise HTTPException(400, f"OCR extracted text exceeds maximum limit of {max_chars} characters.")
+        return pages
+    except HTTPException:
+        raise
+    except Exception as e:
+        log.warning("Gemini OCR fallback failed: %s", type(e).__name__)
+        return []
+
+
 def pdf_to_pages(data: bytes, max_bytes: int | None = None, max_pages: int | None = None,
                  max_chars: int | None = None, timeout_seconds: float | None = None) -> list[str]:
     """Extract pages from a text PDF with strict size, page-count, character and timeout bounds."""
@@ -102,6 +156,9 @@ def pdf_to_pages(data: bytes, max_bytes: int | None = None, max_pages: int | Non
         raise HTTPException(422, f"Could not read PDF. File may be malformed or corrupted ({type(e).__name__}).")
 
     if not any(pages):
+        ocr_pages = ocr_with_gemini(data, "application/pdf", max_chars=max_chars)
+        if any(ocr_pages):
+            return ocr_pages
         raise HTTPException(422, "No extractable text found. Scanned/image-only PDFs are not supported.")
     return pages
 
@@ -116,6 +173,15 @@ def parse_and_validate_document(filename: str, data: bytes, content_type: str | 
         return "pdf", pages
 
     ext = Path(fn_lower).suffix
+    image_mimes = {".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp"}
+    if ext in image_mimes and s.llm_provider.lower() == "gemini" and s.gemini_api_key:
+        if len(data) > s.max_upload_size_bytes:
+            raise HTTPException(413, f"Image too large (max {s.max_upload_size_bytes // (1024 * 1024)} MB)")
+        ocr_pages = ocr_with_gemini(data, image_mimes[ext], max_chars=s.max_extracted_text_chars)
+        if not any(ocr_pages):
+            raise HTTPException(422, "No extractable text found in uploaded image via OCR.")
+        return "image_ocr", ocr_pages
+
     if ext in (".txt", ".md", ".text") or (content_type and "text/plain" in content_type.lower()):
         if b"\x00" in data:
             raise HTTPException(400, "Binary content detected. Only UTF-8 plain text files are supported.")

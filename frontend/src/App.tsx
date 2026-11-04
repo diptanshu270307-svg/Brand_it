@@ -33,7 +33,6 @@ const TABS: { id: Screen; label: string; icon: string }[] = [
   { id: "library", label: "Brand rules", icon: "book" },
   { id: "insights", label: "Insights", icon: "chart" },
 ];
-const STEPS = ["Paste claim", "Inspect proof", "Apply fix", "Human approval", "Check outdated claims"];
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -49,7 +48,6 @@ export const App: React.FC = () => {
   const [switching, setSwitching] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [showPrivacy, setShowPrivacy] = useState(false);
-  const [showWalkthrough, setShowWalkthrough] = useState(true);
   const [showOrbit, setShowOrbit] = useState(false);
   const [showTour, setShowTour] = useState<boolean>(() => {
     try {
@@ -58,7 +56,6 @@ export const App: React.FC = () => {
       return true;
     }
   });
-  const [activeStep, setActiveStep] = useState<number | null>(null);
   const [showReset, setShowReset] = useState(false);
   const [authView, setAuthView] = useState<"login" | "register" | "workspace" | "forgot" | "reset" | null>(null);
   const [authName, setAuthName] = useState("");
@@ -451,13 +448,6 @@ export const App: React.FC = () => {
       if (me) { setSelectedDraftId(id); navigate("queue"); }
     } catch (e) { setError(errorText(e)); }
   };
-  const walk = async (step: number) => {
-    setActiveStep(step);
-    if (step === 4) { const me = await switchPersona("olivia@lumina.demo"); if (me) navigate("vault"); }
-    else if (step === 3 && selectedDraftId) await openQueue(selectedDraftId);
-    else if (step === 3) { await switchReviewer(); navigate("queue"); }
-    else { const me = await switchPersona("casey@lumina.demo"); if (me) navigate("review"); }
-  };
   const ready = !!user && !!brand;
   return <>
     <Loader ready={ready || !!error}/>
@@ -533,8 +523,7 @@ export const App: React.FC = () => {
       <div className="mx-auto max-w-[1800px] px-4 lg:px-7">
         <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-line/50 py-2">
           <div className="flex flex-wrap items-center gap-4">
-            <button type="button" className="flex items-center gap-2 border-0 bg-transparent p-0 text-muted hover:text-ink" onClick={() => setShowWalkthrough(v => !v)} aria-expanded={showWalkthrough} aria-controls="judge-walkthrough"><Icon name="spark" size={13}/><span className="font-mono text-[10px] uppercase tracking-widest">60-second judge walkthrough</span><Icon name="chevron" size={12} className={showWalkthrough ? "rotate-180" : ""}/></button>
-            {screen !== "intro" && <button type="button" className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition ${showOrbit ? "border-violet-400/45 bg-violet-400/15 text-ink" : "border-line/70 bg-transparent text-muted hover:text-ink"}`} onClick={() => setShowOrbit(v => !v)} aria-expanded={showOrbit} aria-controls="workspace-orbit-guide"><Icon name="radar" size={12}/><span>Visual guide</span></button>}
+            <button type="button" className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition ${showOrbit ? "border-violet-400/45 bg-violet-400/15 text-ink" : "border-line/70 bg-transparent text-muted hover:text-ink"}`} onClick={() => setShowOrbit(v => !v)} aria-expanded={showOrbit} aria-controls="workspace-orbit-guide"><Icon name="radar" size={12}/><span>Visual guide</span><Icon name="chevron" size={11} className={showOrbit ? "rotate-180" : ""}/></button>
           </div>
           <div className="flex items-center gap-3">
             <span className="hidden text-[10px] text-muted sm:inline"><strong className="text-ink">{activeCompany?.name || brand?.name || "Workspace"}</strong>{brand?.name && activeCompany?.name !== brand?.name ? ` · ${brand.name}` : ""} <span className="mx-1 text-muted/40">/</span> Human decisions. Traceable proof.</span>
@@ -543,8 +532,7 @@ export const App: React.FC = () => {
             )}
           </div>
         </div>
-        {showWalkthrough && <div id="judge-walkthrough" className="lv-studio-scroll flex gap-2 overflow-x-auto py-3">{STEPS.map((s, i) => <button type="button" key={s} onClick={() => { void walk(i); }} disabled={!ready || switching} className={`flex shrink-0 items-center gap-2 rounded-full border px-3 py-1.5 text-[11px] ${activeStep === i ? "border-violet-400/40 bg-violet-400/10 text-ink" : "border-line/70 bg-transparent text-muted hover:text-ink"}`}><span className={`grid h-5 w-5 place-items-center rounded-full font-mono text-[9px] ${activeStep === i ? "bg-violet-400/20 text-[var(--lv-accent)]" : "bg-surface"}`}>{String(i + 1).padStart(2,"0")}</span>{s}{i < STEPS.length - 1 && <Icon name="arrow" size={11}/>}</button>)}</div>}
-        {screen !== "intro" && showOrbit && <div id="workspace-orbit-guide" className="pt-3"><GovernanceOrbit mode="compact" activeScreen={screen} onClose={() => setShowOrbit(false)} /></div>}
+        {showOrbit && <div id="workspace-orbit-guide" className="pt-3"><GovernanceOrbit mode="compact" activeScreen={screen} onNavigate={navigate} onClose={() => setShowOrbit(false)} /></div>}
       </div>
       {error && <div className="mx-auto max-w-[1800px] px-4 py-4 lg:px-7"><Notice tone="danger"><div className="flex flex-wrap items-center justify-between gap-3"><span>{error}</span><Button onClick={() => { void bootstrap(); }}>Retry connection</Button></div></Notice></div>}
       <main id="workspace" tabIndex={-1} className="mx-auto max-w-[1800px] px-4 pb-12 pt-6 outline-none sm:pt-8 lg:px-7" key={`${brand?.id}-${refresh}`}>
@@ -564,8 +552,8 @@ export const App: React.FC = () => {
                   });
                 } else openDraft(id);
               }}
-              onLaunchStep={i => {
-                void walk(i);
+              onLaunchStep={() => {
+                setShowTour(true);
               }}
             />
           )}
@@ -669,7 +657,7 @@ export const App: React.FC = () => {
         allowReset={!!systemMode?.allow_reset}
       />
       {showPrivacy && <Modal title="Processing & privacy" onClose={() => setShowPrivacy(false)}><div className="space-y-5"><Badge tone={privacy?.hosted ? "success" : "warning"}>{privacy?.hosted ? "Hosted AI processing" : "Local verification"} · {privacy?.provider || "Unknown"}</Badge><p className="text-sm leading-7">{privacy?.notice || "Processing information is unavailable. Reconnect before submitting confidential content."}</p><Notice>Offline checks demonstrate the workflow. They do not establish factual truth or comprehensive claim detection. Source matches and human decisions remain visible.</Notice></div></Modal>}
-      {showReset && <Modal title="Reset the demo workspace?" onClose={() => setShowReset(false)}><p className="lv-muted mb-6 text-sm leading-6">This replaces demo drafts, evidence decisions and review history with the original sample data.</p><div className="flex justify-end gap-2"><Button onClick={() => setShowReset(false)}>Cancel</Button><Button variant="danger" disabled={switching} onClick={async () => { setSwitching(true); try { await api.resetDemo(); await switchPersona(DEMO_USERS[0].email); setSelectedDraftId(null); navigate("review"); setShowReset(false); setActiveStep(null); } catch (e) { setError(errorText(e)); } finally { setSwitching(false); } }}>Reset sample data</Button></div></Modal>}
+      {showReset && <Modal title="Reset the demo workspace?" onClose={() => setShowReset(false)}><p className="lv-muted mb-6 text-sm leading-6">This replaces demo drafts, evidence decisions and review history with the original sample data.</p><div className="flex justify-end gap-2"><Button onClick={() => setShowReset(false)}>Cancel</Button><Button variant="danger" disabled={switching} onClick={async () => { setSwitching(true); try { await api.resetDemo(); await switchPersona(DEMO_USERS[0].email); setSelectedDraftId(null); navigate("review"); setShowReset(false); } catch (e) { setError(errorText(e)); } finally { setSwitching(false); } }}>Reset sample data</Button></div></Modal>}
       {authView === "login" && (
         <Modal title="Sign in to BrandLint" onClose={() => setAuthView(null)}>
           <form onSubmit={handleLoginSubmit} className="space-y-4">

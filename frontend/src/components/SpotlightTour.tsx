@@ -50,11 +50,11 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
     return false;
   });
 
-  // Controls soft fade-in bloom once scrolling settles
+  // Controls soft bloom & animation emergence once gliding settles
   const [isReady, setIsReady] = useState<boolean>(false);
 
   const rafRef = useRef<number | null>(null);
-  const scrollTimerRef = useRef<number | null>(null);
+  const scrollRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     setStepIdx(currentStepIndex);
@@ -62,7 +62,7 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
 
   const activeStep = steps[stepIdx] || steps[0];
 
-  // Responsive mobile detector
+  // Responsive mobile detector (adapts dynamically to window resizing & device orientation changes)
   useEffect(() => {
     const handleResize = () => {
       setIsMobile(window.innerWidth < 768);
@@ -71,7 +71,7 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
-  // Measure target geometry with safe-area viewport clamping
+  // Measure target geometry with safe-area viewport clamping across all aspect ratios
   const measureTarget = useCallback(() => {
     if (!open || !activeStep) return;
     const el = document.querySelector(activeStep.targetSelector);
@@ -82,29 +82,29 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
 
     const r = el.getBoundingClientRect();
 
-    // Viewport-clamped bounds to prevent overflow on mobile phones (iPhone / Android)
-    const minLeft = 6;
-    const maxRight = window.innerWidth - 6;
+    // Safe-area viewport clamped bounds: guarantees zero overflow on narrow iPhones & Androids
+    const minLeft = 8;
+    const maxRight = window.innerWidth - 8;
     const left = Math.max(minLeft, r.left);
     const right = Math.min(maxRight, r.right);
     const width = Math.max(30, right - left);
 
-    const minTop = 6;
-    const maxBottom = window.innerHeight - 6;
+    const minTop = 8;
+    const maxBottom = window.innerHeight - 8;
     const top = Math.max(minTop, r.top);
     const bottom = Math.min(maxBottom, r.bottom);
     const height = Math.max(24, bottom - top);
 
     setTargetRect({ top, left, width, height });
 
-    // Desktop Popover Calculation
+    // Desktop / Tablet Popover Calculation
     const popoverWidth = Math.min(440, window.innerWidth - 32);
     const popoverHeight = 220;
 
     let popTop = bottom + 18;
     let placement: "top" | "bottom" = "bottom";
 
-    // If bottom placement would overflow screen, position above target
+    // If bottom placement overflows, smartly place above target
     if (popTop + popoverHeight > window.innerHeight - 16 && top > popoverHeight + 28) {
       popTop = Math.max(16, top - popoverHeight - 16);
       placement = "top";
@@ -118,79 +118,98 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
     setPopoverPos({ top: popTop, left: popLeft, placement });
   }, [open, activeStep]);
 
-  // Smooth, slow & steady scroll to target element
-  const scrollToTarget = useCallback((targetEl: Element, onSettled: () => void) => {
-    const r = targetEl.getBoundingClientRect();
-    const mobile = window.innerWidth < 768;
-
-    // Mobile: scroll target to upper third (y ~ 74px) so bottom sheet has ample room
-    // Desktop: scroll target to comfortable upper-middle
-    const targetOffset = mobile ? 74 : Math.max(90, window.innerHeight * 0.22);
-    const desiredScrollTop = window.scrollY + r.top - targetOffset;
-    const boundedScrollTop = Math.max(0, desiredScrollTop);
-
-    // If distance is tiny (< 10px), no need to wait for smooth scroll
-    if (Math.abs(window.scrollY - boundedScrollTop) < 10) {
-      onSettled();
+  // Programmatic SLOW AND STEADY gliding scroll with custom easeInOutCubic easing
+  // "make it slow and steady with lots of animation around it"
+  const smoothGlidingScroll = useCallback((targetY: number, duration = 880, onComplete?: () => void) => {
+    if (typeof window === "undefined") {
+      onComplete?.();
       return;
     }
 
-    let settled = false;
-    const finish = () => {
-      if (settled) return;
-      settled = true;
-      window.removeEventListener("scrollend", handleScrollEnd);
-      if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
-      onSettled();
+    const startY = window.scrollY;
+    const distance = targetY - startY;
+
+    if (Math.abs(distance) < 8) {
+      window.scrollTo(0, targetY);
+      onComplete?.();
+      return;
+    }
+
+    const startTime = performance.now();
+
+    // Luxury easeInOutCubic: slow gentle launch, steady glide, soft cushioned arrival
+    const easeInOutCubic = (t: number) => {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
     };
 
-    const handleScrollEnd = () => finish();
-    window.addEventListener("scrollend", handleScrollEnd, { once: true, passive: true });
+    const step = (currentTime: number) => {
+      const elapsed = currentTime - startTime;
+      const progress = Math.min(1, elapsed / duration);
+      const easedProgress = easeInOutCubic(progress);
 
-    // Fallback safety timeout (420ms) for browsers without scrollend or instant scroll
-    scrollTimerRef.current = window.setTimeout(finish, 420);
+      window.scrollTo(0, startY + distance * easedProgress);
 
-    window.scrollTo({
-      top: boundedScrollTop,
-      behavior: "smooth",
-    });
+      if (progress < 1) {
+        scrollRafRef.current = requestAnimationFrame(step);
+      } else {
+        window.scrollTo(0, targetY);
+        onComplete?.();
+      }
+    };
+
+    if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
+    scrollRafRef.current = requestAnimationFrame(step);
   }, []);
 
-  // When step changes: fade out, smoothly scroll, settle, and bloom in
+  // Soft and steady step navigation handler
   useEffect(() => {
     if (!open || !activeStep) return;
 
+    // Gently soften current spotlight during glide
     setIsReady(false);
 
     const initTimer = window.setTimeout(() => {
       const el = document.querySelector(activeStep.targetSelector);
       if (el) {
-        scrollToTarget(el, () => {
+        const r = el.getBoundingClientRect();
+        const mobile = window.innerWidth < 768;
+
+        // Mobile (iPhone / Android): scroll target to upper third (y ~ 68px)
+        // Desktop / Laptop: scroll target to comfortable upper-middle
+        const targetOffset = mobile ? 68 : Math.max(90, window.innerHeight * 0.22);
+        const desiredScrollTop = Math.max(0, window.scrollY + r.top - targetOffset);
+
+        smoothGlidingScroll(desiredScrollTop, 880, () => {
           measureTarget();
           setIsReady(true);
         });
       } else {
-        // Retry once in case element is rendering
+        // Fallback retry in case element is rendering
         const retryTimer = window.setTimeout(() => {
           const retryEl = document.querySelector(activeStep.targetSelector);
           if (retryEl) {
-            scrollToTarget(retryEl, () => {
+            const r = retryEl.getBoundingClientRect();
+            const mobile = window.innerWidth < 768;
+            const targetOffset = mobile ? 68 : Math.max(90, window.innerHeight * 0.22);
+            const desiredScrollTop = Math.max(0, window.scrollY + r.top - targetOffset);
+
+            smoothGlidingScroll(desiredScrollTop, 880, () => {
               measureTarget();
               setIsReady(true);
             });
           }
-        }, 150);
+        }, 120);
         return () => window.clearTimeout(retryTimer);
       }
     }, 40);
 
     return () => {
       window.clearTimeout(initTimer);
-      if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
+      if (scrollRafRef.current) cancelAnimationFrame(scrollRafRef.current);
     };
-  }, [open, stepIdx, activeStep, scrollToTarget, measureTarget]);
+  }, [open, stepIdx, activeStep, smoothGlidingScroll, measureTarget]);
 
-  // Passive stationary tracking during user resize or manual scroll
+  // Passive tracking during user resize or manual scroll
   useEffect(() => {
     if (!open || !isReady) return;
 
@@ -289,12 +308,12 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
           y="0"
           width="100%"
           height="100%"
-          fill="rgba(5, 5, 9, 0.82)"
+          fill="rgba(5, 5, 9, 0.84)"
           mask="url(#spotlight-mask)"
         />
       </svg>
 
-      {/* 2. Slow & Steady Animated Spotlight Target Frame */}
+      {/* 2. Slow & Steady Animated Spotlight Target Frame with LOTS OF ANIMATION around it */}
       {targetRect && (
         <div
           style={{
@@ -309,43 +328,53 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
           className="tour-target-ring rounded-2xl"
           aria-hidden="true"
         >
-          {/* A. Sonar Radar Ping Wave emitting outward */}
-          <div className="tour-radar-ping" />
+          {/* A. Rotating Ambient Orbit Glow Halo */}
+          <div className="tour-orbit-halo" />
 
-          {/* B. Gentle Horizontal Laser Scanline Beam */}
-          <div className="tour-laser-beam" />
+          {/* B. Concentric Triple Radar Ping Waves (continuous living ripples) */}
+          <div className="tour-radar-ping ping-1" />
+          <div className="tour-radar-ping ping-2" />
+          <div className="tour-radar-ping ping-3" />
 
-          {/* C. 4 Precision Reticle Corner Markers */}
-          <span className="tour-corner-marker -top-1 -left-1 border-t-2 border-l-2 rounded-tl-sm" />
-          <span className="tour-corner-marker -top-1 -right-1 border-t-2 border-r-2 rounded-tr-sm" />
-          <span className="tour-corner-marker -bottom-1 -left-1 border-b-2 border-l-2 rounded-bl-sm" />
-          <span className="tour-corner-marker -bottom-1 -right-1 border-b-2 border-r-2 rounded-br-sm" />
+          {/* C. Luminous Dual-Sweep Laser Scanline Beam with Bright Spark */}
+          <div className="tour-laser-beam">
+            <span className="tour-laser-spark" />
+          </div>
 
-          {/* D. Floating HUD Live Focus Tag (Desktop & Tablet) */}
+          {/* D. Precision Neon Corner Reticle Markers */}
+          <span className="tour-corner-marker -top-1.5 -left-1.5 border-t-2 border-l-2 rounded-tl-sm" />
+          <span className="tour-corner-marker -top-1.5 -right-1.5 border-t-2 border-r-2 rounded-tr-sm" />
+          <span className="tour-corner-marker -bottom-1.5 -left-1.5 border-b-2 border-l-2 rounded-bl-sm" />
+          <span className="tour-corner-marker -bottom-1.5 -right-1.5 border-b-2 border-r-2 rounded-br-sm" />
+
+          {/* E. Floating HUD Live Focus Tag (Desktop & Tablet) */}
           {!isMobile && (
             <div className="tour-hud-badge">
-              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>
+              <span className="size-2 rounded-full bg-emerald-400 animate-ping" />
+              <span className="font-semibold">
                 FOCUS · 0{stepIdx + 1}/0{steps.length} · {activeStep.tag}
+              </span>
+              <span className="text-[9px] text-sky-400/80 border-l border-white/20 pl-1.5 font-mono">
+                STEADY · 60FPS
               </span>
             </div>
           )}
         </div>
       )}
 
-      {/* 3. Floating Popover Card — Adapts to Mobile Phones, Tablets & Desktops */}
+      {/* 3. Floating Popover Card — Adapts to Every Window Aspect Ratio (Mobile, Tablet, Desktop) */}
       <div
         style={{
           top: isMobile ? undefined : popoverPos.top,
           left: isMobile ? undefined : popoverPos.left,
-          maxWidth: isMobile ? "calc(100vw - 24px)" : 440,
+          maxWidth: isMobile ? "calc(100vw - 20px)" : 440,
           opacity: isReady ? 1 : 0,
           transform: isReady ? "scale(1) translateY(0)" : "scale(0.96) translateY(8px)",
           pointerEvents: isReady ? "auto" : "none",
         }}
         className={`tour-popover-card ${
           isMobile ? "mobile-docked" : "tour-popover-enter"
-        } w-full overflow-hidden p-4 sm:p-5 text-white`}
+        } w-full overflow-hidden text-white`}
       >
         {/* Step Progress Gradient Bar at top of card */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-white/[0.08]">
@@ -357,10 +386,10 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
 
         {/* Mobile Swipe / Grab Handle */}
         {isMobile && (
-          <div className="mx-auto mt-1 mb-2.5 h-1 w-10 rounded-full bg-white/20" />
+          <div className="mx-auto mt-1 mb-2 h-1 w-10 rounded-full bg-white/25" />
         )}
 
-        {/* Pointer Arrow on Desktop */}
+        {/* Pointer Arrow on Desktop & Tablets */}
         {!isMobile && (
           <div
             className={`pointer-events-none absolute left-1/2 -translate-x-1/2 size-3 rotate-45 border border-indigo-400/40 bg-[#0e101c] ${
@@ -395,8 +424,8 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
         </div>
 
         {/* Card Content */}
-        <div className="py-3 space-y-1.5 sm:space-y-2">
-          <h3 className="font-sans text-base font-bold text-white sm:text-lg tracking-tight">
+        <div className="py-2.5 sm:py-3 space-y-1.5 sm:space-y-2">
+          <h3 className="font-sans text-sm sm:text-base md:text-lg font-bold text-white tracking-tight">
             {activeStep.title}
           </h3>
           <p className="text-xs leading-relaxed text-slate-300 sm:text-[13px]">
@@ -415,7 +444,7 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
         </div>
 
         {/* Card Footer: Step Dots & Navigation Buttons */}
-        <div className="flex items-center justify-between border-t border-white/10 pt-3">
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-white/10 pt-2.5 sm:pt-3">
           {/* Step Dots */}
           <div className="flex items-center gap-1.5">
             {steps.map((_, i) => (
@@ -441,7 +470,7 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
               <button
                 type="button"
                 onClick={handlePrev}
-                className="cursor-pointer rounded-full border border-white/15 bg-white/[0.05] px-3 py-1.5 font-sans text-xs font-semibold text-slate-200 transition hover:bg-white/[0.1] hover:text-white"
+                className="cursor-pointer rounded-full border border-white/15 bg-white/[0.05] px-3 py-1 font-sans text-xs font-semibold text-slate-200 transition hover:bg-white/[0.1] hover:text-white"
               >
                 ← Back
               </button>
@@ -449,7 +478,7 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
             <button
               type="button"
               onClick={handleNext}
-              className="cursor-pointer rounded-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 px-4 py-1.5 font-sans text-xs font-bold text-white shadow-md transition-transform duration-200 hover:scale-[1.03]"
+              className="cursor-pointer rounded-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 px-3.5 sm:px-4 py-1.5 font-sans text-xs font-bold text-white shadow-md transition-transform duration-200 hover:scale-[1.03]"
             >
               {stepIdx === steps.length - 1 ? "Finish Tour ✓" : "Next Step →"}
             </button>

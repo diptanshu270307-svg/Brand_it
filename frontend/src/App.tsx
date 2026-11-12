@@ -598,9 +598,9 @@ export const App: React.FC = () => {
               onClick={() => setShowTour(true)}
               aria-label="Open Workspace Tour & Interactive Tutorial"
               title="Open Workspace Tour & Interactive Tutorial"
-              className="hidden cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-white/15 bg-white/[0.05] px-2.5 py-1 font-mono text-[10px] font-semibold uppercase text-slate-200 transition-colors hover:border-white/30 hover:text-white sm:inline-flex"
+              className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-sky-400/40 bg-sky-500/15 px-2 py-1 font-mono text-[10px] font-semibold uppercase text-sky-200 transition-colors hover:border-sky-400 sm:px-2.5"
             >
-              <Icon name="spark" size={11} className="text-indigo-400" />
+              <Icon name="spark" size={11} className="text-sky-400 animate-pulse" />
               <span>Tour</span>
             </button>
 

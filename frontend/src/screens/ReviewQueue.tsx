@@ -1,7 +1,6 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, lazy, memo, useEffect, useRef, useState } from "react";
 import { api, ApiError, DraftDetail, DraftSummary, HistoryData, Passport } from "../api";
 import { SectionMockup } from "../components/SectionMockup";
-import { SourceModal } from "../components/SourceModal";
 import {
   Badge,
   Button,
@@ -12,6 +11,7 @@ import {
   Icon,
   IssueBadge,
   Modal,
+  ModalSkeleton,
   Notice,
   PageHeading,
   Panel,
@@ -21,13 +21,17 @@ import {
   getIssueTier,
 } from "../components/ui";
 
+const SourceModal = lazy(() =>
+  import("../components/SourceModal").then(m => ({ default: m.SourceModal }))
+);
+
 interface Props {
   brandId: number; role: string; selectedDraftId: number | null;
   onSelectDraft: (id: number) => void; onOpenEditor: (id: number) => void;
   onSwitchReviewer?: (senior?: boolean) => void;
 }
 interface Gate { ok: boolean; title: string; message: string; blockers?: { code: string; message: string }[] }
-export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, onSelectDraft, onOpenEditor, onSwitchReviewer }) => {
+export const ReviewQueue: React.FC<Props> = memo(({ brandId, role, selectedDraftId, onSelectDraft, onOpenEditor, onSwitchReviewer }) => {
   const [queue, setQueue] = useState<DraftSummary[]>([]);
   const [detail, setDetail] = useState<DraftDetail | null>(null);
   const [history, setHistory] = useState<HistoryData | null>(null);
@@ -661,14 +665,16 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
       </Modal>
     )}
     {passport && (
-      <SourceModal
-        brandId={brandId}
-        docId={passport.document.id}
-        initialPage={passport.page}
-        highlightExcerpt={passport.excerpt}
-        passport={passport}
-        onClose={() => setPassport(null)}
-      />
+      <Suspense fallback={<ModalSkeleton />}>
+        <SourceModal
+          brandId={brandId}
+          docId={passport.document.id}
+          initialPage={passport.page}
+          highlightExcerpt={passport.excerpt}
+          passport={passport}
+          onClose={() => setPassport(null)}
+        />
+      </Suspense>
     )}
   </div>;
-};
+});

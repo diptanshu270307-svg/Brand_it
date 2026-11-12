@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { memo, useEffect, useState } from "react";
 import {
   api,
   ChannelConditionItem,
@@ -33,7 +33,7 @@ interface Props {
 
 const AVAILABLE_CHANNELS = ["Instagram", "Investor Update", "Email", "Blog", "Landing Page", "Twitter / X"];
 
-export const Insights: React.FC<Props> = ({ brandId, role }) => {
+export const Insights: React.FC<Props> = memo(({ brandId, role }) => {
   const [data, setData] = useState<InsightsData | null>(null);
   const [evaluation, setEvaluation] = useState<EvaluationData | null>(null);
   const [privacy, setPrivacy] = useState<PrivacyInfo | null>(null);
@@ -1017,4 +1017,4 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
       </section>
     </div>
   );
-};
+});

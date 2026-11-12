@@ -593,7 +593,37 @@ export function getAuthToken(): string {
   return inMemoryToken;
 }
 
-async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
+type ColdStartListener = (warming: boolean) => void;
+const coldStartListeners = new Set<ColdStartListener>();
+let activeWarmingRequests = 0;
+
+export function subscribeColdStart(fn: ColdStartListener): () => void {
+  coldStartListeners.add(fn);
+  return () => {
+    coldStartListeners.delete(fn);
+  };
+}
+
+function notifyColdStart(warming: boolean) {
+  coldStartListeners.forEach(fn => fn(warming));
+}
+
+async function fetchWithTimeout(url: string, init: RequestInit, timeoutMs: number): Promise<Response> {
+  const controller = new AbortController();
+  const externalSignal = init.signal;
+  if (externalSignal) {
+    if (externalSignal.aborted) controller.abort();
+    else externalSignal.addEventListener("abort", () => controller.abort(), { once: true });
+  }
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function request<T>(path: string, init: RequestInit = {}, opts: { timeoutMs?: number; retries?: number } = {}): Promise<T> {
   const headers = new Headers(init.headers || {});
   const method = (init.method || "GET").toUpperCase();
 
@@ -613,27 +643,74 @@ async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
     headers.set("Content-Type", "application/json");
   }
 
-  // Include credentials for server-stored HttpOnly cookie sessions
-  const res = await fetch(`/api${path}`, { ...init, credentials: "include", headers });
-  const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    const d = data?.detail;
-    const msg =
-      typeof d === "string"
-        ? d
-        : d?.message || (Array.isArray(d) ? d.map((x: { msg?: string }) => x.msg).join("; ") : `Request failed (${res.status})`);
-    throw new ApiError(res.status, msg, d);
-  }
+  const maxRetries = opts.retries ?? (method === "GET" ? 2 : 0);
+  const timeoutMs = opts.timeoutMs ?? 28000;
+  let flaggedSlow = false;
+  const slowTimer = setTimeout(() => {
+    flaggedSlow = true;
+    activeWarmingRequests += 1;
+    if (activeWarmingRequests === 1) notifyColdStart(true);
+  }, 3200);
 
-  // Update in-memory CSRF token if returned by the endpoint
-  if (data && typeof data === "object" && "csrf_token" in data && typeof data.csrf_token === "string") {
-    setCsrfToken(data.csrf_token);
-  }
-  if (data && typeof data === "object" && "token" in data && typeof data.token === "string") {
-    setAuthToken(data.token);
-  }
+  let lastErr: unknown;
+  try {
+    for (let attempt = 0; attempt <= maxRetries; attempt++) {
+      try {
+        const res = await fetchWithTimeout(`/api${path}`, { ...init, credentials: "include", headers }, timeoutMs);
+        if ([502, 503, 504].includes(res.status) && attempt < maxRetries) {
+          if (!flaggedSlow) {
+            flaggedSlow = true;
+            activeWarmingRequests += 1;
+            if (activeWarmingRequests === 1) notifyColdStart(true);
+          }
+          await new Promise(r => setTimeout(r, 1800 * (attempt + 1)));
+          continue;
+        }
 
-  return data as T;
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          const d = data?.detail;
+          const msg =
+            typeof d === "string"
+              ? d
+              : d?.message || (Array.isArray(d) ? d.map((x: { msg?: string }) => x.msg).join("; ") : `Request failed (${res.status})`);
+          throw new ApiError(res.status, msg, d);
+        }
+
+        if (data && typeof data === "object" && "csrf_token" in data && typeof data.csrf_token === "string") {
+          setCsrfToken(data.csrf_token);
+        }
+        if (data && typeof data === "object" && "token" in data && typeof data.token === "string") {
+          setAuthToken(data.token);
+        }
+
+        return data as T;
+      } catch (err) {
+        lastErr = err;
+        const isTransient = err instanceof TypeError || (err instanceof DOMException && err.name === "AbortError");
+        if (isTransient && attempt < maxRetries) {
+          if (!flaggedSlow) {
+            flaggedSlow = true;
+            activeWarmingRequests += 1;
+            if (activeWarmingRequests === 1) notifyColdStart(true);
+          }
+          await new Promise(r => setTimeout(r, 1500 * (attempt + 1)));
+          continue;
+        }
+        if (err instanceof DOMException && err.name === "AbortError") {
+          throw new Error("The backend server is taking longer than expected to wake up. Please retry.");
+        }
+        throw err;
+      }
+    }
+    throw lastErr;
+  } finally {
+    clearTimeout(slowTimer);
+    if (flaggedSlow) {
+      activeWarmingRequests = Math.max(0, activeWarmingRequests - 1);
+      if (activeWarmingRequests === 0) notifyColdStart(false);
+    }
+  }
 }
 
 export const api = {

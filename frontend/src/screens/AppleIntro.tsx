@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { Suspense, lazy, memo, useEffect, useState } from "react";
 import {
   api,
   AppNotificationItem,
@@ -11,9 +11,7 @@ import {
   SetupProgress,
   UserInfo,
 } from "../api";
-import { AdImageScanner, AURA_GLOW_ADS } from "../components/AdImageScanner";
-import { GovernanceOrbit } from "../components/GovernanceOrbit";
-import { ProledXdrShowcase } from "../components/ProledXdrShowcase";
+import { AURA_GLOW_ADS } from "../data/adPresets";
 import { SectionMockup } from "../components/SectionMockup";
 import {
   Badge,
@@ -27,8 +25,23 @@ import {
   Metric,
   Modal,
   Notice,
+  OptimizedImage,
   Panel,
+  ShowcaseSkeleton,
 } from "../components/ui";
+
+const AdImageScanner = lazy(() =>
+  import("../components/AdImageScanner").then(m => ({ default: m.AdImageScanner }))
+);
+const ProledXdrShowcase = lazy(() =>
+  import("../components/ProledXdrShowcase").then(m => ({ default: m.ProledXdrShowcase }))
+);
+const GovernanceOrbit = lazy(() =>
+  import("../components/GovernanceOrbit").then(m => ({ default: m.GovernanceOrbit }))
+);
+const ThreeBackdrop = lazy(() =>
+  import("../components/ThreeBackdrop").then(m => ({ default: m.ThreeBackdrop }))
+);
 
 interface Props {
   brandId?: number;
@@ -158,7 +171,7 @@ const ROLE_STUDIO_TABS = [
   },
 ];
 
-export const AppleIntro: React.FC<Props> = ({
+export const AppleIntro: React.FC<Props> = memo(({
   brandId,
   brandName,
   role = "creator",
@@ -192,8 +205,6 @@ export const AppleIntro: React.FC<Props> = ({
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState("");
-
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   // Scroll Reveal Observer ("Scroll to load as you scroll down")
   useEffect(() => {
@@ -275,109 +286,6 @@ export const AppleIntro: React.FC<Props> = ({
       contentObserver.disconnect();
     };
   }, [selectedRoleKey, drafts.length, queue.length]);
-
-  // Constellation Particle Canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-
-    let animId = 0;
-    let isVisible = true;
-    let isScrolling = false;
-    let scrollTimer: number | null = null;
-    let width = (canvas.width = canvas.offsetWidth || 1200);
-    let height = (canvas.height = canvas.offsetHeight || 600);
-
-    const handleResize = () => {
-      if (!canvas) return;
-      width = canvas.width = canvas.offsetWidth || 1200;
-      height = canvas.height = canvas.offsetHeight || 600;
-    };
-    window.addEventListener("resize", handleResize);
-
-    // Pause canvas completely during scrolling to guarantee 60+ FPS scroll performance
-    const handleScroll = () => {
-      isScrolling = true;
-      if (scrollTimer) clearTimeout(scrollTimer);
-      scrollTimer = window.setTimeout(() => {
-        isScrolling = false;
-        if (isVisible && !animId) {
-          animId = requestAnimationFrame(render);
-        }
-      }, 100);
-    };
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    // Pause animation when out of view
-    const observer = new IntersectionObserver(
-      entries => {
-        isVisible = entries[0]?.isIntersecting ?? false;
-        if (isVisible && !animId && !isScrolling) {
-          render();
-        }
-      },
-      { threshold: 0.05 }
-    );
-    observer.observe(canvas);
-
-    // 14 lightweight constellation nodes for minimal CPU usage
-    const particles = Array.from({ length: 14 }, (_, i) => ({
-      x: ((i * 137.5) % 100) * 0.01 * width,
-      y: ((i * 73.1) % 100) * 0.01 * height,
-      vx: (Math.sin(i * 1.7) * 0.22) || 0.1,
-      vy: (Math.cos(i * 2.3) * 0.22) || 0.1,
-      r: (i % 3) + 1.2,
-      color: i % 2 === 0 ? "rgba(129, 140, 248, 0.7)" : "rgba(56, 189, 248, 0.65)",
-    }));
-
-    const render = () => {
-      if (!isVisible || isScrolling) {
-        animId = 0;
-        return;
-      }
-      ctx.clearRect(0, 0, width, height);
-      for (let i = 0; i < particles.length; i++) {
-        const p = particles[i];
-        p.x += p.vx;
-        p.y += p.vy;
-        if (p.x < 0 || p.x > width) p.vx *= -1;
-        if (p.y < 0 || p.y > height) p.vy *= -1;
-
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-        ctx.fillStyle = p.color;
-        ctx.fill();
-
-        for (let j = i + 1; j < particles.length; j++) {
-          const q = particles[j];
-          const dx = p.x - q.x;
-          const dy = p.y - q.y;
-          const distSq = dx * dx + dy * dy;
-          if (distSq < 14400) { // 120^2
-            const dist = Math.sqrt(distSq);
-            ctx.beginPath();
-            ctx.moveTo(p.x, p.y);
-            ctx.lineTo(q.x, q.y);
-            ctx.strokeStyle = `rgba(129, 140, 248, ${(1 - dist / 120) * 0.18})`;
-            ctx.lineWidth = 0.75;
-            ctx.stroke();
-          }
-        }
-      }
-      animId = requestAnimationFrame(render);
-    };
-    render();
-
-    return () => {
-      if (animId) cancelAnimationFrame(animId);
-      if (scrollTimer) clearTimeout(scrollTimer);
-      observer.disconnect();
-      window.removeEventListener("scroll", handleScroll);
-      window.removeEventListener("resize", handleResize);
-    };
-  }, []);
 
   const refreshAll = async () => {
     if (!brandId) return;
@@ -504,11 +412,13 @@ export const AppleIntro: React.FC<Props> = ({
          ===================================================================== */}
       <section
         id="hero-scanner-preview"
-        className="relative -mx-4 -mt-6 overflow-hidden border-b border-white/10 bg-[#050508] px-4 pb-14 pt-6 sm:-mx-6 sm:px-6 sm:pb-16 sm:pt-8 lg:-mx-9 lg:px-9"
+        className="relative -mx-4 -mt-6 overflow-hidden border-b border-white/10 bg-[#040914] px-4 pb-14 pt-6 sm:-mx-6 sm:px-6 sm:pb-16 sm:pt-8 lg:-mx-9 lg:px-9"
       >
-        <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full opacity-85" />
-        <div aria-hidden="true" style={{ background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)" }} className="pointer-events-none absolute -left-20 top-6 h-80 w-80 rounded-full" />
-        <div aria-hidden="true" style={{ background: "radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%)" }} className="pointer-events-none absolute right-0 top-16 h-80 w-80 rounded-full" />
+        <Suspense fallback={null}>
+          <ThreeBackdrop density="hero" className="absolute inset-0 h-full w-full opacity-95" />
+        </Suspense>
+        <div aria-hidden="true" style={{ background: "radial-gradient(circle, rgba(20,184,166,0.14) 0%, transparent 70%)" }} className="pointer-events-none absolute -left-20 top-6 h-80 w-80 rounded-full" />
+        <div aria-hidden="true" style={{ background: "radial-gradient(circle, rgba(56,189,248,0.10) 0%, transparent 70%)" }} className="pointer-events-none absolute right-0 top-16 h-80 w-80 rounded-full" />
 
         <div className="relative mx-auto max-w-[1400px]">
           {/* Topic Switcher Pills */}
@@ -655,7 +565,17 @@ export const AppleIntro: React.FC<Props> = ({
                       }`}
                     >
                       <div className="aspect-[16/10] w-full overflow-hidden rounded bg-black">
-                        <img src={ad.customImageUrl} alt="" className="h-full w-full object-cover" />
+                        {ad.customImageUrl && (
+                          <OptimizedImage
+                            src={ad.customImageUrl}
+                            fallbackSrc={ad.fallbackImageUrl}
+                            width={ad.dimensions.width}
+                            height={ad.dimensions.height}
+                            alt=""
+                            wrapperClassName="h-full w-full"
+                            className="h-full w-full object-cover"
+                          />
+                        )}
                       </div>
                       <p className="mt-0.5 truncate font-mono text-[8px] font-semibold text-white">
                         0{idx + 1}
@@ -670,16 +590,26 @@ export const AppleIntro: React.FC<Props> = ({
                 {activeHeroAd.customImageUrl && (
                   <img
                     src={activeHeroAd.customImageUrl}
+                    width={activeHeroAd.dimensions.width}
+                    height={activeHeroAd.dimensions.height}
+                    decoding="async"
                     alt=""
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
                   />
                 )}
-                <img
-                  src={activeHeroAd.customImageUrl}
-                  alt={activeHeroAd.name}
-                  className="relative z-10 max-h-full max-w-full object-contain rounded"
-                />
+                {activeHeroAd.customImageUrl && (
+                  <OptimizedImage
+                    src={activeHeroAd.customImageUrl}
+                    fallbackSrc={activeHeroAd.fallbackImageUrl}
+                    width={activeHeroAd.dimensions.width}
+                    height={activeHeroAd.dimensions.height}
+                    eager
+                    alt={activeHeroAd.name}
+                    wrapperClassName="relative z-10 max-h-full max-w-full"
+                    className="max-h-full max-w-full object-contain rounded"
+                  />
+                )}
 
                 {/* Bounding Box Highlights */}
                 {activeHeroAd.regions.slice(0, 2).map(reg => {
@@ -1056,12 +986,14 @@ export const AppleIntro: React.FC<Props> = ({
              Flexible with ALL image aspect ratios
          ===================================================================== */}
       <div id="ad-image-scanner" className="reveal-on-scroll">
-        <AdImageScanner
-          brandId={brandId}
-          brandName={brandName}
-          initialAdId={selectedScannerAdId}
-          onOpenDraftInChecker={draftId => onLaunchDraft(draftId)}
-        />
+        <Suspense fallback={<ShowcaseSkeleton height="h-[520px]" />}>
+          <AdImageScanner
+            brandId={brandId}
+            brandName={brandName}
+            initialAdId={selectedScannerAdId}
+            onOpenDraftInChecker={draftId => onLaunchDraft(draftId)}
+          />
+        </Suspense>
       </div>
 
       {/* =====================================================================
@@ -1116,16 +1048,26 @@ export const AppleIntro: React.FC<Props> = ({
                     {ad.customImageUrl && (
                       <img
                         src={ad.customImageUrl}
+                        width={ad.dimensions.width}
+                        height={ad.dimensions.height}
+                        loading="lazy"
+                        decoding="async"
                         alt=""
                         aria-hidden="true"
                         className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
                       />
                     )}
-                    <img
-                      src={ad.customImageUrl}
-                      alt={ad.name}
-                      className="relative z-10 max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
-                    />
+                    {ad.customImageUrl && (
+                      <OptimizedImage
+                        src={ad.customImageUrl}
+                        fallbackSrc={ad.fallbackImageUrl}
+                        width={ad.dimensions.width}
+                        height={ad.dimensions.height}
+                        alt={ad.name}
+                        wrapperClassName="relative z-10 max-h-full max-w-full"
+                        className="max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                      />
+                    )}
                     <div className="absolute left-2.5 top-2.5 z-20 flex gap-1">
                       <span className="rounded-full bg-black/80 px-2 py-0.5 font-mono text-[9px] font-bold text-white">
                         {ad.channel}
@@ -1205,10 +1147,12 @@ export const AppleIntro: React.FC<Props> = ({
       </section>
 
       <div className="reveal-on-scroll -mx-4 sm:-mx-6 lg:-mx-9">
-        <ProledXdrShowcase
-          onTryChecker={() => onOpenScreen("review")}
-          onOpenVault={() => onOpenScreen("vault")}
-        />
+        <Suspense fallback={<ShowcaseSkeleton height="h-[520px]" />}>
+          <ProledXdrShowcase
+            onTryChecker={() => onOpenScreen("review")}
+            onOpenVault={() => onOpenScreen("vault")}
+          />
+        </Suspense>
       </div>
 
       {error && <Notice tone="danger">{error}</Notice>}
@@ -1385,8 +1329,10 @@ export const AppleIntro: React.FC<Props> = ({
 
       {/* Orbit Architecture */}
       <div className="reveal-on-scroll">
-        <GovernanceOrbit mode="hero" activeScreen="intro" onNavigate={onOpenScreen} />
+        <Suspense fallback={<ShowcaseSkeleton height="h-[460px]" />}>
+          <GovernanceOrbit mode="hero" activeScreen="intro" onNavigate={onOpenScreen} />
+        </Suspense>
       </div>
     </div>
   );
-};
+});

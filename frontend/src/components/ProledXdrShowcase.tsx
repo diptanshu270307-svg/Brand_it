@@ -150,7 +150,7 @@ const REFERENCE_MODES = [
   },
 ];
 
-export const ProledXdrShowcase: React.FC<Props> = ({ onTryChecker, onOpenVault }) => {
+export const ProledXdrShowcase: React.FC<Props> = React.memo(({ onTryChecker, onOpenVault }) => {
   const [activeTab, setActiveTab] = useState<"tandem" | "curtain" | "touch">("tandem");
   const [selectedLayerId, setSelectedLayerId] = useState<number>(3);
   const [explosionPct, setExplosionPct] = useState<number>(78);
@@ -884,4 +884,4 @@ export const ProledXdrShowcase: React.FC<Props> = ({ onTryChecker, onOpenVault }
       </div>
     </section>
   );
-};
+});

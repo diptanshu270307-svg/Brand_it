@@ -1,7 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, lazy, memo, useEffect, useState } from "react";
 import { api, DocumentItem, DraftDetail, Passport } from "../api";
 import { SectionMockup } from "../components/SectionMockup";
-import { SourceModal } from "../components/SourceModal";
 import {
   Badge,
   Button,
@@ -12,6 +11,7 @@ import {
   Icon,
   Metric,
   Modal,
+  ModalSkeleton,
   Notice,
   PageHeading,
   Panel,
@@ -20,11 +20,15 @@ import {
   formatDate,
 } from "../components/ui";
 
+const SourceModal = lazy(() =>
+  import("../components/SourceModal").then(m => ({ default: m.SourceModal }))
+);
+
 interface Props { brandId: number; role: string; onOpenDraft?: (id: number) => void }
 interface Affected { draft: DraftDetail; proofs: Passport[] }
 const isInvalid = (p: Passport) => p.state !== "current";
 
-export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) => {
+export const EvidenceVault: React.FC<Props> = memo(({ brandId, role, onOpenDraft }) => {
   const [records, setRecords] = useState<Passport[]>([]);
   const [docs, setDocs] = useState<DocumentItem[]>([]);
   const [loading, setLoading] = useState(true);
@@ -433,15 +437,17 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
       </Modal>
     )}
     {inspected && (
-      <SourceModal
-        brandId={brandId}
-        docId={inspected.document.id}
-        initialPage={inspected.page}
-        highlightExcerpt={inspected.excerpt}
-        passport={inspected}
-        onClose={() => setInspected(null)}
-      />
+      <Suspense fallback={<ModalSkeleton />}>
+        <SourceModal
+          brandId={brandId}
+          docId={inspected.document.id}
+          initialPage={inspected.page}
+          highlightExcerpt={inspected.excerpt}
+          passport={inspected}
+          onClose={() => setInspected(null)}
+        />
+      </Suspense>
     )}
   </div>;
-};
+});
 

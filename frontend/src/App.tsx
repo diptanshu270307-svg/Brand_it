@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { Suspense, lazy, useCallback, useEffect, useState } from "react";
 import {
   api,
   BrandInfo,
@@ -13,17 +13,49 @@ import {
   SystemModeInfo,
   UserInfo,
 } from "./api";
-import { BrandLibrary } from "./screens/BrandLibrary";
-import { DraftReview } from "./screens/DraftReview";
-import { EvidenceVault } from "./screens/EvidenceVault";
-import { Insights } from "./screens/Insights";
-import { ReviewQueue } from "./screens/ReviewQueue";
-import { AppleIntro } from "./screens/AppleIntro";
 import { Loader } from "./components/Loader";
-import { GovernanceOrbit } from "./components/GovernanceOrbit";
-import { ProledXdrShowcase } from "./components/ProledXdrShowcase";
-import { WorkspaceTour } from "./components/WorkspaceTour";
-import { Badge, BrandLintLogo, Button, Icon, Modal, Notice, StatusAnnouncer, errorText } from "./components/ui";
+import {
+  Badge,
+  BrandLintLogo,
+  Button,
+  ErrorBoundary,
+  Icon,
+  Modal,
+  Notice,
+  OptimizedImage,
+  ScreenSkeleton,
+  ShowcaseSkeleton,
+  StatusAnnouncer,
+  errorText,
+} from "./components/ui";
+
+const BrandLibrary = lazy(() =>
+  import("./screens/BrandLibrary").then(m => ({ default: m.BrandLibrary }))
+);
+const DraftReview = lazy(() =>
+  import("./screens/DraftReview").then(m => ({ default: m.DraftReview }))
+);
+const EvidenceVault = lazy(() =>
+  import("./screens/EvidenceVault").then(m => ({ default: m.EvidenceVault }))
+);
+const Insights = lazy(() =>
+  import("./screens/Insights").then(m => ({ default: m.Insights }))
+);
+const ReviewQueue = lazy(() =>
+  import("./screens/ReviewQueue").then(m => ({ default: m.ReviewQueue }))
+);
+const AppleIntro = lazy(() =>
+  import("./screens/AppleIntro").then(m => ({ default: m.AppleIntro }))
+);
+const GovernanceOrbit = lazy(() =>
+  import("./components/GovernanceOrbit").then(m => ({ default: m.GovernanceOrbit }))
+);
+const ProledXdrShowcase = lazy(() =>
+  import("./components/ProledXdrShowcase").then(m => ({ default: m.ProledXdrShowcase }))
+);
+const WorkspaceTour = lazy(() =>
+  import("./components/WorkspaceTour").then(m => ({ default: m.WorkspaceTour }))
+);
 
 type Screen = "intro" | "review" | "vault" | "queue" | "insights" | "library";
 const TABS: { id: Screen; num: string; label: string; hint: string; icon: string }[] = [
@@ -415,10 +447,36 @@ export const App: React.FC = () => {
       setAuthBusy(false);
     }
   };
-  const switchPersona = async (email: string) => { const me = await bootstrap(email); if (me) setRefresh(v => v + 1); return me; };
-  const navigate = (next: Screen) => { setScreen(next); window.scrollTo({ top: 0 }); };
-  const openDraft = (id: number) => { setSelectedDraftId(id); navigate("review"); };
-  const independentReviewer = async (senior: boolean, draft?: DraftDetail) => {
+  const switchPersona = useCallback(async (email: string) => { const me = await bootstrap(email); if (me) setRefresh(v => v + 1); return me; }, []);
+  const navigate = useCallback((next: Screen) => {
+    setScreen(next);
+    window.scrollTo({ top: 0 });
+  }, []);
+  const openWorkspaceOrAuth = useCallback((next: Screen, anchorId?: string) => {
+    if (!user || !brand) {
+      if (anchorId) {
+        const tryEl = document.getElementById("try");
+        if (tryEl) {
+          tryEl.scrollIntoView({ behavior: "smooth" });
+          return;
+        }
+      }
+      setAuthMsg("Sign in or pick a demo role below to open this workspace.");
+      setAuthView("login");
+      return;
+    }
+    navigate(next);
+    if (anchorId) {
+      setTimeout(() => {
+        document.getElementById(anchorId)?.scrollIntoView({ behavior: "smooth" });
+      }, 120);
+    }
+  }, [user, brand, navigate]);
+  const openDraft = useCallback((id: number) => {
+    setSelectedDraftId(id);
+    navigate("review");
+  }, [navigate]);
+  const independentReviewer = useCallback(async (senior: boolean, draft?: DraftDetail) => {
     const eligible = DEMO_USERS.filter(persona => senior
       ? ["senior_reviewer", "brand_owner"].includes(persona.badge)
       : ["reviewer", "senior_reviewer", "brand_owner"].includes(persona.badge));
@@ -427,12 +485,12 @@ export const App: React.FC = () => {
     const me = await switchPersona(candidate.email);
     if (me && draft && me.user.id === draft.author_id) { setError("Choose an independent reviewer. Authors cannot approve their own drafts."); return null; }
     return me;
-  };
-  const switchReviewer = async (senior = false) => {
+  }, [switchPersona]);
+  const switchReviewer = useCallback(async (senior = false) => {
     try { const draft = brand && selectedDraftId ? await api.getDraft(brand.id, selectedDraftId) : undefined; await independentReviewer(senior, draft); }
     catch (e) { setError(errorText(e)); }
-  };
-  const openRecalledDraft = async (id: number) => {
+  }, [brand, selectedDraftId, independentReviewer]);
+  const openRecalledDraft = useCallback(async (id: number) => {
     if (!brand) return;
     try {
       const draft = await api.getDraft(brand.id, id);
@@ -442,15 +500,30 @@ export const App: React.FC = () => {
       }
       openDraft(id);
     } catch (e) { setError(errorText(e)); }
-  };
-  const openQueue = async (id: number) => {
+  }, [brand, switchPersona, openDraft]);
+  const openQueue = useCallback(async (id: number) => {
     if (!brand) return;
     try {
       const d = await api.getDraft(brand.id, id);
       const me = await independentReviewer(d.route === "senior" || d.computed_route === "senior", d);
       if (me) { setSelectedDraftId(id); navigate("queue"); }
     } catch (e) { setError(errorText(e)); }
-  };
+  }, [brand, independentReviewer, navigate]);
+  const handleSwitchPersonaProp = useCallback((email: string) => { void switchPersona(email); }, [switchPersona]);
+  const handleLaunchDraftProp = useCallback((id: number, persona?: string) => {
+    if (persona) {
+      void switchPersona(persona).then(me => {
+        if (me) openDraft(id);
+      });
+    } else openDraft(id);
+  }, [switchPersona, openDraft]);
+  const handleLaunchStepProp = useCallback((step?: number) => {
+    setTourStep(step ?? 0);
+    setShowTour(true);
+  }, []);
+  const handleOpenQueueProp = useCallback((id: number) => { void openQueue(id); }, [openQueue]);
+  const handleOpenRecalledProp = useCallback((id: number) => { void openRecalledDraft(id); }, [openRecalledDraft]);
+  const handleSwitchReviewerProp = useCallback((senior?: boolean) => { void switchReviewer(senior); }, [switchReviewer]);
   const [loaderActive, setLoaderActive] = useState(true);
   const ready = !!user && !!brand;
   const activeRoleLabel = (brand?.role || activeCompany?.role || "creator").replace(/_/g, " ");
@@ -461,7 +534,13 @@ export const App: React.FC = () => {
   const displayBrandName = cleanWorkspaceName(brand?.name) || "Lumina Flow";
   const displayCompanyName = cleanWorkspaceName(activeCompany?.name) || displayBrandName;
   return <>
-    {loaderActive && <Loader ready={ready || !!error} onDone={() => setLoaderActive(false)} />}
+    {loaderActive && (
+      <Loader
+        ready={ready || !!error}
+        onRetry={() => { void bootstrap(undefined, true); }}
+        onDone={() => setLoaderActive(false)}
+      />
+    )}
     <div className="lv-shell min-h-dvh bg-carbon text-bone">
       <StatusAnnouncer message={error || authMsg || teamMsg || null} />
       <a href="#workspace" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[1100] focus:rounded-md focus:bg-bone focus:px-4 focus:py-2 focus:font-display focus:text-xs focus:font-bold focus:uppercase focus:text-carbon">Skip to workspace</a>
@@ -822,15 +901,17 @@ export const App: React.FC = () => {
                 <Icon name="close" size={16} />
               </button>
             </div>
-            <GovernanceOrbit
-              mode="compact"
-              activeScreen={screen}
-              onNavigate={(s) => {
-                setShowOrbit(false);
-                navigate(s);
-              }}
-              onClose={() => setShowOrbit(false)}
-            />
+            <Suspense fallback={<ShowcaseSkeleton height="h-[460px]" />}>
+              <GovernanceOrbit
+                mode="compact"
+                activeScreen={screen}
+                onNavigate={(s) => {
+                  setShowOrbit(false);
+                  navigate(s);
+                }}
+                onClose={() => setShowOrbit(false)}
+              />
+            </Suspense>
           </div>
         </div>
       )}
@@ -848,65 +929,69 @@ export const App: React.FC = () => {
 
       <main id="workspace" tabIndex={-1} className="mx-auto max-w-[1400px] px-4 pb-12 pt-6 outline-none sm:px-6 sm:pt-8" key={`${brand?.id}-${refresh}`}>
         {ready && brand && user && (
-          <div className="lv-enter motion-workspace" key={screen}>
-            {screen === "intro" && (
-              <AppleIntro
-                brandId={brand.id}
-                brandName={displayBrandName}
-                companyId={activeCompany?.id || brand.company_id}
-                role={brand.role}
-                user={user}
-                privacy={privacy}
-                onOpenScreen={navigate}
-                onSwitchPersona={email => { void switchPersona(email); }}
-                onLaunchDraft={(id, persona) => {
-                  if (persona) {
-                    void switchPersona(persona).then(me => {
-                      if (me) openDraft(id);
-                    });
-                  } else openDraft(id);
-                }}
-                onLaunchStep={step => {
-                  setTourStep(step ?? 0);
-                  setShowTour(true);
-                }}
-              />
-            )}
-            {screen === "review" && (
-              <DraftReview
-                brandId={brand.id}
-                role={brand.role}
-                selectedDraftId={selectedDraftId}
-                onSelectDraft={setSelectedDraftId}
-                onOpenQueue={id => { void openQueue(id); }}
-              />
-            )}
-            {screen === "vault" && (
-              <EvidenceVault
-                brandId={brand.id}
-                role={brand.role}
-                onOpenDraft={id => { void openRecalledDraft(id); }}
-              />
-            )}
-            {screen === "queue" && (
-              <ReviewQueue
-                brandId={brand.id}
-                role={brand.role}
-                selectedDraftId={selectedDraftId}
-                onSelectDraft={setSelectedDraftId}
-                onOpenEditor={openDraft}
-                onSwitchReviewer={senior => { void switchReviewer(senior); }}
-              />
-            )}
-            {screen === "insights" && <Insights brandId={brand.id} role={brand.role} />}
-            {screen === "library" && <BrandLibrary brandId={brand.id} role={brand.role} />}
-          </div>
+          <ErrorBoundary onReset={() => setRefresh(v => v + 1)}>
+            <Suspense fallback={<ScreenSkeleton />}>
+              <div className="lv-enter motion-workspace" key={screen}>
+                {screen === "intro" && (
+                  <AppleIntro
+                    brandId={brand.id}
+                    brandName={displayBrandName}
+                    companyId={activeCompany?.id || brand.company_id}
+                    role={brand.role}
+                    user={user}
+                    privacy={privacy}
+                    onOpenScreen={navigate}
+                    onSwitchPersona={handleSwitchPersonaProp}
+                    onLaunchDraft={handleLaunchDraftProp}
+                    onLaunchStep={handleLaunchStepProp}
+                  />
+                )}
+                {screen === "review" && (
+                  <DraftReview
+                    brandId={brand.id}
+                    role={brand.role}
+                    selectedDraftId={selectedDraftId}
+                    onSelectDraft={setSelectedDraftId}
+                    onOpenQueue={handleOpenQueueProp}
+                  />
+                )}
+                {screen === "vault" && (
+                  <EvidenceVault
+                    brandId={brand.id}
+                    role={brand.role}
+                    onOpenDraft={handleOpenRecalledProp}
+                  />
+                )}
+                {screen === "queue" && (
+                  <ReviewQueue
+                    brandId={brand.id}
+                    role={brand.role}
+                    selectedDraftId={selectedDraftId}
+                    onSelectDraft={setSelectedDraftId}
+                    onOpenEditor={openDraft}
+                    onSwitchReviewer={handleSwitchReviewerProp}
+                  />
+                )}
+                {screen === "insights" && <Insights brandId={brand.id} role={brand.role} />}
+                {screen === "library" && <BrandLibrary brandId={brand.id} role={brand.role} />}
+              </div>
+            </Suspense>
+          </ErrorBoundary>
         )}
 
-        {!ready && !switching && (
+        {!ready && (!switching || !loaderActive) && (
           <div className="space-y-16 py-6">
+            {switching && !loaderActive && (
+              <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-teal-500/30 bg-[#06121d]/80 px-4 py-3 text-xs text-teal-200">
+                <span className="inline-flex items-center gap-2 font-mono uppercase tracking-wide">
+                  <span className="size-2 rounded-full bg-teal-400 animate-pulse" />
+                  Waking up Render API server — showing interactive UI preview in the meantime
+                </span>
+                <Button onClick={() => { void bootstrap(undefined, true); }}>Retry API</Button>
+              </div>
+            )}
             {/* BrandLint Unauthenticated Landing Experience */}
-            <section className="guides contours ruler relative overflow-hidden rounded-2xl border border-line bg-carbon px-6 py-12 sm:px-10 sm:py-16">
+            <section id="how" className="guides contours ruler relative overflow-hidden rounded-2xl border border-line bg-carbon px-6 py-12 sm:px-10 sm:py-16">
               <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
                 <div>
                   <p className="font-label text-xs uppercase text-iris">Before it&apos;s published · BrandLint</p>
@@ -954,9 +1039,14 @@ export const App: React.FC = () => {
 
                 <div className="relative mx-auto w-full max-w-lg">
                   <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
-                    <img
-                      src="/ads/aura-glow-guarantee-ad.jpg"
+                    <OptimizedImage
+                      src="/ads/aura-glow-guarantee-ad.webp"
+                      fallbackSrc="/ads/aura-glow-guarantee-ad.jpg"
+                      width={1024}
+                      height={571}
+                      eager
                       alt="Aura Glow Guarantee Banner Audit"
+                      wrapperClassName="h-full w-full"
                       className="h-full w-full object-cover"
                     />
                     <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/30" />
@@ -985,13 +1075,15 @@ export const App: React.FC = () => {
             </section>
 
             {/* Apple MacBook Pro PROLED XDR Display-Inspired Tandem Verification Showcase */}
-            <div className="overflow-hidden rounded-2xl border border-line">
-              <ProledXdrShowcase
-                onTryChecker={() => {
-                  setAuthMsg("");
-                  setAuthView(user ? "workspace" : "login");
-                }}
-              />
+            <div id="numbers" className="overflow-hidden rounded-2xl border border-line">
+              <Suspense fallback={<ShowcaseSkeleton height="h-[520px]" />}>
+                <ProledXdrShowcase
+                  onTryChecker={() => {
+                    setAuthMsg("");
+                    setAuthView(user ? "workspace" : "login");
+                  }}
+                />
+              </Suspense>
             </div>
 
             {/* Quick 1-click Demo Role Cards */}
@@ -1077,19 +1169,14 @@ export const App: React.FC = () => {
             <div className="relative mt-7 flex flex-wrap items-center justify-center gap-3.5">
               <button
                 type="button"
-                onClick={() => navigate("review")}
+                onClick={() => openWorkspaceOrAuth("review")}
                 className="cursor-pointer rounded-full bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-500 px-7 py-3.5 font-sans text-sm font-bold text-white shadow-[0_10px_30px_-5px_rgba(99,102,241,0.55)] transition hover:scale-[1.02]"
               >
                 Open Content &amp; Ad Checker →
               </button>
               <button
                 type="button"
-                onClick={() => {
-                  navigate("intro");
-                  setTimeout(() => {
-                    document.getElementById("ad-image-scanner")?.scrollIntoView({ behavior: "smooth" });
-                  }, 80);
-                }}
+                onClick={() => openWorkspaceOrAuth("intro", "ad-image-scanner")}
                 className="cursor-pointer rounded-full border border-white/15 bg-white/[0.05] px-6 py-3.5 font-sans text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.1]"
               >
                 Scan Aura Glow Ads ↑
@@ -1131,34 +1218,31 @@ export const App: React.FC = () => {
               </h3>
               <ul className="space-y-2.5 text-xs text-slate-400">
                 <li>
-                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("review")}>
+                  <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("review")}>
                     Text &amp; Post Claim Checker
                   </button>
                 </li>
                 <li>
                   <button
                     type="button"
-                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
-                    onClick={() => {
-                      navigate("intro");
-                      setTimeout(() => document.getElementById("ad-image-scanner")?.scrollIntoView({ behavior: "smooth" }), 80);
-                    }}
+                    className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white"
+                    onClick={() => openWorkspaceOrAuth("intro", "ad-image-scanner")}
                   >
                     Ad Image &amp; Placement Scanner
                   </button>
                 </li>
                 <li>
-                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("library")}>
+                  <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("library")}>
                     Deterministic Brand Rulebook
                   </button>
                 </li>
                 <li>
-                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("vault")}>
+                  <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("vault")}>
                     Evidence Vault Passports
                   </button>
                 </li>
                 <li>
-                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("insights")}>
+                  <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("insights")}>
                     33-Case Evaluation Benchmark
                   </button>
                 </li>
@@ -1174,11 +1258,8 @@ export const App: React.FC = () => {
                 <li>
                   <button
                     type="button"
-                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
-                    onClick={() => {
-                      navigate("intro");
-                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
-                    }}
+                    className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white"
+                    onClick={() => openWorkspaceOrAuth("intro", "aura-glow-campaign-gallery")}
                   >
                     01 · Money-Back Guarantee Ad
                   </button>
@@ -1186,11 +1267,8 @@ export const App: React.FC = () => {
                 <li>
                   <button
                     type="button"
-                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
-                    onClick={() => {
-                      navigate("intro");
-                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
-                    }}
+                    className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white"
+                    onClick={() => openWorkspaceOrAuth("intro", "aura-glow-campaign-gallery")}
                   >
                     02 · 3-SKU Packaging Lineup
                   </button>
@@ -1198,11 +1276,8 @@ export const App: React.FC = () => {
                 <li>
                   <button
                     type="button"
-                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
-                    onClick={() => {
-                      navigate("intro");
-                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
-                    }}
+                    className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white"
+                    onClick={() => openWorkspaceOrAuth("intro", "aura-glow-campaign-gallery")}
                   >
                     03 · Bathroom Mirror Routine
                   </button>
@@ -1210,11 +1285,8 @@ export const App: React.FC = () => {
                 <li>
                   <button
                     type="button"
-                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
-                    onClick={() => {
-                      navigate("intro");
-                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
-                    }}
+                    className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white"
+                    onClick={() => openWorkspaceOrAuth("intro", "aura-glow-campaign-gallery")}
                   >
                     04 · Cheek Dropper Portrait
                   </button>
@@ -1222,11 +1294,8 @@ export const App: React.FC = () => {
                 <li>
                   <button
                     type="button"
-                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
-                    onClick={() => {
-                      navigate("intro");
-                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
-                    }}
+                    className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white"
+                    onClick={() => openWorkspaceOrAuth("intro", "aura-glow-campaign-gallery")}
                   >
                     05 · Macro Serum Texture
                   </button>
@@ -1255,24 +1324,31 @@ export const App: React.FC = () => {
               </h3>
               <ul className="space-y-2.5 text-xs text-slate-400">
                 <li>
-                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("queue")}>
+                  <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("queue")}>
                     Four-Eyes Approvals Queue
                   </button>
                 </li>
                 <li>
-                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => setShowTour(true)}>
+                  <button
+                    type="button"
+                    className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white"
+                    onClick={() => {
+                      if (ready || !!error) setShowTour(true);
+                      else openWorkspaceOrAuth("intro", "try");
+                    }}
+                  >
                     5-Step Interactive Tour
                   </button>
                 </li>
                 <li>
-                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => setShowPrivacy(true)}>
+                  <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => setShowPrivacy(true)}>
                     Privacy &amp; AI Processing
                   </button>
                 </li>
                 <li>
                   <button
                     type="button"
-                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
+                    className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white"
                     onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
                   >
                     ↑ Back to Top
@@ -1286,48 +1362,52 @@ export const App: React.FC = () => {
           <div className="mt-8 flex flex-wrap items-center justify-between gap-4 font-mono text-xs text-slate-400">
             <p>© {new Date().getFullYear()} BrandLint · {displayCompanyName}. Built for verifiable brand &amp; ad governance.</p>
             <div className="flex flex-wrap items-center gap-5">
-              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("intro")}>Home</button>
-              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("review")}>Check Content</button>
-              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("queue")}>Approvals</button>
-              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("library")}>Rules</button>
-              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("vault")}>Facts</button>
-              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("insights")}>Insights</button>
+              <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("intro", "how")}>Home</button>
+              <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("review")}>Check Content</button>
+              <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("queue")}>Approvals</button>
+              <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("library")}>Rules</button>
+              <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("vault")}>Facts</button>
+              <button type="button" className="cursor-pointer rounded border-0 bg-transparent p-0 text-slate-400 transition-colors hover:text-white" onClick={() => openWorkspaceOrAuth("insights")}>Insights</button>
             </div>
           </div>
         </div>
       </footer>
-      <WorkspaceTour
-        open={(ready || !!error) && showTour && !authView && !showAcceptInvite}
-        onClose={() => setShowTour(false)}
-        currentStepIndex={tourStep}
-        onStepChange={setTourStep}
-        user={user}
-        companyName={displayCompanyName}
-        brandName={displayBrandName}
-        role={brand?.role || activeCompany?.role}
-        privacy={privacy}
-        theme={theme}
-        onToggleTheme={() => setTheme(t => (t === "dark" ? "light" : "dark"))}
-        onNavigate={navigate}
-        onOpenAuth={view => {
-          setAuthMsg("");
-          setAuthPassword("");
-          setAuthView(view);
-        }}
-        onOpenTeamModal={() => {
-          void openTeamModal();
-        }}
-        onLogout={() => {
-          void handleLogout();
-        }}
-        onSwitchPersona={email => {
-          void switchPersona(email);
-        }}
-        onOpenPrivacy={() => setShowPrivacy(true)}
-        onOpenReset={() => setShowReset(true)}
-        allowPersonaSwitch={systemMode?.allow_persona_switch !== false}
-        allowReset={!!systemMode?.allow_reset}
-      />
+      {(ready || !!error) && showTour && !authView && !showAcceptInvite && (
+        <Suspense fallback={null}>
+          <WorkspaceTour
+            open
+            onClose={() => setShowTour(false)}
+            currentStepIndex={tourStep}
+            onStepChange={setTourStep}
+            user={user}
+            companyName={displayCompanyName}
+            brandName={displayBrandName}
+            role={brand?.role || activeCompany?.role}
+            privacy={privacy}
+            theme={theme}
+            onToggleTheme={() => setTheme(t => (t === "dark" ? "light" : "dark"))}
+            onNavigate={navigate}
+            onOpenAuth={view => {
+              setAuthMsg("");
+              setAuthPassword("");
+              setAuthView(view);
+            }}
+            onOpenTeamModal={() => {
+              void openTeamModal();
+            }}
+            onLogout={() => {
+              void handleLogout();
+            }}
+            onSwitchPersona={email => {
+              void switchPersona(email);
+            }}
+            onOpenPrivacy={() => setShowPrivacy(true)}
+            onOpenReset={() => setShowReset(true)}
+            allowPersonaSwitch={systemMode?.allow_persona_switch !== false}
+            allowReset={!!systemMode?.allow_reset}
+          />
+        </Suspense>
+      )}
       {showPrivacy && <Modal title="Processing & privacy" onClose={() => setShowPrivacy(false)}><div className="space-y-5"><Badge tone={privacy?.hosted ? "success" : "warning"}>{privacy?.hosted ? "Hosted AI processing" : "Local verification"} · {privacy?.provider || "Unknown"}</Badge><p className="text-sm leading-7">{privacy?.notice || "Processing information is unavailable. Reconnect before submitting confidential content."}</p><Notice>Offline checks demonstrate the workflow. They do not establish factual truth or comprehensive claim detection. Source matches and human decisions remain visible.</Notice></div></Modal>}
       {showReset && <Modal title="Reset the demo workspace?" onClose={() => setShowReset(false)}><p className="lv-muted mb-6 text-sm leading-6">This replaces demo drafts, evidence decisions and review history with the original sample data.</p><div className="flex justify-end gap-2"><Button onClick={() => setShowReset(false)}>Cancel</Button><Button variant="danger" disabled={switching} onClick={async () => { setSwitching(true); try { await api.resetDemo(); await switchPersona(DEMO_USERS[0].email); setSelectedDraftId(null); navigate("review"); setShowReset(false); } catch (e) { setError(errorText(e)); } finally { setSwitching(false); } }}>Reset sample data</Button></div></Modal>}
       {authView === "login" && (

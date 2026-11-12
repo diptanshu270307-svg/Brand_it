@@ -577,3 +577,182 @@ export function CompactList({
   );
 }
 
+/** Lazy-loaded WebP-first image with explicit dimensions and smooth skeleton placeholder. */
+export function OptimizedImage({
+  src,
+  fallbackSrc,
+  alt,
+  width,
+  height,
+  eager = false,
+  className = "",
+  wrapperClassName = "",
+}: {
+  src: string;
+  fallbackSrc?: string;
+  alt: string;
+  width: number;
+  height: number;
+  eager?: boolean;
+  className?: string;
+  wrapperClassName?: string;
+}) {
+  const [loaded, setLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    setLoaded(false);
+  }, [src]);
+
+  const imgEl = (
+    <img
+      src={src}
+      alt={alt}
+      width={width}
+      height={height}
+      loading={eager ? "eager" : "lazy"}
+      decoding="async"
+      onLoad={() => setLoaded(true)}
+      onError={() => setLoaded(true)}
+      className={`${className} transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+    />
+  );
+
+  return (
+    <span className={`relative inline-flex items-center justify-center ${wrapperClassName}`}>
+      {!loaded && (
+        <span aria-hidden="true" className="lv-skeleton absolute inset-0 rounded-lg" />
+      )}
+      {fallbackSrc && src.endsWith(".webp") ? (
+        <picture>
+          <source srcSet={src} type="image/webp" />
+          <img
+            src={fallbackSrc}
+            alt={alt}
+            width={width}
+            height={height}
+            loading={eager ? "eager" : "lazy"}
+            decoding="async"
+            onLoad={() => setLoaded(true)}
+            onError={() => setLoaded(true)}
+            className={`${className} transition-opacity duration-300 ${loaded ? "opacity-100" : "opacity-0"}`}
+          />
+        </picture>
+      ) : (
+        imgEl
+      )}
+    </span>
+  );
+}
+
+export function SkeletonBox({ className = "" }: { className?: string }) {
+  return <div aria-hidden="true" className={`lv-skeleton rounded-lg ${className}`} />;
+}
+
+/** Shimmer skeleton displayed while lazy workspace screens load. */
+export function ScreenSkeleton() {
+  return (
+    <div className="space-y-6 py-4" role="status" aria-busy="true" aria-label="Loading workspace">
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b border-line pb-5">
+        <div className="space-y-2.5">
+          <SkeletonBox className="h-3.5 w-36" />
+          <SkeletonBox className="h-9 w-64 sm:w-80" />
+          <SkeletonBox className="h-4 w-56" />
+        </div>
+        <SkeletonBox className="h-10 w-36 rounded-full" />
+      </div>
+
+      <div className="lv-card p-6">
+        <div className="grid gap-6 lg:grid-cols-12 lg:items-center">
+          <div className="space-y-4 lg:col-span-7">
+            <SkeletonBox className="h-14 w-full rounded-xl" />
+            <div className="grid gap-2.5 sm:grid-cols-3">
+              <SkeletonBox className="h-12 w-full" />
+              <SkeletonBox className="h-12 w-full" />
+              <SkeletonBox className="h-12 w-full" />
+            </div>
+          </div>
+          <div className="lg:col-span-5">
+            <SkeletonBox className="h-48 w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+
+      <div className="grid gap-4 sm:grid-cols-3">
+        <SkeletonBox className="h-28 w-full rounded-xl" />
+        <SkeletonBox className="h-28 w-full rounded-xl" />
+        <SkeletonBox className="h-28 w-full rounded-xl" />
+      </div>
+    </div>
+  );
+}
+
+/** Shimmer skeleton displayed while lazy visual showcases load. */
+export function ShowcaseSkeleton({ height = "h-[420px]" }: { height?: string }) {
+  return (
+    <div className={`lv-card p-6 sm:p-8 ${height} flex flex-col justify-between`} role="status" aria-busy="true" aria-label="Loading module">
+      <div className="flex items-center justify-between gap-4">
+        <div className="space-y-2">
+          <SkeletonBox className="h-3 w-32" />
+          <SkeletonBox className="h-7 w-56 sm:w-72" />
+        </div>
+        <SkeletonBox className="h-8 w-28 rounded-full" />
+      </div>
+      <SkeletonBox className="my-5 flex-1 w-full rounded-xl" />
+      <div className="flex justify-between gap-4">
+        <SkeletonBox className="h-4 w-40" />
+        <SkeletonBox className="h-4 w-24" />
+      </div>
+    </div>
+  );
+}
+
+export function ModalSkeleton() {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-carbon/80 p-4 backdrop-blur-sm" role="status" aria-busy="true">
+      <div className="lv-card w-full max-w-2xl p-6 space-y-4">
+        <SkeletonBox className="h-6 w-48" />
+        <SkeletonBox className="h-64 w-full rounded-xl" />
+        <div className="flex justify-end gap-2">
+          <SkeletonBox className="h-9 w-24" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export class ErrorBoundary extends React.Component<
+  { children: React.ReactNode; onReset?: () => void },
+  { hasError: boolean }
+> {
+  constructor(props: { children: React.ReactNode; onReset?: () => void }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <Panel className="my-8 p-6 text-center space-y-3">
+          <div className="lv-eyebrow justify-center"><Icon name="alert" size={14} /> Recovery Mode</div>
+          <h2 className="font-display text-xl font-bold text-bone">This section hit a temporary hiccup</h2>
+          <Button
+            variant="primary"
+            onClick={() => {
+              this.setState({ hasError: false });
+              this.props.onReset?.();
+            }}
+          >
+            <Icon name="refresh" size={14} /> Reload view
+          </Button>
+        </Panel>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+

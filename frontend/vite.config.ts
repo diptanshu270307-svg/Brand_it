@@ -6,4 +6,15 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [react()],
   server: { port: 5173, proxy: { "/api": "http://127.0.0.1:8001" } },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          "vendor-react": ["react", "react-dom"],
+          "vendor-three": ["three"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 550,
+  },
 });

@@ -2167,4 +2167,76 @@ select.lv-input {
   }
 }
 
+/* ==========================================================================
+   Performance Skeleton Shimmer, Accessible Focus & Zero Horizontal Overflow
+   ========================================================================== */
+html,
+body,
+#root,
+.lv-shell {
+  max-width: 100%;
+  overflow-x: clip !important;
+}
+
+main {
+  overflow-x: clip;
+}
+
+/* Consistent accessible keyboard focus ring across every interactive control */
+a:focus-visible,
+button:focus-visible,
+summary:focus-visible,
+[role="button"]:focus-visible,
+[role="tab"]:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--color-iris);
+  outline-offset: 2px;
+}
+
+button:active:not(:disabled),
+[role="button"]:active:not([aria-disabled="true"]) {
+  transform: scale(0.985);
+}
+
+@keyframes lvSkeletonShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.lv-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(163, 156, 255, 0.11) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  animation: lvSkeletonShimmer 1.6s linear infinite;
+}
+
+html[data-theme="light"] .lv-skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(12, 12, 14, 0.05) 0%,
+    rgba(75, 63, 209, 0.12) 50%,
+    rgba(12, 12, 14, 0.05) 100%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lv-skeleton {
+    animation: none;
+    background: rgba(163, 156, 255, 0.08);
+  }
+  button:active:not(:disabled),
+  [role="button"]:active:not([aria-disabled="true"]) {
+    transform: none;
+  }
+}
+
+
 

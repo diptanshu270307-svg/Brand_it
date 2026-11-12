@@ -1,8 +1,6 @@
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { Suspense, lazy, memo, useEffect, useMemo, useRef, useState } from "react";
 import { api, DraftDetail, DraftSummary, FindingItem, Passport, RuleItem } from "../api";
-import { AdImageScanner } from "../components/AdImageScanner";
 import { SectionMockup } from "../components/SectionMockup";
-import { SourceModal } from "../components/SourceModal";
 import {
   Badge,
   Button,
@@ -13,9 +11,11 @@ import {
   Icon,
   IssueBadge,
   Modal,
+  ModalSkeleton,
   Notice,
   PageHeading,
   Panel,
+  ShowcaseSkeleton,
   StatusAnnouncer,
   Tone,
   errorText,
@@ -23,6 +23,13 @@ import {
   getIssueTier,
   percentage,
 } from "../components/ui";
+
+const AdImageScanner = lazy(() =>
+  import("../components/AdImageScanner").then(m => ({ default: m.AdImageScanner }))
+);
+const SourceModal = lazy(() =>
+  import("../components/SourceModal").then(m => ({ default: m.SourceModal }))
+);
 
 interface Props {
   brandId: number;
@@ -84,7 +91,7 @@ function HighlightedDraft({ text, findings, active, onSelect }: { text: string; 
   return <div className="whitespace-pre-wrap break-words text-[15px] leading-[2.05] text-paper-ink">{nodes}</div>;
 }
 
-export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, onSelectDraft, onOpenQueue }) => {
+export const DraftReview: React.FC<Props> = memo(({ brandId, role, selectedDraftId, onSelectDraft, onOpenQueue }) => {
   const [drafts, setDrafts] = useState<DraftSummary[]>([]);
   const [detail, setDetail] = useState<DraftDetail | null>(null);
   const [rules, setRules] = useState<RuleItem[]>([]);
@@ -323,14 +330,16 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
     </Panel>
 
     {checkMode === "ad_scanner" ? (
-      <AdImageScanner
-        brandId={brandId}
-        onOpenDraftInChecker={draftId => {
-          setCheckMode("text");
-          setLoadVersion(v => v + 1);
-          onSelectDraft(draftId);
-        }}
-      />
+      <Suspense fallback={<ShowcaseSkeleton height="h-[520px]" />}>
+        <AdImageScanner
+          brandId={brandId}
+          onOpenDraftInChecker={draftId => {
+            setCheckMode("text");
+            setLoadVersion(v => v + 1);
+            onSelectDraft(draftId);
+          }}
+        />
+      </Suspense>
     ) : (
     <div className="grid items-start gap-5 md:grid-cols-[230px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_300px] 2xl:grid-cols-[244px_minmax(0,1fr)_340px]">
       <aside className="space-y-5">
@@ -1301,17 +1310,19 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
       </Modal>
     )}
     {source && (
-      <SourceModal
-        key={`${brandId}-${source.docId}-${source.page}`}
-        brandId={brandId}
-        docId={source.docId}
-        initialPage={source.page}
-        highlightExcerpt={source.excerpt}
-        passport={source.passport}
-        claimQuote={source.claimQuote}
-        evidenceStatus={source.evidenceStatus}
-        onClose={() => setSource(null)}
-      />
+      <Suspense fallback={<ModalSkeleton />}>
+        <SourceModal
+          key={`${brandId}-${source.docId}-${source.page}`}
+          brandId={brandId}
+          docId={source.docId}
+          initialPage={source.page}
+          highlightExcerpt={source.excerpt}
+          passport={source.passport}
+          claimQuote={source.claimQuote}
+          evidenceStatus={source.evidenceStatus}
+          onClose={() => setSource(null)}
+        />
+      </Suspense>
     )}
     {ruleSource && (
       <Modal title="Cited brand rule" onClose={() => setRuleSource(null)}>
@@ -1328,4 +1339,4 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
       </Modal>
     )}
   </div>;
-};
+});

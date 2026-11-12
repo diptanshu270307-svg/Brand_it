@@ -436,7 +436,7 @@ interface GovernanceOrbitProps {
   onClose?: () => void;
 }
 
-export const GovernanceOrbit: React.FC<GovernanceOrbitProps> = ({
+export const GovernanceOrbit: React.FC<GovernanceOrbitProps> = React.memo(({
   mode = "full",
   activeScreen = "intro",
   onNavigate,
@@ -713,4 +713,4 @@ export const GovernanceOrbit: React.FC<GovernanceOrbitProps> = ({
       </div>
     </section>
   );
-};
+});

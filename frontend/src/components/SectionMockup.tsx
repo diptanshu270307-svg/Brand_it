@@ -372,7 +372,7 @@ const ILLUSTRATIONS: Record<SectionMockupVariant, () => React.ReactNode> = {
  * Consistent dark-carbon product mockup card used once per primary section.
  * Features vector diagrams (no stock photos) and subtle entrance + hover motion.
  */
-export function SectionMockup({
+export const SectionMockup = React.memo(function SectionMockup({
   variant,
   className = "",
 }: {
@@ -420,4 +420,4 @@ export function SectionMockup({
       </div>
     </div>
   );
-}
+});

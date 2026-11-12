@@ -852,7 +852,7 @@ export const AdImageScanner: React.FC<Props> = ({
             </div>
 
             {/* Visual Ad Creative Stage - Flexible with all image aspect ratios */}
-            <div className="relative mx-auto w-full overflow-hidden rounded-2xl border border-white/10 bg-[#07080d] shadow-2xl">
+            <div id="ad-scanner-stage" className="relative mx-auto w-full overflow-hidden rounded-2xl border border-white/10 bg-[#07080d] shadow-2xl">
               <div className="relative h-[440px] sm:h-[480px] w-full overflow-hidden flex items-center justify-center bg-[#050608]">
                 {/* Ambient Blurred Backdrop so any image orientation blends seamlessly */}
                 {currentAd.customImageUrl && (

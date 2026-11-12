@@ -1647,6 +1647,165 @@ select.lv-input {
   opacity: 0.85;
 }
 
+/* =========================================================================
+   SCROLL-DOWN CONTENT LOADING ANIMATION
+   High-tech progressive content-loading scan as cards scroll into viewport
+   ========================================================================= */
+
+.scroll-load-card {
+  position: relative;
+  overflow: hidden;
+  transition:
+    opacity 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    transform 0.6s cubic-bezier(0.16, 1, 0.3, 1),
+    filter 0.5s cubic-bezier(0.16, 1, 0.3, 1),
+    box-shadow 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: transform, opacity, filter;
+}
+
+/* 1. Initial State: Hidden / Dimmed until scrolled into view */
+.scroll-load-card:not(.is-loaded):not(.is-loading) {
+  opacity: 0.18;
+  transform: translateY(26px) scale(0.978);
+  filter: blur(5px);
+  pointer-events: none;
+}
+
+/* 2. Active Progressive Loading State: Laser scan beam & holographic shimmer */
+.scroll-load-card.is-loading {
+  opacity: 0.95;
+  transform: translateY(3px) scale(0.995);
+  filter: blur(0px);
+  box-shadow:
+    0 0 0 1px rgba(56, 189, 248, 0.35),
+    0 12px 36px -8px rgba(56, 189, 248, 0.25);
+}
+
+/* Luminous holographic shimmer beam moving across loading card */
+.scroll-load-card.is-loading::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 30;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 15%,
+    rgba(56, 189, 248, 0.08) 35%,
+    rgba(163, 156, 255, 0.32) 50%,
+    rgba(56, 189, 248, 0.18) 65%,
+    transparent 85%
+  );
+  animation: scrollLoadShimmer 1.1s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+/* Horizontal cybernetic laser beam */
+.scroll-load-card.is-loading::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(56, 189, 248, 0.6) 20%,
+    rgba(255, 255, 255, 1) 50%,
+    rgba(163, 156, 255, 0.6) 80%,
+    transparent 100%
+  );
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.95);
+  z-index: 31;
+  pointer-events: none;
+  animation: scrollLoadLaser 1.1s ease-in-out infinite alternate;
+}
+
+@keyframes scrollLoadShimmer {
+  0% { transform: translateX(-150%) skewX(-18deg); }
+  100% { transform: translateX(150%) skewX(-18deg); }
+}
+
+@keyframes scrollLoadLaser {
+  0% { top: 4%; opacity: 0.3; }
+  50% { opacity: 1; }
+  100% { top: 96%; opacity: 0.3; }
+}
+
+/* 3. Final Loaded State: Crystal clear high-fidelity */
+.scroll-load-card.is-loaded {
+  opacity: 1 !important;
+  transform: translateY(0) scale(1) !important;
+  filter: blur(0) !important;
+  pointer-events: auto;
+}
+
+.scroll-load-card.is-loaded::before,
+.scroll-load-card.is-loaded::after {
+  display: none !important;
+}
+
+/* Interactive Floating Loading HUD Pill */
+.scroll-load-hud {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 35;
+  pointer-events: none;
+}
+
+.scroll-load-hud .load-badge-loading {
+  display: none;
+}
+
+.scroll-load-hud .load-badge-loaded {
+  display: none;
+}
+
+.scroll-load-card.is-loading .scroll-load-hud .load-badge-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  border: 1px solid rgba(56, 189, 248, 0.55);
+  background: rgba(8, 10, 20, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #38bdf8;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+}
+
+.scroll-load-card.is-loaded .scroll-load-hud .load-badge-loaded {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 9px;
+  border-radius: 9999px;
+  border: 1px solid rgba(52, 211, 153, 0.45);
+  background: rgba(8, 10, 20, 0.92);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  font-family: var(--font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #34d399;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.6);
+  animation: loadBadgeFadeOut 2.4s ease-out forwards;
+}
+
+@keyframes loadBadgeFadeOut {
+  0% { opacity: 1; transform: scale(1); }
+  65% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.94); pointer-events: none; }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal-on-scroll,
   .reveal-stagger > *,
@@ -1672,17 +1831,14 @@ select.lv-input {
   position: fixed;
   pointer-events: none;
   z-index: 1220;
-  transition:
-    top 0.72s cubic-bezier(0.2, 0.8, 0.2, 1),
-    left 0.72s cubic-bezier(0.2, 0.8, 0.2, 1),
-    width 0.72s cubic-bezier(0.2, 0.8, 0.2, 1),
-    height 0.72s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: opacity 0.28s ease, transform 0.28s ease;
   box-shadow:
     0 0 0 2px rgba(56, 189, 248, 0.85),
     0 0 0 6px rgba(99, 102, 241, 0.35),
     0 0 28px rgba(56, 189, 248, 0.45),
     inset 0 0 16px rgba(56, 189, 248, 0.15);
   animation: tourAuraBreathe 3.4s ease-in-out infinite;
+  will-change: transform, opacity;
 }
 
 @keyframes tourAuraBreathe {
@@ -1823,11 +1979,8 @@ select.lv-input {
     0 0 36px -10px rgba(99, 102, 241, 0.35);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
-  transition:
-    top 0.72s cubic-bezier(0.2, 0.8, 0.2, 1),
-    left 0.72s cubic-bezier(0.2, 0.8, 0.2, 1),
-    transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1),
-    opacity 0.4s ease-out;
+  transition: opacity 0.28s ease, transform 0.28s ease;
+  will-change: transform, opacity;
 }
 
 /* Popover Top Iridescent Glow Border */

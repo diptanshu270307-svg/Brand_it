@@ -50,7 +50,11 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
     return false;
   });
 
+  // Controls soft fade-in bloom once scrolling settles
+  const [isReady, setIsReady] = useState<boolean>(false);
+
   const rafRef = useRef<number | null>(null);
+  const scrollTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     setStepIdx(currentStepIndex);
@@ -97,15 +101,15 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
     const popoverWidth = Math.min(440, window.innerWidth - 32);
     const popoverHeight = 220;
 
-    let popTop = bottom + 20;
+    let popTop = bottom + 18;
     let placement: "top" | "bottom" = "bottom";
 
-    // If bottom would overflow, position above target
-    if (popTop + popoverHeight > window.innerHeight - 16 && top > popoverHeight + 30) {
-      popTop = Math.max(20, top - popoverHeight - 20);
+    // If bottom placement would overflow screen, position above target
+    if (popTop + popoverHeight > window.innerHeight - 16 && top > popoverHeight + 28) {
+      popTop = Math.max(16, top - popoverHeight - 16);
       placement = "top";
     } else if (popTop + popoverHeight > window.innerHeight - 16) {
-      popTop = Math.max(20, window.innerHeight - popoverHeight - 20);
+      popTop = Math.max(16, window.innerHeight - popoverHeight - 16);
     }
 
     let popLeft = left + width / 2 - popoverWidth / 2;
@@ -115,39 +119,80 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
   }, [open, activeStep]);
 
   // Smooth, slow & steady scroll to target element
-  const scrollToTarget = useCallback((targetEl: Element) => {
+  const scrollToTarget = useCallback((targetEl: Element, onSettled: () => void) => {
     const r = targetEl.getBoundingClientRect();
     const mobile = window.innerWidth < 768;
 
-    // On mobile: scroll target to upper third so bottom sheet has ample room
-    // On desktop: scroll target to comfortable upper-middle
-    const targetOffset = mobile ? 82 : Math.max(90, window.innerHeight * 0.22);
+    // Mobile: scroll target to upper third (y ~ 74px) so bottom sheet has ample room
+    // Desktop: scroll target to comfortable upper-middle
+    const targetOffset = mobile ? 74 : Math.max(90, window.innerHeight * 0.22);
     const desiredScrollTop = window.scrollY + r.top - targetOffset;
+    const boundedScrollTop = Math.max(0, desiredScrollTop);
+
+    // If distance is tiny (< 10px), no need to wait for smooth scroll
+    if (Math.abs(window.scrollY - boundedScrollTop) < 10) {
+      onSettled();
+      return;
+    }
+
+    let settled = false;
+    const finish = () => {
+      if (settled) return;
+      settled = true;
+      window.removeEventListener("scrollend", handleScrollEnd);
+      if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
+      onSettled();
+    };
+
+    const handleScrollEnd = () => finish();
+    window.addEventListener("scrollend", handleScrollEnd, { once: true, passive: true });
+
+    // Fallback safety timeout (420ms) for browsers without scrollend or instant scroll
+    scrollTimerRef.current = window.setTimeout(finish, 420);
 
     window.scrollTo({
-      top: Math.max(0, desiredScrollTop),
+      top: boundedScrollTop,
       behavior: "smooth",
     });
   }, []);
 
-  // When step changes: scroll target into view smoothly and track position
+  // When step changes: fade out, smoothly scroll, settle, and bloom in
   useEffect(() => {
     if (!open || !activeStep) return;
 
-    const timer = window.setTimeout(() => {
+    setIsReady(false);
+
+    const initTimer = window.setTimeout(() => {
       const el = document.querySelector(activeStep.targetSelector);
       if (el) {
-        scrollToTarget(el);
+        scrollToTarget(el, () => {
+          measureTarget();
+          setIsReady(true);
+        });
+      } else {
+        // Retry once in case element is rendering
+        const retryTimer = window.setTimeout(() => {
+          const retryEl = document.querySelector(activeStep.targetSelector);
+          if (retryEl) {
+            scrollToTarget(retryEl, () => {
+              measureTarget();
+              setIsReady(true);
+            });
+          }
+        }, 150);
+        return () => window.clearTimeout(retryTimer);
       }
-      measureTarget();
-    }, 60);
+    }, 40);
 
-    return () => window.clearTimeout(timer);
+    return () => {
+      window.clearTimeout(initTimer);
+      if (scrollTimerRef.current) window.clearTimeout(scrollTimerRef.current);
+    };
   }, [open, stepIdx, activeStep, scrollToTarget, measureTarget]);
 
-  // High-performance continuous tracking during scroll & resize
+  // Passive stationary tracking during user resize or manual scroll
   useEffect(() => {
-    if (!open) return;
+    if (!open || !isReady) return;
 
     let ticking = false;
     const onScrollOrResize = () => {
@@ -168,7 +213,7 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
       window.removeEventListener("resize", onScrollOrResize);
       window.removeEventListener("scroll", onScrollOrResize);
     };
-  }, [open, measureTarget]);
+  }, [open, isReady, measureTarget]);
 
   // Keyboard navigation (Esc to exit, Arrow keys to navigate)
   useEffect(() => {
@@ -226,7 +271,7 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
             {/* White background: dark shaded canvas */}
             <rect x="0" y="0" width="100%" height="100%" fill="white" />
             {/* Black rectangle: illuminated window over target element */}
-            {targetRect && (
+            {targetRect && isReady && (
               <rect
                 x={targetRect.left - pad}
                 y={targetRect.top - pad}
@@ -235,10 +280,6 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
                 rx={rx}
                 ry={rx}
                 fill="black"
-                style={{
-                  transition:
-                    "x 0.72s cubic-bezier(0.2, 0.8, 0.2, 1), y 0.72s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.72s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.72s cubic-bezier(0.2, 0.8, 0.2, 1)",
-                }}
               />
             )}
           </mask>
@@ -262,6 +303,8 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
             width: targetRect.width + pad * 2,
             height: targetRect.height + pad * 2,
             borderRadius: rx + 2,
+            opacity: isReady ? 1 : 0,
+            transform: isReady ? "scale(1)" : "scale(0.97)",
           }}
           className="tour-target-ring rounded-2xl"
           aria-hidden="true"
@@ -296,6 +339,9 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
           top: isMobile ? undefined : popoverPos.top,
           left: isMobile ? undefined : popoverPos.left,
           maxWidth: isMobile ? "calc(100vw - 24px)" : 440,
+          opacity: isReady ? 1 : 0,
+          transform: isReady ? "scale(1) translateY(0)" : "scale(0.96) translateY(8px)",
+          pointerEvents: isReady ? "auto" : "none",
         }}
         className={`tour-popover-card ${
           isMobile ? "mobile-docked" : "tour-popover-enter"
@@ -381,7 +427,7 @@ export const SpotlightTour: React.FC<SpotlightTourProps> = ({
                   onStepChange?.(i);
                 }}
                 aria-label={`Jump to step ${i + 1}`}
-                className={`cursor-pointer rounded-full border-0 p-0 transition-all duration-500 ${
+                className={`cursor-pointer rounded-full border-0 p-0 transition-all duration-300 ${
                   i === stepIdx
                     ? "h-2 w-5 bg-gradient-to-r from-sky-400 to-indigo-500 shadow-[0_0_8px_rgba(56,189,248,0.5)]"
                     : "size-2 bg-white/20 hover:bg-white/40"

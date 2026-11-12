@@ -229,6 +229,50 @@ export const AppleIntro: React.FC<Props> = ({
     };
   }, []);
 
+  // Progressive Scroll-Down Content Loading Animation Observer
+  // "while loading scrolling down the website there must be the content loading animation like as we scroll down the content gets loaded"
+  useEffect(() => {
+    const contentObserver = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const el = entry.target as HTMLElement;
+            const delay = parseInt(el.dataset.delay || "0", 10);
+
+            // 1. Kick off active holographic scan and shimmer
+            window.setTimeout(() => {
+              el.classList.add("is-loading");
+
+              // 2. Resolve to fully loaded content with verification badge
+              window.setTimeout(() => {
+                el.classList.remove("is-loading");
+                el.classList.add("is-loaded");
+              }, 480);
+            }, delay);
+
+            contentObserver.unobserve(el);
+          }
+        });
+      },
+      { threshold: 0.1, rootMargin: "0px 0px -30px 0px" }
+    );
+
+    const observeCards = () => {
+      const cards = document.querySelectorAll<HTMLElement>(".scroll-load-card:not(.is-loaded):not(.is-loading)");
+      cards.forEach(card => contentObserver.observe(card));
+    };
+
+    observeCards();
+
+    // Re-observe when roles switch or dynamic lists change
+    const t = window.setTimeout(observeCards, 80);
+
+    return () => {
+      window.clearTimeout(t);
+      contentObserver.disconnect();
+    };
+  }, [selectedRoleKey, drafts.length, queue.length]);
+
   // Constellation Particle Canvas
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -724,7 +768,7 @@ export const AppleIntro: React.FC<Props> = ({
         aria-labelledby="role-studio-heading"
         className="reveal-on-scroll relative overflow-hidden rounded-3xl border border-line bg-panel p-6 sm:p-8"
       >
-        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
+        <div id="role-studio-controls" className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
           <div>
             <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-0.5 font-mono text-[10px] font-semibold uppercase text-indigo-300">
               <span className="size-1.5 rounded-full bg-emerald-400" />
@@ -800,11 +844,22 @@ export const AppleIntro: React.FC<Props> = ({
           {selectedRoleKey === "creator" && (
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 reveal-stagger">
               {liveDrafts.length > 0 ? (
-                liveDrafts.map(d => (
+                liveDrafts.map((d, idx) => (
                   <div
                     key={d.id}
-                    className="flex flex-col justify-between rounded-xl border border-line bg-carbon/60 p-4 transition hover:border-indigo-400/40"
+                    data-delay={idx * 75}
+                    className="scroll-load-card relative flex flex-col justify-between rounded-xl border border-line bg-carbon/60 p-4 transition hover:border-indigo-400/40"
                   >
+                    <div className="scroll-load-hud">
+                      <span className="load-badge-loading">
+                        <span className="size-1.5 rounded-full bg-sky-400 animate-ping" />
+                        SYNCING DRAFT...
+                      </span>
+                      <span className="load-badge-loaded">
+                        <span className="size-1.5 rounded-full bg-emerald-400" />
+                        DRAFT SYNCED ✓
+                      </span>
+                    </div>
                     <div>
                       <div className="flex items-center justify-between">
                         <Badge tone={d.status === "approved" ? "success" : "neutral"}>
@@ -845,11 +900,22 @@ export const AppleIntro: React.FC<Props> = ({
           {selectedRoleKey === "reviewer" && (
             <div className="space-y-2.5 reveal-stagger">
               {standardQueue.length > 0 ? (
-                standardQueue.map(item => (
+                standardQueue.map((item, idx) => (
                   <div
                     key={item.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-carbon/70 p-3.5 transition hover:border-emerald-400/40"
+                    data-delay={idx * 75}
+                    className="scroll-load-card relative flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-carbon/70 p-3.5 transition hover:border-emerald-400/40"
                   >
+                    <div className="scroll-load-hud">
+                      <span className="load-badge-loading">
+                        <span className="size-1.5 rounded-full bg-sky-400 animate-ping" />
+                        VERIFYING GATE...
+                      </span>
+                      <span className="load-badge-loaded">
+                        <span className="size-1.5 rounded-full bg-emerald-400" />
+                        GATE VERIFIED ✓
+                      </span>
+                    </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-bone">{item.title}</span>
@@ -888,11 +954,22 @@ export const AppleIntro: React.FC<Props> = ({
           {selectedRoleKey === "senior_reviewer" && (
             <div className="space-y-2.5 reveal-stagger">
               {seniorQueue.length > 0 ? (
-                seniorQueue.map(item => (
+                seniorQueue.map((item, idx) => (
                   <div
                     key={item.id}
-                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-carbon/70 p-3.5"
+                    data-delay={idx * 75}
+                    className="scroll-load-card relative flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-carbon/70 p-3.5"
                   >
+                    <div className="scroll-load-hud">
+                      <span className="load-badge-loading">
+                        <span className="size-1.5 rounded-full bg-amber-400 animate-ping" />
+                        LEGAL CHECK...
+                      </span>
+                      <span className="load-badge-loaded">
+                        <span className="size-1.5 rounded-full bg-amber-400" />
+                        LEGAL ESCALATED
+                      </span>
+                    </div>
                     <div>
                       <div className="flex items-center gap-2">
                         <span className="font-semibold text-bone">{item.title}</span>
@@ -923,7 +1000,7 @@ export const AppleIntro: React.FC<Props> = ({
 
           {selectedRoleKey === "brand_owner" && (
             <div className="grid gap-3 sm:grid-cols-3 text-xs reveal-stagger">
-              <div className="rounded-xl border border-line bg-carbon/70 p-4">
+              <div data-delay={0} className="scroll-load-card rounded-xl border border-line bg-carbon/70 p-4">
                 <span className="font-mono text-[10px] uppercase text-iris">Active Rules</span>
                 <p className="mt-1 font-sans text-2xl font-bold text-bone">
                   {setup?.stats.active_rules_count ?? 18}
@@ -938,7 +1015,7 @@ export const AppleIntro: React.FC<Props> = ({
                 </button>
               </div>
 
-              <div className="rounded-xl border border-line bg-carbon/70 p-4">
+              <div data-delay={80} className="scroll-load-card rounded-xl border border-line bg-carbon/70 p-4">
                 <span className="font-mono text-[10px] uppercase text-emerald-400">Approved Facts</span>
                 <p className="mt-1 font-sans text-2xl font-bold text-bone">
                   {setup?.stats.approved_evidence_count ?? 4} Passports
@@ -953,7 +1030,7 @@ export const AppleIntro: React.FC<Props> = ({
                 </button>
               </div>
 
-              <div className="rounded-xl border border-line bg-carbon/70 p-4">
+              <div data-delay={160} className="scroll-load-card rounded-xl border border-line bg-carbon/70 p-4">
                 <span className="font-mono text-[10px] uppercase text-sky-400">Guideline Health</span>
                 <p className="mt-1 font-sans text-2xl font-bold text-bone">94% Precision</p>
                 <p className="mt-1 text-ash">Zero rule friction on approved copy.</p>
@@ -1010,13 +1087,25 @@ export const AppleIntro: React.FC<Props> = ({
         </div>
 
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 reveal-stagger">
-          {AURA_GLOW_ADS.map(ad => {
+          {AURA_GLOW_ADS.map((ad, idx) => {
             const hasBlocker = ad.regions.some(r => r.status === "blocking");
             return (
               <div
                 key={ad.id}
-                className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-carbon/75 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-400/50"
+                data-delay={idx * 100}
+                className="scroll-load-card group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-carbon/75 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-400/50"
               >
+                {/* Interactive Scroll-Loading HUD Badge */}
+                <div className="scroll-load-hud">
+                  <span className="load-badge-loading">
+                    <span className="size-1.5 rounded-full bg-sky-400 animate-ping" />
+                    STREAMING AD 0{idx + 1}...
+                  </span>
+                  <span className="load-badge-loaded">
+                    <span className="size-1.5 rounded-full bg-emerald-400" />
+                    AD 0{idx + 1} VERIFIED ✓
+                  </span>
+                </div>
                 <div>
                   {/* Flexible Image Container */}
                   <div className="relative h-48 w-full overflow-hidden bg-[#06070a] flex items-center justify-center">
@@ -1109,11 +1198,19 @@ export const AppleIntro: React.FC<Props> = ({
         aria-label="Workspace overview"
         className="reveal-on-scroll space-y-5"
       >
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 reveal-stagger">
-          <Metric label="Active rules" value={setup?.stats.active_rules_count ?? "18"} note="Brand rulebook" />
-          <Metric label="Approved facts" value={setup?.stats.approved_evidence_count ?? "4"} note="Evidence Vault" tone="accent" />
-          <Metric label="Waiting for review" value={pendingApprovals.length} note="Four-Eyes Queue" tone={pendingApprovals.length > 0 ? "warning" : "success"} />
-          <Metric label="Evidence alerts" value={recallAlerts.length} note="Expired studies" tone={recallAlerts.length > 0 ? "danger" : "success"} />
+        <div id="vault-metrics-grid" className="grid grid-cols-2 gap-3 sm:grid-cols-4 reveal-stagger">
+          <div data-delay={0} className="scroll-load-card">
+            <Metric label="Active rules" value={setup?.stats.active_rules_count ?? "18"} note="Brand rulebook" />
+          </div>
+          <div data-delay={70} className="scroll-load-card">
+            <Metric label="Approved facts" value={setup?.stats.approved_evidence_count ?? "4"} note="Evidence Vault" tone="accent" />
+          </div>
+          <div data-delay={140} className="scroll-load-card">
+            <Metric label="Waiting for review" value={pendingApprovals.length} note="Four-Eyes Queue" tone={pendingApprovals.length > 0 ? "warning" : "success"} />
+          </div>
+          <div data-delay={210} className="scroll-load-card">
+            <Metric label="Evidence alerts" value={recallAlerts.length} note="Expired studies" tone={recallAlerts.length > 0 ? "danger" : "success"} />
+          </div>
         </div>
 
         <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr] reveal-stagger">

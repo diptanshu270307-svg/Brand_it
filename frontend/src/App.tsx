@@ -58,6 +58,7 @@ export const App: React.FC = () => {
       return true;
     }
   });
+  const [tourStep, setTourStep] = useState<number>(0);
   const [showReset, setShowReset] = useState(false);
   const [authView, setAuthView] = useState<"login" | "register" | "workspace" | "forgot" | "reset" | null>(null);
   const [authName, setAuthName] = useState("");
@@ -865,7 +866,8 @@ export const App: React.FC = () => {
                     });
                   } else openDraft(id);
                 }}
-                onLaunchStep={() => {
+                onLaunchStep={step => {
+                  setTourStep(step ?? 0);
                   setShowTour(true);
                 }}
               />
@@ -1297,6 +1299,8 @@ export const App: React.FC = () => {
       <WorkspaceTour
         open={(ready || !!error) && showTour && !authView && !showAcceptInvite}
         onClose={() => setShowTour(false)}
+        currentStepIndex={tourStep}
+        onStepChange={setTourStep}
         user={user}
         companyName={displayCompanyName}
         brandName={displayBrandName}

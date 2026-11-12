@@ -11,6 +11,34 @@
     ],
     "rewrites": [
       {
+        "source": "/api",
+        "run": {
+          "serviceId": "brandlint-backend",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/api/**",
+        "run": {
+          "serviceId": "brandlint-backend",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/healthz",
+        "run": {
+          "serviceId": "brandlint-backend",
+          "region": "us-central1"
+        }
+      },
+      {
+        "source": "/readyz",
+        "run": {
+          "serviceId": "brandlint-backend",
+          "region": "us-central1"
+        }
+      },
+      {
         "source": "**",
         "destination": "/index.html"
       }

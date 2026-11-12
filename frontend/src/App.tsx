@@ -14,6 +14,7 @@ import {
   UserInfo,
 } from "./api";
 import { Loader } from "./components/Loader";
+import { Navbar, TopSection } from "./components/Navbar";
 import {
   Badge,
   BrandLintLogo,
@@ -58,14 +59,6 @@ const WorkspaceTour = lazy(() =>
 );
 
 type Screen = "intro" | "review" | "vault" | "queue" | "insights" | "library";
-const TABS: { id: Screen; num: string; label: string; hint: string; icon: string }[] = [
-  { id: "intro", num: "01", label: "Home", hint: "How BrandLint works & live desk", icon: "spark" },
-  { id: "review", num: "02", label: "Check content", hint: "Find problems before you publish", icon: "file" },
-  { id: "queue", num: "03", label: "Approvals", hint: "Drafts waiting for a decision", icon: "review" },
-  { id: "library", num: "04", label: "Brand rules", hint: "What the checker looks for", icon: "book" },
-  { id: "vault", num: "05", label: "Approved facts", hint: "Claims you can make, and their wording", icon: "radar" },
-  { id: "insights", num: "06", label: "Insights", hint: "Rules reviewers disagree with & benchmarks", icon: "chart" },
-];
 
 export const App: React.FC = () => {
   const [user, setUser] = useState<UserInfo | null>(null);
@@ -82,7 +75,6 @@ export const App: React.FC = () => {
   const [refresh, setRefresh] = useState(0);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showOrbit, setShowOrbit] = useState(false);
-  const [menuOpen, setMenuOpen] = useState(false);
   const [showTour, setShowTour] = useState<boolean>(() => {
     try {
       return localStorage.getItem("brandlint_hide_tour_on_start") !== "true";
@@ -533,6 +525,57 @@ export const App: React.FC = () => {
       .trim();
   const displayBrandName = cleanWorkspaceName(brand?.name) || "Lumina Flow";
   const displayCompanyName = cleanWorkspaceName(activeCompany?.name) || displayBrandName;
+
+  const handleSelectSection = useCallback((section: TopSection) => {
+    if (section === "product") {
+      if (user && brand) navigate("intro");
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+    if (section === "demo") {
+      if (user && brand) {
+        openWorkspaceOrAuth("intro", "ad-image-scanner");
+      } else {
+        const tryEl = document.getElementById("try");
+        if (tryEl) tryEl.scrollIntoView({ behavior: "smooth" });
+        else {
+          setAuthMsg("");
+          setAuthView("login");
+        }
+      }
+      return;
+    }
+    document.getElementById("contact")?.scrollIntoView({ behavior: "smooth" });
+  }, [user, brand, navigate, openWorkspaceOrAuth]);
+
+  const handlePrimaryCta = useCallback(() => {
+    if (user && brand) {
+      navigate("review");
+      return;
+    }
+    const tryEl = document.getElementById("try");
+    if (tryEl) tryEl.scrollIntoView({ behavior: "smooth" });
+    else {
+      setAuthMsg("");
+      setAuthView("login");
+    }
+  }, [user, brand, navigate]);
+
+  const handleToggleTheme = useCallback(() => {
+    setTheme(t => (t === "dark" ? "light" : "dark"));
+  }, []);
+
+  const handleOpenTourNav = useCallback(() => setShowTour(true), []);
+  const handleOpenOrbitNav = useCallback(() => setShowOrbit(true), []);
+  const handleOpenPrivacyNav = useCallback(() => setShowPrivacy(true), []);
+  const handleOpenResetNav = useCallback(() => setShowReset(true), []);
+  const handleOpenAuthNav = useCallback(() => {
+    setAuthMsg("");
+    setAuthView("login");
+  }, []);
+  const handleOpenTeamNav = useCallback(() => { void openTeamModal(); }, [openTeamModal]);
+  const handleLogoutNav = useCallback(() => { void handleLogout(); }, [handleLogout]);
+
   return <>
     {loaderActive && (
       <Loader
@@ -545,341 +588,33 @@ export const App: React.FC = () => {
       <StatusAnnouncer message={error || authMsg || teamMsg || null} />
       <a href="#workspace" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[1100] focus:rounded-md focus:bg-bone focus:px-4 focus:py-2 focus:font-display focus:text-xs focus:font-bold focus:uppercase focus:text-carbon">Skip to workspace</a>
 
-      {/* Code-A-Nova Inspired Floating Pill "Dynamic Island" Navigation Header */}
-      <header className="sticky top-3 z-40 px-2 pt-1 sm:px-4 lg:px-6">
-        <div id="brandlint-header-nav" className="mx-auto flex max-w-[1400px] items-center justify-between gap-2 rounded-full border border-white/15 bg-[#090a12]/90 px-3.5 py-2 shadow-[0_16px_44px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:px-5">
-          {/* Left: Brand Logo + Workspace Badge */}
-          <div className="flex shrink-0 items-center gap-2">
-            <button
-              type="button"
-              onClick={() => navigate("intro")}
-              className="flex shrink-0 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-bone"
-              aria-label="BrandLint home"
-            >
-              <BrandLintLogo />
-              <span className="whitespace-nowrap font-sans text-base font-extrabold tracking-tight text-white sm:text-lg">
-                Brand<span className="bg-gradient-to-r from-indigo-400 to-sky-400 bg-clip-text text-transparent">Lint</span>
-              </span>
-              {brand && (
-                <span className="hidden max-w-[130px] truncate rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-slate-300 2xl:inline-block">
-                  {displayBrandName}
-                </span>
-              )}
-            </button>
-          </div>
-
-          {/* Center: Pill Navigation Links + Orange "Aura Glow · 5 Ads" Promo Badge */}
-          {user ? (
-            <nav aria-label="Workspaces" className="hidden lg:block">
-              <ul className="m-0 flex list-none items-center gap-0.5 p-0 xl:gap-1">
-                {TABS.map(t => {
-                  const active = screen === t.id;
-                  return (
-                    <li key={t.id} className="m-0 list-none p-0">
-                      <button
-                        type="button"
-                        title={t.hint}
-                        onClick={() => navigate(t.id)}
-                        aria-current={active ? "page" : undefined}
-                        className={`group relative inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1.5 font-sans text-[11px] font-semibold transition-all duration-200 xl:px-3 xl:text-xs ${
-                          active
-                            ? "border-indigo-400/40 bg-indigo-500/15 text-white shadow-[0_0_16px_rgba(99,102,241,0.25)]"
-                            : "border-transparent bg-transparent text-slate-300 hover:bg-white/[0.06] hover:text-white"
-                        }`}
-                      >
-                        <span>{t.label}</span>
-                        {active && (
-                          <span aria-hidden="true" className="size-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]" />
-                        )}
-                      </button>
-                    </li>
-                  );
-                })}
-                {/* Code-A-Nova Style Orange/Amber Campaign Badge Pill */}
-                <li className="m-0 ml-1 hidden list-none p-0 xl:block">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigate("intro");
-                      setTimeout(() => {
-                        document.getElementById("ad-image-scanner")?.scrollIntoView({ behavior: "smooth" });
-                      }, 80);
-                    }}
-                    className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-300 transition hover:border-amber-300 hover:from-amber-500/30 hover:to-orange-500/30"
-                  >
-                    <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    <span>Aura Glow · 5 Ads</span>
-                  </button>
-                </li>
-              </ul>
-            </nav>
-          ) : (
-            <nav aria-label="Page sections" className="hidden items-center gap-6 font-sans text-xs font-semibold text-slate-300 md:flex">
-              <a href="#how" className="whitespace-nowrap transition-colors hover:text-white">How it works</a>
-              <a href="#numbers" className="whitespace-nowrap transition-colors hover:text-white">Test results</a>
-              <a href="#try" className="whitespace-nowrap transition-colors hover:text-white">Try a role</a>
-            </nav>
-          )}
-
-          {/* Right: Status, Role Switcher, Theme & High-Contrast Pill CTA */}
-          <div className="flex shrink-0 items-center gap-1.5">
-            <button
-              type="button"
-              onClick={() => setShowPrivacy(true)}
-              className="hidden cursor-pointer border-0 bg-transparent p-0 xl:inline-block"
-              aria-label={`View AI processing details: ${privacy?.hosted ? "Live AI" : "Offline verifier"}`}
-            >
-              <Badge tone={privacy?.hosted ? "success" : "warning"}>
-                <span aria-hidden="true" className={`size-1.5 rounded-full ${privacy?.hosted ? "bg-ok" : "bg-major"}`} />
-                <span className="whitespace-nowrap">
-                  {privacy ? (privacy.hosted ? "Live AI" : privacy.provider === "mock" ? "Local AI" : "Offline") : "Connecting"}
-                </span>
-              </Badge>
-            </button>
-
-            {companies.length > 1 && (
-              <label className="relative hidden 2xl:inline-block" title="Switch company workspace">
-                <span className="sr-only">Company Workspace</span>
-                <select
-                  className="h-7 cursor-pointer rounded-full border border-white/15 bg-white/[0.05] px-2.5 pr-6 font-mono text-[10px] font-semibold uppercase text-white focus:border-indigo-400 focus:outline-none"
-                  value={activeCompany?.id || ""}
-                  onChange={e => switchWorkspace(Number(e.target.value))}
-                >
-                  {companies.map(c => (
-                    <option key={c.id} value={c.id} className="bg-carbon text-bone">
-                      {cleanWorkspaceName(c.name)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            {user && systemMode?.allow_persona_switch !== false && (
-              <label className="relative hidden md:inline-block" title="Switch workspace role">
-                <span className="sr-only">Workspace Role</span>
-                <select
-                  className="h-7 cursor-pointer rounded-full border border-indigo-400/40 bg-indigo-500/15 px-2.5 pr-5 font-mono text-[10px] font-semibold uppercase text-indigo-200 focus:border-indigo-400 focus:outline-none"
-                  value={user.email}
-                  disabled={switching}
-                  onChange={e => { void switchPersona(e.target.value); }}
-                >
-                  {DEMO_USERS.map(u => (
-                    <option key={u.email} value={u.email} className="bg-carbon text-bone">
-                      {u.role} · {u.label.split(" ")[0]}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            )}
-
-            <button
-              type="button"
-              onClick={() => setShowTour(true)}
-              aria-label="Open Workspace Tour & Interactive Tutorial"
-              title="Open Workspace Tour & Interactive Tutorial"
-              className="inline-flex cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-sky-400/40 bg-sky-500/15 px-2 py-1 font-mono text-[10px] font-semibold uppercase text-sky-200 transition-colors hover:border-sky-400 sm:px-2.5"
-            >
-              <Icon name="spark" size={11} className="text-sky-400 animate-pulse" />
-              <span>Tour</span>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setTheme(t => (t === "dark" ? "light" : "dark"))}
-              aria-label={`Switch to ${theme === "dark" ? "Daylight" : "BrandLint Carbon"} theme`}
-              title={theme === "dark" ? "Daylight" : "BrandLint Carbon"}
-              className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-white/[0.05] text-white hover:border-white/35"
-            >
-              <Icon name={theme === "dark" ? "sun" : "moon"} size={13} />
-            </button>
-
-            {user ? (
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => navigate("review")}
-                  className="hidden cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-white px-3 py-1 font-sans text-[11px] font-bold text-slate-950 shadow-sm transition hover:bg-indigo-100 2xl:inline-flex"
-                >
-                  <span>Check Content</span>
-                  <span aria-hidden="true">↗</span>
-                </button>
-                <button
-                  type="button"
-                  aria-expanded={menuOpen}
-                  aria-controls="site-menu"
-                  onClick={() => setMenuOpen(true)}
-                  className="cursor-pointer whitespace-nowrap rounded-full border border-white/25 bg-white/[0.06] px-3 py-1 font-mono text-[11px] font-bold uppercase text-white transition-colors hover:border-white hover:bg-white hover:text-slate-950"
-                >
-                  Menu
-                </button>
-              </div>
-            ) : (
-              <Button variant="primary" onClick={() => { setAuthMsg(""); setAuthView("login"); }} className="!h-8 !rounded-full !px-4 font-sans !text-xs !font-bold">
-                Sign in ↗
-              </Button>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* BrandLint Full-Screen Menu Overlay */}
-      {menuOpen && user && (
-        <div
-          id="site-menu"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation menu"
-          className="fixed inset-0 z-50 flex flex-col justify-between overflow-y-auto bg-carbon p-6 sm:p-10"
-        >
-          <div aria-hidden="true" className="guides pointer-events-none absolute inset-0" />
-          <div className="relative flex items-center justify-between">
-            <span className="flex items-center gap-2.5 font-display text-xl font-bold uppercase tracking-[-0.03em] text-bone">
-              <BrandLintLogo />
-              BrandLint · {displayBrandName}
-            </span>
-            <button
-              type="button"
-              onClick={() => setMenuOpen(false)}
-              className="cursor-pointer border-0 bg-transparent font-display text-lg font-bold uppercase tracking-[-0.03em] text-bone hover:text-iris"
-            >
-              Close ✕
-            </button>
-          </div>
-
-          <div className="relative my-8 grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-end">
-            <div>
-              <p className="font-label text-xs uppercase text-ash">On this site</p>
-              <ol className="mt-3 divide-y divide-line border-y border-line">
-                {TABS.map(item => (
-                  <li key={item.id}>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        navigate(item.id);
-                      }}
-                      className="group flex w-full cursor-pointer items-baseline justify-between gap-4 border-0 bg-transparent py-3 text-left"
-                    >
-                      <span className="flex items-baseline gap-4">
-                        <span className="font-mono text-xs text-iris">{item.num}</span>
-                        <span
-                          className={`font-display text-[clamp(1.6rem,3.6vw,2.75rem)] font-bold uppercase leading-[0.95] tracking-[-0.03em] transition-transform duration-300 group-hover:translate-x-2 ${
-                            screen === item.id ? "text-iris" : "text-bone"
-                          }`}
-                        >
-                          {item.label}
-                        </span>
-                      </span>
-                      <span className="hidden text-sm text-ash sm:inline">{item.hint}</span>
-                    </button>
-                  </li>
-                ))}
-              </ol>
-            </div>
-
-            <div className="space-y-4 rounded-2xl border border-line bg-panel p-6">
-              <p className="font-label text-xs uppercase text-ash">Signed in</p>
-              <p className="font-display text-2xl font-bold uppercase text-bone">{user.name}</p>
-              <p className="font-label text-xs uppercase text-iris">{activeRoleLabel}</p>
-
-              {systemMode?.allow_persona_switch !== false && (
-                <div className="border-t border-line pt-4">
-                  <p className="mb-2 font-label text-[11px] uppercase text-ash">Switch demo role</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {DEMO_USERS.map(u => (
-                      <button
-                        key={u.email}
-                        type="button"
-                        onClick={() => {
-                          setMenuOpen(false);
-                          void switchPersona(u.email);
-                        }}
-                        className={`cursor-pointer rounded-full border px-3 py-1 font-label text-[11px] font-semibold uppercase transition-colors ${
-                          u.email === user.email
-                            ? "border-iris bg-iris/20 text-iris"
-                            : "border-line bg-carbon text-bone/75 hover:border-bone hover:text-bone"
-                        }`}
-                      >
-                        {u.role} · {u.label.split(" ")[0]}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2 border-t border-line pt-4 font-label text-xs uppercase">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    void openTeamModal();
-                  }}
-                  className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
-                >
-                  Team &amp; settings
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setShowTour(true);
-                  }}
-                  className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
-                >
-                  Workspace tour
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setShowOrbit(true);
-                  }}
-                  className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
-                >
-                  Architecture map
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    setShowPrivacy(true);
-                  }}
-                  className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
-                >
-                  Privacy &amp; AI status
-                </button>
-                {systemMode?.allow_reset && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      setShowReset(true);
-                    }}
-                    className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
-                  >
-                    Reset demo
-                  </button>
-                )}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false);
-                    void handleLogout();
-                  }}
-                  className="cursor-pointer rounded-full bg-bone px-4 py-2 font-bold text-carbon hover:bg-iris"
-                >
-                  Sign out
-                </button>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative flex flex-wrap justify-between gap-4 font-label text-xs uppercase text-ash">
-            <span>BrandLint · {displayCompanyName}</span>
-            <span>Silence is never clearance · Evidence or silence</span>
-          </div>
-        </div>
-      )}
+      <Navbar
+        user={user}
+        ready={ready}
+        brandName={displayBrandName}
+        companyName={displayCompanyName}
+        activeScreen={screen}
+        activeRoleLabel={activeRoleLabel}
+        theme={theme}
+        companies={companies}
+        activeCompanyId={activeCompany?.id}
+        privacy={privacy}
+        systemMode={systemMode}
+        switching={switching}
+        onSelectSection={handleSelectSection}
+        onNavigateWorkspace={openWorkspaceOrAuth}
+        onPrimaryCta={handlePrimaryCta}
+        onToggleTheme={handleToggleTheme}
+        onSwitchWorkspace={switchWorkspace}
+        onSwitchPersona={handleSwitchPersonaProp}
+        onOpenTeamModal={handleOpenTeamNav}
+        onOpenTour={handleOpenTourNav}
+        onOpenOrbit={handleOpenOrbitNav}
+        onOpenPrivacy={handleOpenPrivacyNav}
+        onOpenReset={handleOpenResetNav}
+        onOpenAuth={handleOpenAuthNav}
+        onLogout={handleLogoutNav}
+      />
 
       {/* Governance Orbit Architecture Map Modal */}
       {showOrbit && (
@@ -1140,7 +875,7 @@ export const App: React.FC = () => {
       {/* =====================================================================
           CODE-A-NOVA INSPIRED CONVERSION BANNER + 5-COLUMN ARCHITECTURAL FOOTER
          ===================================================================== */}
-      <footer className="relative overflow-hidden bg-[#050508] text-white">
+      <footer id="contact" className="relative overflow-hidden bg-[#050508] text-white">
         {/* Top Glowing Blue/Violet Gradient Line */}
         <div
           aria-hidden="true"

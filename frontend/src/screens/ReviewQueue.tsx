@@ -604,7 +604,7 @@ export const ReviewQueue: React.FC<Props> = memo(({ brandId, role, selectedDraft
               </form>
             </Panel>
 
-            <Panel className="p-6">
+            <Panel id="audit-trail-section" className="p-6">
               <div className="lv-eyebrow mb-2">AUDIT TRAIL</div>
               <h2 className="mb-4 font-display text-lg font-medium">Event log</h2>
               {history?.audit.length ? (

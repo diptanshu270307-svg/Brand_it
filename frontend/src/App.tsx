@@ -15,6 +15,7 @@ import {
 } from "./api";
 import { Loader } from "./components/Loader";
 import { Navbar, TopSection } from "./components/Navbar";
+import { WalkthroughFlow } from "./components/WalkthroughFlow";
 import {
   Badge,
   BrandLintLogo,
@@ -860,6 +861,37 @@ export const App: React.FC = () => {
                 />
               </Suspense>
             </div>
+
+            {/* Interactive 4-Step Walkthrough Guide (Scan -> Evidence -> Approval -> Publish) */}
+            <section
+              id="walkthrough-guide"
+              aria-labelledby="landing-walkthrough-heading"
+              className="reveal-on-scroll mx-auto w-full max-w-[1120px] space-y-6"
+            >
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <p className="font-label text-xs uppercase text-iris">Workflow · Interactive Walkthrough</p>
+                  <h2
+                    id="landing-walkthrough-heading"
+                    className="mt-2 font-display text-3xl font-bold uppercase leading-[0.95] tracking-[-0.02em] text-bone sm:text-4xl"
+                  >
+                    Scan to Publish in Four Steps.
+                  </h2>
+                </div>
+                <Button
+                  variant="secondary"
+                  onClick={handleOpenTourNav}
+                  className="!rounded-full font-mono !text-xs"
+                >
+                  Expand Modal Guide ↗
+                </Button>
+              </div>
+              <WalkthroughFlow
+                mode="inline"
+                stepIndex={tourStep}
+                onStepChange={setTourStep}
+              />
+            </section>
 
             {/* Quick 1-click Demo Role Cards */}
             {!user && systemMode?.allow_persona_switch !== false && (

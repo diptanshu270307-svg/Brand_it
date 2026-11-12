@@ -13,6 +13,7 @@ import {
 } from "../api";
 import { AURA_GLOW_ADS } from "../data/adPresets";
 import { SectionMockup } from "../components/SectionMockup";
+import { WalkthroughFlow } from "../components/WalkthroughFlow";
 import {
   Badge,
   Button,
@@ -656,6 +657,35 @@ export const AppleIntro: React.FC<Props> = memo(({
             </div>
           ))}
         </div>
+      </section>
+
+      {/* =====================================================================
+          2B. STEP-BY-STEP WALKTHROUGH FLOW (Scan -> Evidence -> Approval -> Publish)
+         ===================================================================== */}
+      <section
+        id="walkthrough-guide"
+        aria-labelledby="workspace-walkthrough-heading"
+        className="reveal-on-scroll mx-auto w-full max-w-[1120px] space-y-4"
+      >
+        <div className="flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="font-mono text-[11px] font-semibold uppercase tracking-wider text-iris">
+              Interactive Walkthrough
+            </p>
+            <h2
+              id="workspace-walkthrough-heading"
+              className="mt-1 font-display text-2xl font-bold tracking-tight text-bone sm:text-3xl"
+            >
+              Scan to Publish in Four Steps
+            </h2>
+          </div>
+        </div>
+        <WalkthroughFlow
+          mode="inline"
+          onNavigateScreen={screen => {
+            if (screen !== "intro") onOpenScreen(screen);
+          }}
+        />
       </section>
 
       {/* =====================================================================

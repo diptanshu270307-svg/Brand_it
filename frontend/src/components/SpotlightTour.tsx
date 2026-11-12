@@ -1,0 +1,415 @@
+import React, { useEffect, useState, useRef, useCallback } from "react";
+import { Icon } from "./ui";
+
+export interface TourStep {
+  id: string;
+  targetSelector: string;
+  title: string;
+  tag: string;
+  body: string;
+  actionText?: string;
+  onAction?: () => void;
+  preferredPosition?: "top" | "bottom" | "left" | "right";
+}
+
+interface SpotlightTourProps {
+  open: boolean;
+  onClose: () => void;
+  steps: TourStep[];
+  currentStepIndex?: number;
+  onStepChange?: (index: number) => void;
+}
+
+export const SpotlightTour: React.FC<SpotlightTourProps> = ({
+  open,
+  onClose,
+  steps,
+  currentStepIndex = 0,
+  onStepChange,
+}) => {
+  const [stepIdx, setStepIdx] = useState(currentStepIndex);
+  const [targetRect, setTargetRect] = useState<{
+    top: number;
+    left: number;
+    width: number;
+    height: number;
+  } | null>(null);
+
+  const [popoverPos, setPopoverPos] = useState<{
+    top: number;
+    left: number;
+    placement: "top" | "bottom";
+  }>({
+    top: 100,
+    left: 100,
+    placement: "bottom",
+  });
+
+  const [isMobile, setIsMobile] = useState<boolean>(() => {
+    if (typeof window !== "undefined") return window.innerWidth < 768;
+    return false;
+  });
+
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    setStepIdx(currentStepIndex);
+  }, [currentStepIndex]);
+
+  const activeStep = steps[stepIdx] || steps[0];
+
+  // Responsive mobile detector
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener("resize", handleResize, { passive: true });
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  // Measure target geometry with safe-area viewport clamping
+  const measureTarget = useCallback(() => {
+    if (!open || !activeStep) return;
+    const el = document.querySelector(activeStep.targetSelector);
+    if (!el) {
+      setTargetRect(null);
+      return;
+    }
+
+    const r = el.getBoundingClientRect();
+
+    // Viewport-clamped bounds to prevent overflow on mobile phones (iPhone / Android)
+    const minLeft = 6;
+    const maxRight = window.innerWidth - 6;
+    const left = Math.max(minLeft, r.left);
+    const right = Math.min(maxRight, r.right);
+    const width = Math.max(30, right - left);
+
+    const minTop = 6;
+    const maxBottom = window.innerHeight - 6;
+    const top = Math.max(minTop, r.top);
+    const bottom = Math.min(maxBottom, r.bottom);
+    const height = Math.max(24, bottom - top);
+
+    setTargetRect({ top, left, width, height });
+
+    // Desktop Popover Calculation
+    const popoverWidth = Math.min(440, window.innerWidth - 32);
+    const popoverHeight = 220;
+
+    let popTop = bottom + 20;
+    let placement: "top" | "bottom" = "bottom";
+
+    // If bottom would overflow, position above target
+    if (popTop + popoverHeight > window.innerHeight - 16 && top > popoverHeight + 30) {
+      popTop = Math.max(20, top - popoverHeight - 20);
+      placement = "top";
+    } else if (popTop + popoverHeight > window.innerHeight - 16) {
+      popTop = Math.max(20, window.innerHeight - popoverHeight - 20);
+    }
+
+    let popLeft = left + width / 2 - popoverWidth / 2;
+    popLeft = Math.max(16, Math.min(window.innerWidth - popoverWidth - 16, popLeft));
+
+    setPopoverPos({ top: popTop, left: popLeft, placement });
+  }, [open, activeStep]);
+
+  // Smooth, slow & steady scroll to target element
+  const scrollToTarget = useCallback((targetEl: Element) => {
+    const r = targetEl.getBoundingClientRect();
+    const mobile = window.innerWidth < 768;
+
+    // On mobile: scroll target to upper third so bottom sheet has ample room
+    // On desktop: scroll target to comfortable upper-middle
+    const targetOffset = mobile ? 82 : Math.max(90, window.innerHeight * 0.22);
+    const desiredScrollTop = window.scrollY + r.top - targetOffset;
+
+    window.scrollTo({
+      top: Math.max(0, desiredScrollTop),
+      behavior: "smooth",
+    });
+  }, []);
+
+  // When step changes: scroll target into view smoothly and track position
+  useEffect(() => {
+    if (!open || !activeStep) return;
+
+    const timer = window.setTimeout(() => {
+      const el = document.querySelector(activeStep.targetSelector);
+      if (el) {
+        scrollToTarget(el);
+      }
+      measureTarget();
+    }, 60);
+
+    return () => window.clearTimeout(timer);
+  }, [open, stepIdx, activeStep, scrollToTarget, measureTarget]);
+
+  // High-performance continuous tracking during scroll & resize
+  useEffect(() => {
+    if (!open) return;
+
+    let ticking = false;
+    const onScrollOrResize = () => {
+      if (!ticking) {
+        rafRef.current = requestAnimationFrame(() => {
+          measureTarget();
+          ticking = false;
+        });
+        ticking = true;
+      }
+    };
+
+    window.addEventListener("resize", onScrollOrResize, { passive: true });
+    window.addEventListener("scroll", onScrollOrResize, { passive: true });
+
+    return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      window.removeEventListener("resize", onScrollOrResize);
+      window.removeEventListener("scroll", onScrollOrResize);
+    };
+  }, [open, measureTarget]);
+
+  // Keyboard navigation (Esc to exit, Arrow keys to navigate)
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      } else if (e.key === "ArrowRight") {
+        handleNext();
+      } else if (e.key === "ArrowLeft") {
+        handlePrev();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [open, stepIdx, steps.length]);
+
+  if (!open || !activeStep) return null;
+
+  const handleNext = () => {
+    if (stepIdx < steps.length - 1) {
+      const next = stepIdx + 1;
+      setStepIdx(next);
+      onStepChange?.(next);
+    } else {
+      onClose();
+    }
+  };
+
+  const handlePrev = () => {
+    if (stepIdx > 0) {
+      const prev = stepIdx - 1;
+      setStepIdx(prev);
+      onStepChange?.(prev);
+    }
+  };
+
+  const pad = isMobile ? 6 : 10;
+  const rx = isMobile ? 14 : 18;
+
+  return (
+    <div
+      className="fixed inset-0 z-[1200] overflow-hidden pointer-events-auto"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Workspace Guided Tour"
+    >
+      {/* 1. Dark Backdrop with Slow, Steady SVG Cutout Mask */}
+      <svg
+        className="absolute inset-0 h-full w-full pointer-events-none"
+        aria-hidden="true"
+      >
+        <defs>
+          <mask id="spotlight-mask">
+            {/* White background: dark shaded canvas */}
+            <rect x="0" y="0" width="100%" height="100%" fill="white" />
+            {/* Black rectangle: illuminated window over target element */}
+            {targetRect && (
+              <rect
+                x={targetRect.left - pad}
+                y={targetRect.top - pad}
+                width={targetRect.width + pad * 2}
+                height={targetRect.height + pad * 2}
+                rx={rx}
+                ry={rx}
+                fill="black"
+                style={{
+                  transition:
+                    "x 0.72s cubic-bezier(0.2, 0.8, 0.2, 1), y 0.72s cubic-bezier(0.2, 0.8, 0.2, 1), width 0.72s cubic-bezier(0.2, 0.8, 0.2, 1), height 0.72s cubic-bezier(0.2, 0.8, 0.2, 1)",
+                }}
+              />
+            )}
+          </mask>
+        </defs>
+        <rect
+          x="0"
+          y="0"
+          width="100%"
+          height="100%"
+          fill="rgba(5, 5, 9, 0.82)"
+          mask="url(#spotlight-mask)"
+        />
+      </svg>
+
+      {/* 2. Slow & Steady Animated Spotlight Target Frame */}
+      {targetRect && (
+        <div
+          style={{
+            top: targetRect.top - pad,
+            left: targetRect.left - pad,
+            width: targetRect.width + pad * 2,
+            height: targetRect.height + pad * 2,
+            borderRadius: rx + 2,
+          }}
+          className="tour-target-ring rounded-2xl"
+          aria-hidden="true"
+        >
+          {/* A. Sonar Radar Ping Wave emitting outward */}
+          <div className="tour-radar-ping" />
+
+          {/* B. Gentle Horizontal Laser Scanline Beam */}
+          <div className="tour-laser-beam" />
+
+          {/* C. 4 Precision Reticle Corner Markers */}
+          <span className="tour-corner-marker -top-1 -left-1 border-t-2 border-l-2 rounded-tl-sm" />
+          <span className="tour-corner-marker -top-1 -right-1 border-t-2 border-r-2 rounded-tr-sm" />
+          <span className="tour-corner-marker -bottom-1 -left-1 border-b-2 border-l-2 rounded-bl-sm" />
+          <span className="tour-corner-marker -bottom-1 -right-1 border-b-2 border-r-2 rounded-br-sm" />
+
+          {/* D. Floating HUD Live Focus Tag (Desktop & Tablet) */}
+          {!isMobile && (
+            <div className="tour-hud-badge">
+              <span className="size-1.5 rounded-full bg-emerald-400 animate-pulse" />
+              <span>
+                FOCUS · 0{stepIdx + 1}/0{steps.length} · {activeStep.tag}
+              </span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* 3. Floating Popover Card — Adapts to Mobile Phones, Tablets & Desktops */}
+      <div
+        style={{
+          top: isMobile ? undefined : popoverPos.top,
+          left: isMobile ? undefined : popoverPos.left,
+          maxWidth: isMobile ? "calc(100vw - 24px)" : 440,
+        }}
+        className={`tour-popover-card ${
+          isMobile ? "mobile-docked" : "tour-popover-enter"
+        } w-full overflow-hidden p-4 sm:p-5 text-white`}
+      >
+        {/* Step Progress Gradient Bar at top of card */}
+        <div className="absolute top-0 left-0 right-0 h-1 bg-white/[0.08]">
+          <div
+            className="h-full bg-gradient-to-r from-sky-400 via-indigo-500 to-emerald-400 transition-all duration-700 ease-out"
+            style={{ width: `${((stepIdx + 1) / steps.length) * 100}%` }}
+          />
+        </div>
+
+        {/* Mobile Swipe / Grab Handle */}
+        {isMobile && (
+          <div className="mx-auto mt-1 mb-2.5 h-1 w-10 rounded-full bg-white/20" />
+        )}
+
+        {/* Pointer Arrow on Desktop */}
+        {!isMobile && (
+          <div
+            className={`pointer-events-none absolute left-1/2 -translate-x-1/2 size-3 rotate-45 border border-indigo-400/40 bg-[#0e101c] ${
+              popoverPos.placement === "bottom"
+                ? "-top-1.5 border-b-0 border-r-0"
+                : "-bottom-1.5 border-t-0 border-l-0"
+            }`}
+          />
+        )}
+
+        {/* Card Header: Step Indicator & Close Button */}
+        <div className="flex items-center justify-between border-b border-white/10 pb-2.5 pt-1">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/40 bg-sky-500/15 px-2.5 py-0.5 font-mono text-[10px] font-bold uppercase tracking-wider text-sky-300">
+              <span className="size-1.5 rounded-full bg-sky-400 animate-pulse" />
+              Step {stepIdx + 1} of {steps.length}
+            </span>
+            <span className="hidden sm:inline font-mono text-[10px] uppercase text-slate-400">
+              {activeStep.tag}
+            </span>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="cursor-pointer rounded-full p-1 text-slate-400 transition hover:bg-white/10 hover:text-white"
+            aria-label="Close Tour"
+            title="Close Tour (Esc)"
+          >
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+
+        {/* Card Content */}
+        <div className="py-3 space-y-1.5 sm:space-y-2">
+          <h3 className="font-sans text-base font-bold text-white sm:text-lg tracking-tight">
+            {activeStep.title}
+          </h3>
+          <p className="text-xs leading-relaxed text-slate-300 sm:text-[13px]">
+            {activeStep.body}
+          </p>
+          {activeStep.actionText && activeStep.onAction && (
+            <button
+              type="button"
+              onClick={activeStep.onAction}
+              className="mt-1 cursor-pointer inline-flex items-center gap-1.5 font-mono text-xs font-semibold uppercase text-sky-400 hover:text-sky-300 hover:underline"
+            >
+              <span>{activeStep.actionText}</span>
+              <span>→</span>
+            </button>
+          )}
+        </div>
+
+        {/* Card Footer: Step Dots & Navigation Buttons */}
+        <div className="flex items-center justify-between border-t border-white/10 pt-3">
+          {/* Step Dots */}
+          <div className="flex items-center gap-1.5">
+            {steps.map((_, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => {
+                  setStepIdx(i);
+                  onStepChange?.(i);
+                }}
+                aria-label={`Jump to step ${i + 1}`}
+                className={`cursor-pointer rounded-full border-0 p-0 transition-all duration-500 ${
+                  i === stepIdx
+                    ? "h-2 w-5 bg-gradient-to-r from-sky-400 to-indigo-500 shadow-[0_0_8px_rgba(56,189,248,0.5)]"
+                    : "size-2 bg-white/20 hover:bg-white/40"
+                }`}
+              />
+            ))}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {stepIdx > 0 && (
+              <button
+                type="button"
+                onClick={handlePrev}
+                className="cursor-pointer rounded-full border border-white/15 bg-white/[0.05] px-3 py-1.5 font-sans text-xs font-semibold text-slate-200 transition hover:bg-white/[0.1] hover:text-white"
+              >
+                ← Back
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={handleNext}
+              className="cursor-pointer rounded-full bg-gradient-to-r from-indigo-600 via-indigo-500 to-sky-500 px-4 py-1.5 font-sans text-xs font-bold text-white shadow-md transition-transform duration-200 hover:scale-[1.03]"
+            >
+              {stepIdx === steps.length - 1 ? "Finish Tour ✓" : "Next Step →"}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};

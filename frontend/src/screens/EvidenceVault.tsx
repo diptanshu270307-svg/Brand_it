@@ -105,9 +105,9 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
   return <div>
     <StatusAnnouncer message={error || (scanning ? "Scanning approved drafts…" : null)} />
     <PageHeading
-      eyebrow="Evidence Repository"
+      eyebrow="Approved facts · What you can prove"
       title="Approved facts"
-      description="The approved sources behind your team's promotional claims. Review, inspect, or recall facts when they expire or change."
+      description="Every number, test result, and product claim your team is allowed to use — each tied to a real document, a page number, and an expiration date."
       action={canCreate && (
         <Button variant="secondary" onClick={() => setShowAdd(true)}>
           <Icon name="plus" size={14}/> Add approved fact
@@ -116,14 +116,16 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
     />
     {error && <Notice tone="danger" className="mb-5">{error}</Notice>}
 
-    <Panel className="relative mb-8 overflow-hidden p-6 md:p-8">
-      <div className="pointer-events-none absolute -right-20 -top-24 h-72 w-72 rounded-full bg-fuchsia-500/10 blur-3xl"/>
+    {/* Plumbline Outdated Claim Scanner & Validity Timeline */}
+    <Panel className="relative mb-8 overflow-hidden p-6 md:p-8 guides">
       <div className="relative flex flex-wrap items-start justify-between gap-5">
         <div>
           <div className="lv-eyebrow mb-2 flex items-center gap-2">
-            <Icon name="radar" size={14}/> OUTDATED CLAIM SCANNER
+            <Icon name="radar" size={14}/> WHEN FACTS STOP BEING TRUE · OUTDATED CLAIM SCANNER
           </div>
-          <h2 className="font-display text-2xl font-medium tracking-tight">Ensure approved content stays valid.</h2>
+          <h2 className="font-display text-3xl font-extrabold uppercase tracking-tight text-bone">
+            Ensure approved content stays valid.
+          </h2>
           <p className="lv-muted mt-2 max-w-2xl text-sm leading-6">
             Scans all published and approved content to identify claims whose evidence has expired, changed, or been revoked.
           </p>
@@ -139,6 +141,65 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
         <Metric label="Expired / Needs attention" value={loading ? "—" : expired} note="Facts requiring renewal or update" tone="danger"/>
         <Metric label="Flagged published drafts" value={scannedAt ? affected.length : "—"} note={scannedAt ? `Checked ${new Date(scannedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "Run scan to detect affected drafts"} tone={affected.length ? "danger" : "neutral"}/>
       </div>
+
+      {/* Plumbline Validity Timeline Bar */}
+      {!loading && records.length > 0 && (
+        <div className="mb-6 border border-line bg-carbon/80 p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+            <span className="font-label text-[11px] uppercase tracking-[0.2em] text-ash">
+              Fact validity windows · Plumb line at today
+            </span>
+            <div className="flex items-center gap-4 font-label text-[10px] uppercase tracking-[0.16em] text-ash">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2 bg-ok" /> Current
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2 bg-major" /> Pending
+              </span>
+              <span className="inline-flex items-center gap-1.5">
+                <span className="size-2 bg-blocking" /> Expired / Revoked
+              </span>
+            </div>
+          </div>
+          <div className="relative space-y-2">
+            <div
+              className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-iris"
+              style={{ left: "58%" }}
+            >
+              <span className="absolute -top-5 -translate-x-1/2 bg-iris/20 px-1.5 py-0.5 font-mono text-[10px] text-iris ring-1 ring-iris/40">
+                Today
+              </span>
+            </div>
+            {records.slice(0, 6).map(ev => {
+              const isCurr = ev.state === "current";
+              const isPend = ev.state === "pending" || ev.state === "not_yet_valid";
+              const barCls = isCurr
+                ? "bg-ok/30 ring-1 ring-ok/60"
+                : isPend
+                ? "bg-major/30 ring-1 ring-major/60"
+                : "bg-blocking/30 ring-1 ring-blocking/60";
+              const leftPct = isCurr ? 15 : isPend ? 45 : 8;
+              const widthPct = isCurr ? 72 : isPend ? 45 : 46;
+              return (
+                <div key={ev.id} className="grid grid-cols-12 items-center gap-3 text-xs">
+                  <div className="col-span-4 truncate font-mono text-[11px] text-ash">
+                    <span className="text-bone">{ev.ref}</span> · {ev.claim_text}
+                  </div>
+                  <div className="col-span-6 relative h-4 bg-panel">
+                    <div
+                      className={`absolute top-0.5 bottom-0.5 ${barCls}`}
+                      style={{ left: `${leftPct}%`, width: `${widthPct}%` }}
+                    />
+                  </div>
+                  <div className="col-span-2 text-right font-mono text-[11px] text-ash">
+                    {ev.valid_until ? formatDate(ev.valid_until) : "Ongoing"}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       <Notice>
         <p className="text-xs leading-5">
@@ -157,11 +218,11 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
 
       <div className="mt-5 space-y-3">
         {affected.map(({ draft, proofs }) => (
-          <div key={draft.id} className="rounded-2xl border border-rose-400/25 bg-rose-400/[0.07] p-5">
+          <div key={draft.id} className="border border-blocking/35 bg-blocking/[0.07] p-5">
             <div className="flex flex-wrap items-start justify-between gap-4">
               <div>
                 <Badge tone="danger">Needs revision</Badge>
-                <h3 className="mt-2.5 font-display text-lg font-medium text-ink">{draft.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}</h3>
+                <h3 className="mt-2.5 font-display text-lg font-bold uppercase text-bone">{draft.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}</h3>
                 <p className="lv-muted mt-1 text-xs">Approved revision {draft.revision} · {draft.channel || "General"}{draft.seeded ? " · Sample history" : ""}</p>
               </div>
               {onOpenDraft && (
@@ -173,7 +234,7 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
             <ul className="mt-3.5 space-y-2 text-xs">
               {proofs.map(p => (
                 <li key={p.id} className="flex items-start gap-2">
-                  <Icon name="alert" className="lv-text-danger mt-0.5 shrink-0" size={14}/>
+                  <Icon name="alert" className="text-blocking mt-0.5 shrink-0" size={14}/>
                   <span>
                     <strong>{p.ref}</strong> is {p.state === "rejected" ? "revoked" : p.state.replace(/_/g, " ")} · Source: {p.document.title}{p.valid_until ? ` · Expired on ${formatDate(p.valid_until)}` : ""}
                   </span>
@@ -188,7 +249,7 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
     <div className="mb-5 flex flex-wrap items-center justify-between gap-4">
       <div>
         <div className="lv-eyebrow mb-1">APPROVED SOURCES</div>
-        <h2 className="font-display text-xl font-medium">Claim facts &amp; sources</h2>
+        <h2 className="font-display text-2xl font-bold uppercase tracking-tight text-bone">Claim facts &amp; sources</h2>
       </div>
       <div className="flex flex-wrap gap-2">
         {[["all", "All"], ["current", "Current"], ["pending", "Pending review"], ["unavailable", "Needs attention"]].map(([key, label]) => (
@@ -210,20 +271,22 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
         {filtered.map(ev => (
           <Panel key={ev.id} className="flex flex-col p-6">
             <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
-                <span className="text-xs font-semibold text-ink block">Evidence Passport</span>
-                <span className="text-[11px] text-muted">The approved source behind this claim</span>
+              <div className="flex items-center gap-2.5">
+                <span className="font-mono text-xs text-iris">{ev.ref}</span>
+                <span className="font-label text-[11px] uppercase tracking-[0.16em] text-ash">· Evidence Passport</span>
               </div>
               <Badge tone={ev.state === "current" ? "success" : ev.state === "pending" || ev.state === "not_yet_valid" ? "warning" : "danger"}>
                 {ev.state === "rejected" ? "Revoked" : ev.state.replace(/_/g, " ")}
               </Badge>
             </div>
 
-            <div className="lv-label mb-1 text-[11px]">Approved Claim Statement</div>
-            <h3 className="font-display text-lg font-medium leading-7 text-ink">{ev.claim_text}</h3>
+            <div className="lv-label mb-1.5 text-[11px]">Approved Claim Statement — copy you can use</div>
+            <div className="border-l-2 border-iris/50 bg-carbon/60 px-3.5 py-2.5">
+              <h3 className="font-display text-lg font-bold leading-7 text-bone">“{ev.claim_text}”</h3>
+            </div>
 
-            <div className="lv-label mb-1 mt-4 text-[11px]">Verbatim Source Excerpt</div>
-            <blockquote className="lv-well mb-4 flex-1 p-3.5 text-sm leading-6 rounded-xl italic text-muted">
+            <div className="lv-label mb-1.5 mt-4 text-[11px]">Verbatim Source Excerpt</div>
+            <blockquote className="paper mb-4 flex-1 border border-line p-3.5 text-sm leading-6 italic text-paper-ink">
               “{ev.excerpt}”
             </blockquote>
 

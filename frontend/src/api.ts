@@ -462,6 +462,79 @@ export interface EvaluationData {
   }[];
 }
 
+export interface AdScanFinding {
+  id: string;
+  kind: "rule" | "claim";
+  severity: "info" | "low" | "medium" | "high" | "critical";
+  code: string;
+  category: string;
+  quote: string;
+  explanation: string;
+  source_ref: string;
+  suggestion: string | null;
+  evidence_status: string | null;
+  passport_ref: string | null;
+  dimensions: Record<string, { claim?: string; evidence?: string; status: string; note: string }>;
+}
+
+export interface AdLayoutCheck {
+  id: string;
+  title: string;
+  status: "pass" | "warning" | "blocking";
+  metric: string;
+  detail: string;
+}
+
+export interface AdChannelSuitability {
+  channel: string;
+  target_ratio: string;
+  score: number;
+  status: "optimal" | "needs_tuning" | "needs_crop" | "blocked";
+  placement_verdict: string;
+}
+
+export interface AdScanRequest {
+  title?: string;
+  channel: string;
+  extracted_text: string;
+  cta_text?: string;
+  image_data_url?: string | null;
+  image_width: number;
+  image_height: number;
+  contrast_ratio: number;
+  text_coverage_pct: number;
+  top_zone_busy: boolean;
+  bottom_zone_busy: boolean;
+  focal_balance_pct: number;
+}
+
+export interface AdScanResponse {
+  overall_score: number;
+  verdict: "ready" | "needs_tuning" | "blocked";
+  ocr_used: boolean;
+  suspicious_notes: string[];
+  scores: {
+    text_compliance: number;
+    layout_composition: number;
+    placement_fit: number;
+    contrast_legibility: number;
+  };
+  image_meta: {
+    width: number;
+    height: number;
+    aspect_ratio: number;
+    aspect_label: string;
+    contrast_ratio: number;
+    text_coverage_pct: number;
+    focal_balance_pct: number;
+  };
+  extracted_text: string;
+  rewritten_text: string;
+  text_findings: AdScanFinding[];
+  layout_checks: AdLayoutCheck[];
+  channel_suitability: AdChannelSuitability[];
+}
+
 export interface SystemModeInfo {
   mode: string;
   is_production: boolean;
@@ -841,5 +914,10 @@ export const api = {
     }>("/companies", {
       method: "POST",
       body: JSON.stringify({ name, brand_name: brandName || null }),
+    }),
+  scanAdCreative: (brandId: number, body: AdScanRequest) =>
+    request<AdScanResponse>(`/brands/${brandId}/ad-scan`, {
+      method: "POST",
+      body: JSON.stringify(body),
     }),
 };

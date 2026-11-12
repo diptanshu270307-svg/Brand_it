@@ -1974,6 +1974,424 @@ def get_cached_benchmark(brand_id: int, user: User = Depends(current_user), db: 
     return cached.result_json
 
 
+_AD_PLACEMENTS: list[dict] = [
+    {"key": "linkedin_feed", "channel": "LinkedIn Sponsored Feed", "target_ratio": "1.91:1 · 1:1 · 4:5",
+     "lo": 0.78, "hi": 1.95, "center": 1.0, "rules_channel": "LinkedIn", "story": False},
+    {"key": "instagram_feed", "channel": "Instagram / Meta Feed (1:1 · 4:5)", "target_ratio": "1:1 or 4:5",
+     "lo": 0.78, "hi": 1.05, "center": 0.9, "rules_channel": "Instagram", "story": False},
+    {"key": "story_reel", "channel": "Instagram / TikTok Story & Reel (9:16)", "target_ratio": "9:16 Vertical",
+     "lo": 0.5, "hi": 0.66, "center": 0.5625, "rules_channel": "Instagram", "story": True},
+    {"key": "display_hero", "channel": "Website Hero / Display Banner (16:9)", "target_ratio": "16:9 Landscape",
+     "lo": 1.5, "hi": 2.4, "center": 1.78, "rules_channel": "Landing Page", "story": False},
+    {"key": "youtube_thumb", "channel": "YouTube Thumbnail / X Post (16:9)", "target_ratio": "16:9 Landscape",
+     "lo": 1.6, "hi": 1.95, "center": 1.78, "rules_channel": "Social", "story": False},
+    {"key": "pinterest_pin", "channel": "Pinterest Pin (2:3)", "target_ratio": "2:3 Vertical",
+     "lo": 0.62, "hi": 0.72, "center": 0.667, "rules_channel": "Social", "story": False},
+    {"key": "leaderboard", "channel": "Web Leaderboard Banner (728×90)", "target_ratio": "≈8:1 Ultra-wide",
+     "lo": 5.0, "hi": 12.0, "center": 8.09, "rules_channel": "Display", "story": False},
+    {"key": "medium_rect", "channel": "Medium Rectangle (300×250)", "target_ratio": "6:5",
+     "lo": 1.1, "hi": 1.3, "center": 1.2, "rules_channel": "Display", "story": False},
+    {"key": "skyscraper", "channel": "Wide Skyscraper (160×600)", "target_ratio": "≈1:4 Ultra-tall",
+     "lo": 0.15, "hi": 0.4, "center": 0.267, "rules_channel": "Display", "story": False},
+    {"key": "print_poster", "channel": "Print / Poster / Packaging", "target_ratio": "Any size",
+     "lo": 0.1, "hi": 12.0, "center": 0.707, "rules_channel": "Print", "story": False},
+]
+
+# Legacy channel labels sent by older clients / preset creatives.
+_AD_PLACEMENT_ALIASES = {
+    "linkedin": "linkedin_feed",
+    "instagram feed": "instagram_feed",
+    "meta feed": "instagram_feed",
+    "instagram": "story_reel",
+    "landing page": "display_hero",
+    "display": "display_hero",
+}
+
+_COMMON_RATIOS = [
+    ("9:16 Full-Screen Story / Reel", 0.5625), ("2:3 Portrait / Pinterest", 0.6667), ("3:4 Portrait", 0.75),
+    ("4:5 Vertical Feed", 0.8), ("1:1 Square", 1.0), ("6:5 Medium Rectangle", 1.2), ("5:4 Landscape", 1.25),
+    ("4:3 Landscape", 1.3333), ("3:2 Landscape", 1.5), ("16:9 Widescreen", 1.7778), ("1.91:1 Link / Feed Banner", 1.91),
+    ("2:1 Panorama", 2.0), ("21:9 Ultra-wide", 2.3333), ("3:1 Header Banner", 3.0), ("728×90 Leaderboard", 8.09),
+    ("1:4 Skyscraper", 0.2667), ("A-series Print (1:√2)", 0.7071),
+]
+
+
+def _ad_ratio_label(w: int, h: int) -> str:
+    import math as _math
+    ratio = w / h
+    best_label, best_dist = None, 9.0
+    for label, r in _COMMON_RATIOS:
+        dist = abs(_math.log(ratio / r))
+        if dist < best_dist:
+            best_label, best_dist = label, dist
+    if best_label and best_dist <= 0.04:
+        return f"{best_label} · {w}×{h}px"
+    return f"Custom {round(ratio, 2)}:1 · {w}×{h}px"
+
+
+def _ad_placement_ratio_score(spec: dict, ratio: float) -> int:
+    import math as _math
+    if spec["key"] == "print_poster":
+        return 88
+    if spec["lo"] <= ratio <= spec["hi"]:
+        return 94
+    edge = spec["lo"] if ratio < spec["lo"] else spec["hi"]
+    return max(40, round(92 - abs(_math.log(ratio / edge)) * 70))
+
+
+def _resolve_ad_placement(channel: str | None, ratio: float) -> dict:
+    raw = (channel or "").strip()
+    key = raw.lower()
+    if key in ("", "auto", "auto-detect"):
+        candidates = [p for p in _AD_PLACEMENTS if p["key"] != "print_poster"]
+        return max(candidates, key=lambda p: (_ad_placement_ratio_score(p, ratio), -abs(ratio - p["center"])))
+    for p in _AD_PLACEMENTS:
+        if key == p["key"] or key == p["channel"].lower():
+            return p
+    alias = _AD_PLACEMENT_ALIASES.get(key)
+    if alias:
+        return next(p for p in _AD_PLACEMENTS if p["key"] == alias)
+    for p in _AD_PLACEMENTS:
+        if key and key in p["channel"].lower():
+            return p
+    # Unknown custom channel: score as a generic social/display placement but keep its name for rule matching.
+    return {**_AD_PLACEMENTS[0], "key": "custom", "channel": raw[:80], "rules_channel": raw[:80]}
+
+
+class AdScanIn(BaseModel):
+    title: str = Field(default="Ad Creative Scan", max_length=200)
+    channel: str = Field(default="LinkedIn", max_length=80)
+    extracted_text: str = Field(default="", max_length=10000)
+    cta_text: str = Field(default="", max_length=300)
+    image_data_url: str | None = Field(default=None, max_length=8_000_000)
+    image_width: int = Field(default=1080, ge=1, le=12000)
+    image_height: int = Field(default=1350, ge=1, le=12000)
+    contrast_ratio: float = Field(default=7.2, ge=1.0, le=21.0)
+    text_coverage_pct: float = Field(default=16.5, ge=0.0, le=100.0)
+    top_zone_busy: bool = Field(default=False)
+    bottom_zone_busy: bool = Field(default=False)
+    focal_balance_pct: float = Field(default=88.0, ge=0.0, le=100.0)
+
+
+@router.post("/brands/{brand_id}/ad-scan")
+def scan_ad_creative(
+    brand_id: int,
+    body: AdScanIn,
+    user: User = Depends(current_user),
+    db: Session = Depends(get_db),
+):
+    """Scan an advertisement image for text/claim compliance, visual hierarchy, safe-zone collisions, and channel placement fit."""
+    import base64 as _b64
+    from .analysis.evidence import effective_expiry, retrieve_candidates
+    from .analysis.pipeline import detect_claims, doc_ref, resolve_claim, run_matchers
+    from .analysis.text import content_tokens
+
+    membership_for(db, user, brand_id)
+    brand = db.get(Brand, brand_id)
+    if not brand:
+        raise HTTPException(404, "Brand not found")
+
+    text = (body.extracted_text or "").strip()
+    ocr_used = False
+
+    # 1) Optional Gemini Multimodal OCR if an uploaded image has no extracted text yet.
+    #    The frontend normalises most formats (SVG, GIF, BMP, AVIF, TIFF, ICO…) to JPEG/PNG;
+    #    HEIC/HEIF photos that the browser cannot decode are forwarded as-is for OCR.
+    if not text and body.image_data_url and "," in body.image_data_url:
+        try:
+            header, b64_payload = body.image_data_url.split(",", 1)
+            declared = header[5:].split(";", 1)[0].strip().lower() if header.startswith("data:") else ""
+            mime_aliases = {"image/jpg": "image/jpeg", "image/pjpeg": "image/jpeg", "image/x-png": "image/png"}
+            mime = mime_aliases.get(declared, declared)
+            ocr_supported = {"image/png", "image/jpeg", "image/webp", "image/heic", "image/heif"}
+            if mime in ocr_supported:
+                raw_bytes = _b64.b64decode(b64_payload)
+                pages = lib.ocr_with_gemini(raw_bytes, mime)
+                if pages:
+                    text = "\n".join(pages).strip()
+                    ocr_used = True
+        except Exception:
+            pass
+
+    suspicious_notes = lib.scan_suspicious([text]) if text else []
+
+    # Resolve the target placement (supports explicit keys, legacy labels and "auto" best-fit by aspect ratio)
+    w = max(body.image_width, 1)
+    h = max(body.image_height, 1)
+    ratio = round(w / h, 3)
+    placement = _resolve_ad_placement(body.channel, ratio)
+    rules_channel = placement["rules_channel"]
+
+    # 2) Run deterministic Brand Rules + Claim & Evidence Passport verification on the ad's text
+    rules = list(db.scalars(select(Rule).where(Rule.brand_id == brand_id, Rule.status == "active")))
+    evidence_all = list(db.scalars(select(EvidenceRecord).where(EvidenceRecord.brand_id == brand_id)))
+    today = date.today()
+    current_evidence = [e for e in evidence_all if evidence_state(e, today) == "current"]
+    stop = {t for term in (brand.protected_terms or []) for t in content_tokens(term)}
+
+    rule_hits = run_matchers(text, rules, channel=rules_channel) if text else []
+    claims = detect_claims(text) if text else []
+
+    text_findings = []
+    rewritten_text = text
+
+    for idx, hit in enumerate(rule_hits, start=1):
+        replacement = hit.replacement
+        text_findings.append({
+            "id": f"R-{idx}",
+            "kind": "rule",
+            "severity": hit.severity,
+            "code": hit.rule.ref if hit.rule else "RULE",
+            "category": hit.category,
+            "quote": hit.quote,
+            "explanation": hit.explanation,
+            "source_ref": hit.source_ref,
+            "suggestion": replacement,
+            "evidence_status": None,
+            "passport_ref": None,
+            "dimensions": {},
+        })
+        if replacement and hit.quote in rewritten_text:
+            rewritten_text = rewritten_text.replace(hit.quote, replacement, 1)
+
+    for idx, c in enumerate(claims, start=1):
+        cands = retrieve_candidates(c.quote, evidence_all, stop, db=db, brand_id=brand_id)
+        notes_buf: list[str] = []
+        status, ev, expl, dims, _uncert = resolve_claim(c, cands, None, today, notes_buf)
+        # If deterministic dimensions & tokens are all supported by a current passport, mark supported
+        if ev and evidence_state(ev, today) == "current" and dims and all(v.get("status") == "supported" for v in dims.values()):
+            status = "supported"
+            expl = f"Verified against {ev.ref} ({ev.source_document.title}, p.{ev.page})."
+
+        suggested_fix = None
+        if status != "supported":
+            chosen_ev = ev if (ev and evidence_state(ev, today) == "current") else (current_evidence[0] if current_evidence else None)
+            if chosen_ev:
+                suggested_fix = f"{chosen_ev.claim_text} ({chosen_ev.ref}, p.{chosen_ev.page})"
+                if c.quote in rewritten_text:
+                    rewritten_text = rewritten_text.replace(c.quote, suggested_fix, 1)
+
+        text_findings.append({
+            "id": f"C-{idx}",
+            "kind": "claim",
+            "severity": "info" if status == "supported" else "critical",
+            "code": ev.ref if ev else "CLAIM-UNBACKED",
+            "category": "claims",
+            "quote": c.quote,
+            "explanation": expl or (f"Supported by {ev.ref}: “{ev.excerpt}”" if ev else "Unverified promotional claim."),
+            "source_ref": f"{ev.source_document.title} v{ev.source_document.version}, p.{ev.page}" if ev and ev.source_document else "Evidence Vault",
+            "suggestion": suggested_fix,
+            "evidence_status": status,
+            "passport_ref": ev.ref if ev else None,
+            "dimensions": dims or {},
+        })
+
+    # 3) Compute Ad Placement, Aspect Ratio, Safe-Zone, and Contrast Telemetry
+    detected_ratio_label = _ad_ratio_label(w, h)
+
+    blocking_text_issues = [f for f in text_findings if f["severity"] in ("high", "critical") and f.get("evidence_status") != "supported"]
+    minor_text_issues = [f for f in text_findings if f["severity"] in ("low", "medium")]
+
+    text_compliance_score = max(15, 100 - len(blocking_text_issues) * 32 - len(minor_text_issues) * 12)
+    if not text:
+        text_compliance_score = 60
+
+    # Contrast score (WCAG AA requires >= 4.5:1 for normal text, >= 3.0:1 for large display headlines)
+    if body.contrast_ratio >= 7.0:
+        contrast_score = 98
+        contrast_status = "pass"
+        contrast_note = f"WCAG AAA contrast ({body.contrast_ratio:.1f}:1) — headline and body copy are crisp against the background."
+    elif body.contrast_ratio >= 4.5:
+        contrast_score = 88
+        contrast_status = "pass"
+        contrast_note = f"WCAG AA contrast ({body.contrast_ratio:.1f}:1) — legible across mobile and desktop displays."
+    elif body.contrast_ratio >= 3.2:
+        contrast_score = 68
+        contrast_status = "warning"
+        contrast_note = f"Borderline contrast ({body.contrast_ratio:.1f}:1) — large headline is readable, but small footnote/disclaimer text may wash out."
+    else:
+        contrast_score = 42
+        contrast_status = "blocking"
+        contrast_note = f"Low contrast ({body.contrast_ratio:.1f}:1) — ad copy blends into background imagery. Add a dark scrim or high-contrast backing."
+
+    # Text density score (Meta/LinkedIn best practice: < 20% text area)
+    if 6.0 <= body.text_coverage_pct <= 22.0:
+        density_score = 95
+        density_status = "pass"
+        density_note = f"Optimal text-to-image density ({body.text_coverage_pct:.1f}% ≤ 20% threshold) — high visual thumb-stop impact."
+    elif body.text_coverage_pct <= 30.0:
+        density_score = 74
+        density_status = "warning"
+        density_note = f"Moderate text density ({body.text_coverage_pct:.1f}%) — consider trimming secondary copy by 15% for cleaner visual breathing room."
+    else:
+        density_score = 52
+        density_status = "warning"
+        density_note = f"Heavy text overlay ({body.text_coverage_pct:.1f}%) — ad visual is overcrowded, reducing feed engagement."
+
+    # Safe-zone check
+    safe_zone_collision = body.top_zone_busy or body.bottom_zone_busy
+    if not safe_zone_collision:
+        safe_zone_score = 96
+        safe_zone_status = "pass"
+        safe_zone_note = "Top 14% header and bottom 20% platform UI overlay zones are clear of critical copy."
+    else:
+        safe_zone_score = 64
+        safe_zone_status = "warning"
+        zone_names = []
+        if body.top_zone_busy:
+            zone_names.append("top 14% header bar")
+        if body.bottom_zone_busy:
+            zone_names.append("bottom 20% caption/CTA overlay")
+        safe_zone_note = f"Visual elements detected inside the {' and '.join(zone_names)} — may collide with Instagram/LinkedIn platform chrome."
+
+    # Source citation footnote check when claims are present
+    has_citation = any(k in text.lower() for k in ("ev-", "study", "p.", "soc 2", "n="))
+    if not claims or has_citation:
+        footnote_status = "pass"
+        footnote_note = "Source citation / substantiation reference is present on the creative."
+    else:
+        footnote_status = "warning"
+        footnote_note = "Promotional metric detected without a visible '*Source: EV-1 (2025 Study, p.2)' footnote in the lower margin."
+
+    layout_score = round((contrast_score * 0.35) + (density_score * 0.30) + (safe_zone_score * 0.35))
+
+    # Channel suitability matrix — every supported placement is scored against the creative's real aspect ratio
+    def _placement_row(spec: dict) -> dict:
+        score = _ad_placement_ratio_score(spec, ratio)
+        if spec.get("story") and safe_zone_collision:
+            score = min(score, 72)
+        in_range = spec["lo"] <= ratio <= spec["hi"]
+        if blocking_text_issues:
+            status = "blocked"
+        elif in_range and not (spec.get("story") and safe_zone_collision):
+            status = "optimal"
+        elif in_range:
+            status = "needs_tuning"
+        else:
+            status = "needs_crop"
+        if spec.get("story"):
+            verdict_text = "Keep headline and CTA between 14%–80% vertical height so profile, caption & CTA overlays do not cover copy."
+        elif in_range:
+            verdict_text = f"Native {spec['target_ratio']} fit — no cropping or letterboxing required."
+        elif ratio < spec["lo"]:
+            verdict_text = f"Creative is taller than {spec['target_ratio']} — it will be cropped top/bottom or pillar-boxed. Export a wider variant."
+        else:
+            verdict_text = f"Creative is wider than {spec['target_ratio']} — it will be cropped left/right or letter-boxed. Export a taller variant."
+        if blocking_text_issues:
+            verdict_text = "Resolve blocking claim/copy issues before launch. " + verdict_text
+        return {
+            "key": spec["key"],
+            "channel": spec["channel"],
+            "target_ratio": spec["target_ratio"],
+            "score": score,
+            "status": status,
+            "placement_verdict": verdict_text,
+        }
+
+    channel_suitability = [_placement_row(p) for p in _AD_PLACEMENTS]
+    if placement["key"] == "custom":
+        channel_suitability.insert(0, {**_placement_row(placement), "key": "custom"})
+    channel_suitability.sort(key=lambda c: (c["key"] != placement["key"], -c["score"]))
+
+    matched_ch = next((c for c in channel_suitability if c["key"] == placement["key"]), channel_suitability[0])
+    placement_fit_score = matched_ch["score"]
+    recommended = max(
+        (c for c in channel_suitability if c["key"] not in ("print_poster", "custom")),
+        key=lambda c: c["score"],
+    )
+
+    overall_score = round(
+        (text_compliance_score * 0.45)
+        + (layout_score * 0.30)
+        + (placement_fit_score * 0.25)
+    )
+
+    if blocking_text_issues or contrast_status == "blocking":
+        verdict = "blocked"
+    elif overall_score >= 84 and not safe_zone_collision:
+        verdict = "ready"
+    else:
+        verdict = "needs_tuning"
+
+    layout_checks = [
+        {
+            "id": "claim_copy",
+            "title": "Ad Copy & Claim Substantiation",
+            "status": "blocking" if blocking_text_issues else ("warning" if minor_text_issues else "pass"),
+            "metric": f"{len(blocking_text_issues)} Blocker(s)" if blocking_text_issues else "Verified ✓",
+            "detail": (
+                blocking_text_issues[0]["explanation"]
+                if blocking_text_issues
+                else "All promotional claims and brand terms on the creative match active rules and Evidence Passports."
+            ),
+        },
+        {
+            "id": "safe_zones",
+            "title": "Platform UI Safe-Zone Clearance",
+            "status": safe_zone_status,
+            "metric": "Clear (14%–80% Y)" if not safe_zone_collision else "Margin Overlap",
+            "detail": safe_zone_note,
+        },
+        {
+            "id": "contrast",
+            "title": "WCAG Typography Contrast & Legibility",
+            "status": contrast_status,
+            "metric": f"{body.contrast_ratio:.1f} : 1",
+            "detail": contrast_note,
+        },
+        {
+            "id": "density",
+            "title": "Text-to-Image Density & Visual Air",
+            "status": density_status,
+            "metric": f"{body.text_coverage_pct:.1f}% Area",
+            "detail": density_note,
+        },
+        {
+            "id": "aspect_placement",
+            "title": f"Placement Fit ({placement['channel']})",
+            "status": "pass" if placement_fit_score >= 85 else "warning",
+            "metric": detected_ratio_label.split(" ")[0],
+            "detail": f"{detected_ratio_label}. {matched_ch['placement_verdict']}",
+        },
+        {
+            "id": "footnote",
+            "title": "Evidence Footnote & CTA Hierarchy",
+            "status": footnote_status,
+            "metric": "Cited" if footnote_status == "pass" else "Missing Citation",
+            "detail": footnote_note,
+        },
+    ]
+
+    return {
+        "overall_score": overall_score,
+        "verdict": verdict,
+        "ocr_used": ocr_used,
+        "suspicious_notes": suspicious_notes,
+        "scores": {
+            "text_compliance": text_compliance_score,
+            "layout_composition": layout_score,
+            "placement_fit": placement_fit_score,
+            "contrast_legibility": contrast_score,
+        },
+        "image_meta": {
+            "width": w,
+            "height": h,
+            "aspect_ratio": ratio,
+            "aspect_label": detected_ratio_label,
+            "contrast_ratio": round(body.contrast_ratio, 1),
+            "text_coverage_pct": round(body.text_coverage_pct, 1),
+            "focal_balance_pct": round(body.focal_balance_pct, 1),
+        },
+        "extracted_text": text,
+        "rewritten_text": rewritten_text,
+        "text_findings": text_findings,
+        "layout_checks": layout_checks,
+        "channel_suitability": channel_suitability,
+        "placement": {"key": placement["key"], "channel": placement["channel"], "target_ratio": placement["target_ratio"]},
+        "recommended_placement": {"key": recommended["key"], "channel": recommended["channel"], "score": recommended["score"]},
+    }
+
+
 @router.post("/demo/reset")
 def reset_demo(request: Request, db: Session = Depends(get_db)):
     settings = get_settings()

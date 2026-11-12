@@ -146,15 +146,37 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
     (filter === "approved" && d.status === "approved")
   );
 
+  const actionableCount = queue.filter(d => d.actionable).length;
+  const seniorCount = queue.filter(d => d.route === "senior").length;
+  const revalCount = queue.filter(d => d.status === "needs_revalidation" || d.validity_status === "needs_revalidation").length;
+  const approvedCount = queue.filter(d => d.status === "approved").length;
+
   return <div>
     <StatusAnnouncer message={gate?.message || error || (busy ? "Recording decision…" : null)} />
     <PageHeading
-      eyebrow="Human Sign-Off"
+      eyebrow="Review queue · Four-eyes sign-off"
       title="Approvals"
-      description="Review and approve content submitted by your team. Ensure all promotional claims are grounded in approved facts before publication."
+      description="No one approves their own post. Routine posts go to your reviewer; medical, clinical, or guarantee language goes to Senior / Legal."
       action={<Badge tone="accent"><Icon name="lock" size={13}/>{role.replace(/_/g, " ")}</Badge>}
     />
     {error && <Notice tone="danger" className="mb-5">{error}</Notice>}
+
+    {/* Plumbline 4-card Queue Summary */}
+    <div className="mb-6 grid gap-px bg-line sm:grid-cols-4 border border-line">
+      {[
+        { k: "Waiting on you", v: loading ? "—" : actionableCount, sub: "Ready for your sign-off", c: "text-major" },
+        { k: "Needs senior / legal", v: loading ? "—" : seniorCount, sub: "Medical or guarantee claims", c: "text-blocking" },
+        { k: "Needs revalidation", v: loading ? "—" : revalCount, sub: "Recalled or expired proof", c: "text-iris" },
+        { k: "Approved", v: loading ? "—" : approvedCount, sub: "Signed off & locked", c: "text-ok" },
+      ].map(s => (
+        <div key={s.k} className="bg-panel p-5">
+          <div className="font-label text-[11px] uppercase tracking-[0.18em] text-ash">{s.k}</div>
+          <div className={`mt-1 font-display text-4xl font-extrabold ${s.c}`}>{s.v}</div>
+          <div className="mt-1 text-xs text-ash">{s.sub}</div>
+        </div>
+      ))}
+    </div>
+
     <div className="mb-6 flex flex-wrap gap-2">
       {[["all", "All items"], ["actionable", "Ready for your review"], ["senior", "Senior escalation"], ["needs_revalidation", "Needs revalidation"], ["approved", "Approved"]].map(([key, label]) => (
         <Button key={key} variant={filter === key ? "primary" : "secondary"} aria-pressed={filter === key} onClick={() => setFilter(key)}>
@@ -177,7 +199,7 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
               <button
                 type="button"
                 key={item.id}
-                className={`motion-interactive w-full rounded-xl border p-4 text-left transition-colors ${detail?.id === item.id ? "border-indigo-400/40 bg-indigo-400/10" : "border-transparent hover:bg-indigo-400/5"}`}
+                className={`motion-interactive w-full border p-4 text-left transition-colors ${detail?.id === item.id ? "border-iris/50 bg-iris/10" : "border-transparent hover:bg-raised/60"}`}
                 disabled={busy}
                 onClick={() => { onSelectDraft(item.id); if (selectedDraftId === item.id) void loadItem(item.id); }}
               >
@@ -199,7 +221,7 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
                   </Badge>
                   {item.seeded && <Badge>Sample</Badge>}
                 </div>
-                <h3 className="text-sm font-medium leading-6 text-ink">{item.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}</h3>
+                <h3 className="font-display text-base font-bold uppercase tracking-tight text-bone">{item.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}</h3>
                 <p className="lv-muted mt-1.5 font-mono text-[10px]">Revision {item.revision} · {item.author}</p>
               </button>
             ))}
@@ -216,14 +238,14 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
           </Empty>
         ) : <>
           {(detail.validity_status === "needs_revalidation" || detail.status === "needs_revalidation") && (
-            <Panel className="border-rose-500/40 bg-rose-500/[0.06] p-6 rounded-2xl">
+            <Panel className="border-blocking/40 bg-blocking/[0.06] p-6">
               <div className="flex flex-wrap items-start justify-between gap-4">
                 <div>
                   <div className="flex items-center gap-2 mb-1.5">
                     <Badge tone="danger">Evidence Recall</Badge>
-                    <span className="font-semibold text-rose-300 text-sm">Content requires revalidation</span>
+                    <span className="font-display font-bold uppercase tracking-wider text-blocking text-sm">Content requires revalidation</span>
                   </div>
-                  <p className="text-sm text-ink mt-1 font-medium">{detail.recall_reason || "A cited evidence passport or brand rule has expired, been revoked, or updated."}</p>
+                  <p className="text-sm text-bone mt-1 font-medium">{detail.recall_reason || "A cited evidence passport or brand rule has expired, been revoked, or updated."}</p>
                   <p className="lv-muted text-xs mt-1.5">
                     <Icon name="lock" size={12} className="inline mr-1" />
                     <strong>Historical approval preserved:</strong> Revision {detail.approved_revision_id || detail.revision} was previously approved and is preserved in the audit trail. Publication validity is paused pending human re-check and sign-off.
@@ -254,9 +276,9 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
           <Panel className="p-6 md:p-8">
             <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
               <div>
-                <div className="lv-eyebrow mb-2">REVISION {detail.revision} · {detail.channel || "GENERAL"}</div>
-                <h2 className="font-display text-2xl font-medium tracking-tight text-ink">{detail.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}</h2>
-                <div className="mt-2.5 flex flex-wrap gap-2">
+                <div className="lv-eyebrow mb-2">REVISION {detail.revision} · {detail.channel || "GENERAL"} · BY {detail.author.toUpperCase()}</div>
+                <h2 className="font-display text-3xl font-extrabold uppercase tracking-tight text-bone">{detail.title.replace(/\[SEEDED SAMPLE\]/gi, "").trim()}</h2>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
                   <Badge tone={
                     detail.status === "needs_revalidation" || detail.validity_status === "needs_revalidation"
                       ? "danger"
@@ -277,9 +299,38 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
               </Button>
             </div>
 
-            <blockquote className="lv-well mb-6 whitespace-pre-wrap p-5 text-base leading-8 rounded-2xl">
-              {detail.text}
-            </blockquote>
+            {/* Plumbline Approval Stage Chain */}
+            <div className="mb-6 flex flex-wrap items-center gap-2 border border-line bg-carbon/60 px-4 py-3 font-label text-[11px] uppercase tracking-[0.16em]">
+              <span className="text-ash mr-2">Approval chain:</span>
+              <span className={`px-2.5 py-1 border ${detail.status === "approved" ? "border-ok/40 bg-ok/10 text-ok" : "border-major/40 bg-major/10 text-major"}`}>
+                1. Reviewer {detail.status === "approved" ? "✓" : "· pending"}
+              </span>
+              {route === "senior" && (
+                <>
+                  <span className="text-ash">→</span>
+                  <span className={`px-2.5 py-1 border ${detail.status === "approved" ? "border-ok/40 bg-ok/10 text-ok" : "border-blocking/40 bg-blocking/10 text-blocking"}`}>
+                    2. Senior / Legal {detail.status === "approved" ? "✓" : "· required"}
+                  </span>
+                </>
+              )}
+              <span className="text-ash">→</span>
+              <span className={`px-2.5 py-1 border ${detail.status === "approved" ? "border-ok/40 bg-ok/10 text-ok" : "border-line bg-panel text-ash"}`}>
+                {detail.status === "approved" ? "Ready to publish ✓" : "Publish gate"}
+              </span>
+            </div>
+
+            {/* Plumbline Paper Copy Blockquote */}
+            <div className="paper mb-6 border border-line p-5">
+              <div className="mb-2 flex items-center justify-between border-b border-black/10 pb-2">
+                <span className="font-label text-[10px] uppercase tracking-[0.18em] text-[#52525b]">
+                  Submitted copy · Revision {detail.revision}
+                </span>
+                <span className="font-mono text-[11px] text-[#52525b]">{detail.channel || "General"}</span>
+              </div>
+              <blockquote className="whitespace-pre-wrap text-[15px] leading-8 text-paper-ink">
+                {detail.text}
+              </blockquote>
+            </div>
 
             <div className="mb-6 grid gap-4 sm:grid-cols-3">
               {[["Audience", detail.audience], ["Campaign goal", detail.purpose], ["Call to action", detail.cta]].map(([label, value]) => (

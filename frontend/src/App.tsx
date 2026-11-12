@@ -21,17 +21,18 @@ import { ReviewQueue } from "./screens/ReviewQueue";
 import { AppleIntro } from "./screens/AppleIntro";
 import { Loader } from "./components/Loader";
 import { GovernanceOrbit } from "./components/GovernanceOrbit";
+import { ProledXdrShowcase } from "./components/ProledXdrShowcase";
 import { WorkspaceTour } from "./components/WorkspaceTour";
-import { Badge, Button, Icon, Modal, Notice, StatusAnnouncer, errorText } from "./components/ui";
+import { Badge, BrandLintLogo, Button, Icon, Modal, Notice, StatusAnnouncer, errorText } from "./components/ui";
 
 type Screen = "intro" | "review" | "vault" | "queue" | "insights" | "library";
-const TABS: { id: Screen; label: string; icon: string }[] = [
-  { id: "intro", label: "Home", icon: "spark" },
-  { id: "review", label: "Check content", icon: "file" },
-  { id: "vault", label: "Approved facts", icon: "radar" },
-  { id: "queue", label: "Approvals", icon: "review" },
-  { id: "library", label: "Brand rules", icon: "book" },
-  { id: "insights", label: "Insights", icon: "chart" },
+const TABS: { id: Screen; num: string; label: string; hint: string; icon: string }[] = [
+  { id: "intro", num: "01", label: "Home", hint: "How BrandLint works & live desk", icon: "spark" },
+  { id: "review", num: "02", label: "Check content", hint: "Find problems before you publish", icon: "file" },
+  { id: "queue", num: "03", label: "Approvals", hint: "Drafts waiting for a decision", icon: "review" },
+  { id: "library", num: "04", label: "Brand rules", hint: "What the checker looks for", icon: "book" },
+  { id: "vault", num: "05", label: "Approved facts", hint: "Claims you can make, and their wording", icon: "radar" },
+  { id: "insights", num: "06", label: "Insights", hint: "Rules reviewers disagree with & benchmarks", icon: "chart" },
 ];
 
 export const App: React.FC = () => {
@@ -49,6 +50,7 @@ export const App: React.FC = () => {
   const [refresh, setRefresh] = useState(0);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showOrbit, setShowOrbit] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const [showTour, setShowTour] = useState<boolean>(() => {
     try {
       return localStorage.getItem("brandlint_hide_tour_on_start") !== "true";
@@ -448,180 +450,846 @@ export const App: React.FC = () => {
       if (me) { setSelectedDraftId(id); navigate("queue"); }
     } catch (e) { setError(errorText(e)); }
   };
+  const [loaderActive, setLoaderActive] = useState(true);
   const ready = !!user && !!brand;
+  const activeRoleLabel = (brand?.role || activeCompany?.role || "creator").replace(/_/g, " ");
+  const cleanWorkspaceName = (raw?: string | null) =>
+    (raw || "")
+      .replace(/\s*\([^)]*(fictional|demo)[^)]*\)/gi, "")
+      .trim();
+  const displayBrandName = cleanWorkspaceName(brand?.name) || "Lumina Flow";
+  const displayCompanyName = cleanWorkspaceName(activeCompany?.name) || displayBrandName;
   return <>
-    <Loader ready={ready || !!error}/>
-    <div className="lustro-app">
+    {loaderActive && <Loader ready={ready || !!error} onDone={() => setLoaderActive(false)} />}
+    <div className="lv-shell min-h-dvh bg-carbon text-bone">
       <StatusAnnouncer message={error || authMsg || teamMsg || null} />
-      <a href="#workspace" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[1100] focus:rounded-xl focus:bg-surface focus:p-3">Skip to workspace</a>
-      <header className="sticky top-0 z-40 border-b border-line/60 bg-well/80 backdrop-blur-2xl">
-        <div className="mx-auto flex max-w-[1800px] items-center gap-3 px-4 py-3 lg:gap-5 lg:px-7">
-          <button type="button" onClick={() => navigate("intro")} className="flex shrink-0 items-center gap-2.5 border-0 bg-transparent p-0 text-ink" aria-label="BrandLint keynote"><span className="lv-logo"><span><Icon name="shield" size={19}/></span></span><span className="hidden font-display text-base font-semibold tracking-tight sm:block">BrandLint<span className="lv-muted ml-1 text-xs font-normal">/</span></span></button>
-          <nav aria-label="Workspaces" className="lv-studio-scroll flex min-w-0 flex-1 items-center gap-1 overflow-x-auto py-1">{TABS.map(t => <button type="button" key={t.id} onClick={() => navigate(t.id)} className="lv-nav-tab" aria-current={screen === t.id ? "page" : undefined}><Icon name={t.icon} size={13}/>{t.label}</button>)}</nav>
+      <a href="#workspace" className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[1100] focus:rounded-md focus:bg-bone focus:px-4 focus:py-2 focus:font-display focus:text-xs focus:font-bold focus:uppercase focus:text-carbon">Skip to workspace</a>
+
+      {/* Code-A-Nova Inspired Floating Pill "Dynamic Island" Navigation Header */}
+      <header className="sticky top-3 z-40 px-2 pt-1 sm:px-4 lg:px-6">
+        <div id="brandlint-header-nav" className="mx-auto flex max-w-[1400px] items-center justify-between gap-2 rounded-full border border-white/15 bg-[#090a12]/90 px-3.5 py-2 shadow-[0_16px_44px_-12px_rgba(0,0,0,0.8)] backdrop-blur-xl sm:px-5">
+          {/* Left: Brand Logo + Workspace Badge */}
           <div className="flex shrink-0 items-center gap-2">
-            <Button
-              variant="ghost"
-              onClick={() => setShowTour(true)}
-              aria-label="Open Workspace Tour & Interactive Tutorial"
-              title="Open Workspace Tour & Interactive Tutorial"
-              className="!h-9 !min-h-9 !px-2.5 !text-xs flex items-center gap-1.5 border border-violet-400/35 bg-violet-500/10 text-ink hover:bg-violet-500/20"
+            <button
+              type="button"
+              onClick={() => navigate("intro")}
+              className="flex shrink-0 cursor-pointer items-center gap-2 border-0 bg-transparent p-0 text-bone"
+              aria-label="BrandLint home"
             >
-              <Icon name="spark" size={14} className="text-[var(--lv-accent)]" />
-              <span className="hidden md:inline font-medium">Workspace Tour</span>
-            </Button>
-            <button type="button" onClick={() => setShowPrivacy(true)} className="border-0 bg-transparent p-0" aria-label={`View AI processing details: ${privacy?.hosted ? "Live AI" : "Offline verifier"}`}><Badge tone={privacy?.hosted ? "success" : "warning"} className="!px-2"><span className="lv-dot"/><span className="hidden xl:inline">{privacy ? privacy.hosted ? "Live AI" : privacy.provider === "mock" ? "Offline verifier" : "Provider unavailable" : "Connecting"}</span></Badge></button>
-            <Button variant="ghost" onClick={() => setTheme(t => t === "dark" ? "light" : "dark")} aria-label={`Switch to ${theme === "dark" ? "Daylight" : "Lustro Velvet"} theme`} title={theme === "dark" ? "Daylight" : "Lustro Velvet"} className="!h-9 !min-h-9 !px-2.5"><Icon name={theme === "dark" ? "sun" : "moon"} size={16}/></Button>
+              <BrandLintLogo />
+              <span className="whitespace-nowrap font-sans text-base font-extrabold tracking-tight text-white sm:text-lg">
+                Brand<span className="bg-gradient-to-r from-indigo-400 to-sky-400 bg-clip-text text-transparent">Lint</span>
+              </span>
+              {brand && (
+                <span className="hidden max-w-[130px] truncate rounded-full border border-white/10 bg-white/[0.05] px-2 py-0.5 font-mono text-[10px] font-semibold uppercase text-slate-300 2xl:inline-block">
+                  {displayBrandName}
+                </span>
+              )}
+            </button>
+          </div>
+
+          {/* Center: Pill Navigation Links + Orange "Aura Glow · 5 Ads" Promo Badge */}
+          {user ? (
+            <nav aria-label="Workspaces" className="hidden lg:block">
+              <ul className="m-0 flex list-none items-center gap-0.5 p-0 xl:gap-1">
+                {TABS.map(t => {
+                  const active = screen === t.id;
+                  return (
+                    <li key={t.id} className="m-0 list-none p-0">
+                      <button
+                        type="button"
+                        title={t.hint}
+                        onClick={() => navigate(t.id)}
+                        aria-current={active ? "page" : undefined}
+                        className={`group relative inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1.5 font-sans text-[11px] font-semibold transition-all duration-200 xl:px-3 xl:text-xs ${
+                          active
+                            ? "border-indigo-400/40 bg-indigo-500/15 text-white shadow-[0_0_16px_rgba(99,102,241,0.25)]"
+                            : "border-transparent bg-transparent text-slate-300 hover:bg-white/[0.06] hover:text-white"
+                        }`}
+                      >
+                        <span>{t.label}</span>
+                        {active && (
+                          <span aria-hidden="true" className="size-1.5 rounded-full bg-sky-400 shadow-[0_0_8px_#38bdf8]" />
+                        )}
+                      </button>
+                    </li>
+                  );
+                })}
+                {/* Code-A-Nova Style Orange/Amber Campaign Badge Pill */}
+                <li className="m-0 ml-1 hidden list-none p-0 xl:block">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigate("intro");
+                      setTimeout(() => {
+                        document.getElementById("ad-image-scanner")?.scrollIntoView({ behavior: "smooth" });
+                      }, 80);
+                    }}
+                    className="inline-flex cursor-pointer items-center gap-1.5 whitespace-nowrap rounded-full border border-amber-400/40 bg-gradient-to-r from-amber-500/20 to-orange-500/20 px-2.5 py-1 font-mono text-[10px] font-bold uppercase tracking-wider text-amber-300 transition hover:border-amber-300 hover:from-amber-500/30 hover:to-orange-500/30"
+                  >
+                    <span className="size-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span>Aura Glow · 5 Ads</span>
+                  </button>
+                </li>
+              </ul>
+            </nav>
+          ) : (
+            <nav aria-label="Page sections" className="hidden items-center gap-6 font-sans text-xs font-semibold text-slate-300 md:flex">
+              <a href="#how" className="whitespace-nowrap transition-colors hover:text-white">How it works</a>
+              <a href="#numbers" className="whitespace-nowrap transition-colors hover:text-white">Test results</a>
+              <a href="#try" className="whitespace-nowrap transition-colors hover:text-white">Try a role</a>
+            </nav>
+          )}
+
+          {/* Right: Status, Role Switcher, Theme & High-Contrast Pill CTA */}
+          <div className="flex shrink-0 items-center gap-1.5">
+            <button
+              type="button"
+              onClick={() => setShowPrivacy(true)}
+              className="hidden cursor-pointer border-0 bg-transparent p-0 xl:inline-block"
+              aria-label={`View AI processing details: ${privacy?.hosted ? "Live AI" : "Offline verifier"}`}
+            >
+              <Badge tone={privacy?.hosted ? "success" : "warning"}>
+                <span aria-hidden="true" className={`size-1.5 rounded-full ${privacy?.hosted ? "bg-ok" : "bg-major"}`} />
+                <span className="whitespace-nowrap">
+                  {privacy ? (privacy.hosted ? "Live AI" : privacy.provider === "mock" ? "Local AI" : "Offline") : "Connecting"}
+                </span>
+              </Badge>
+            </button>
+
             {companies.length > 1 && (
-              <label className="relative" title="Switch company workspace">
+              <label className="relative hidden 2xl:inline-block" title="Switch company workspace">
                 <span className="sr-only">Company Workspace</span>
                 <select
-                  className="lv-input !w-[110px] !rounded-full !py-1.5 !text-xs sm:!w-[150px]"
+                  className="h-7 cursor-pointer rounded-full border border-white/15 bg-white/[0.05] px-2.5 pr-6 font-mono text-[10px] font-semibold uppercase text-white focus:border-indigo-400 focus:outline-none"
                   value={activeCompany?.id || ""}
                   onChange={e => switchWorkspace(Number(e.target.value))}
                 >
                   {companies.map(c => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+                    <option key={c.id} value={c.id} className="bg-carbon text-bone">
+                      {cleanWorkspaceName(c.name)}
                     </option>
                   ))}
                 </select>
               </label>
             )}
+
+            {user && systemMode?.allow_persona_switch !== false && (
+              <label className="relative hidden md:inline-block" title="Switch workspace role">
+                <span className="sr-only">Workspace Role</span>
+                <select
+                  className="h-7 cursor-pointer rounded-full border border-indigo-400/40 bg-indigo-500/15 px-2.5 pr-5 font-mono text-[10px] font-semibold uppercase text-indigo-200 focus:border-indigo-400 focus:outline-none"
+                  value={user.email}
+                  disabled={switching}
+                  onChange={e => { void switchPersona(e.target.value); }}
+                >
+                  {DEMO_USERS.map(u => (
+                    <option key={u.email} value={u.email} className="bg-carbon text-bone">
+                      {u.role} · {u.label.split(" ")[0]}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setShowTour(true)}
+              aria-label="Open Workspace Tour & Interactive Tutorial"
+              title="Open Workspace Tour & Interactive Tutorial"
+              className="hidden cursor-pointer items-center gap-1 whitespace-nowrap rounded-full border border-white/15 bg-white/[0.05] px-2.5 py-1 font-mono text-[10px] font-semibold uppercase text-slate-200 transition-colors hover:border-white/30 hover:text-white sm:inline-flex"
+            >
+              <Icon name="spark" size={11} className="text-indigo-400" />
+              <span>Tour</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setTheme(t => (t === "dark" ? "light" : "dark"))}
+              aria-label={`Switch to ${theme === "dark" ? "Daylight" : "BrandLint Carbon"} theme`}
+              title={theme === "dark" ? "Daylight" : "BrandLint Carbon"}
+              className="inline-flex size-7 shrink-0 cursor-pointer items-center justify-center rounded-full border border-white/15 bg-white/[0.05] text-white hover:border-white/35"
+            >
+              <Icon name={theme === "dark" ? "sun" : "moon"} size={13} />
+            </button>
+
             {user ? (
               <div className="flex items-center gap-1.5">
-                <Button
-                  variant="secondary"
-                  onClick={openTeamModal}
-                  className="!h-9 !min-h-9 !px-3 !text-xs flex items-center gap-2 rounded-full border-line/70 hover:border-violet-400/40"
-                  aria-label="Account, team and workspace settings"
-                  title={`${user.name} (${activeCompany?.name || "Workspace"}) - Account & Settings`}
+                <button
+                  type="button"
+                  onClick={() => navigate("review")}
+                  className="hidden cursor-pointer items-center gap-1 whitespace-nowrap rounded-full bg-white px-3 py-1 font-sans text-[11px] font-bold text-slate-950 shadow-sm transition hover:bg-indigo-100 2xl:inline-flex"
                 >
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" aria-hidden="true" />
-                  <span className="font-medium truncate max-w-[90px] sm:max-w-[130px]">{user.name}</span>
-                  <Icon name="settings" size={13} className="text-muted" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  onClick={() => { void handleLogout(); }}
-                  disabled={switching}
-                  className="!h-9 !min-h-9 !px-2.5 !text-xs text-rose-300 hover:text-rose-200 border border-rose-500/25 rounded-full"
-                  aria-label="Log off (Sign out)"
-                  title="Log off (Sign out)"
+                  <span>Check Content</span>
+                  <span aria-hidden="true">↗</span>
+                </button>
+                <button
+                  type="button"
+                  aria-expanded={menuOpen}
+                  aria-controls="site-menu"
+                  onClick={() => setMenuOpen(true)}
+                  className="cursor-pointer whitespace-nowrap rounded-full border border-white/25 bg-white/[0.06] px-3 py-1 font-mono text-[11px] font-bold uppercase text-white transition-colors hover:border-white hover:bg-white hover:text-slate-950"
                 >
-                  <span className="hidden sm:inline">Log off</span>
-                  <span className="sm:hidden">Out</span>
-                </Button>
+                  Menu
+                </button>
               </div>
             ) : (
-              <Button variant="primary" onClick={() => { setAuthMsg(""); setAuthView("login"); }} className="!h-9 !min-h-9 !px-3.5 !text-xs">
-                Log in
+              <Button variant="primary" onClick={() => { setAuthMsg(""); setAuthView("login"); }} className="!h-8 !rounded-full !px-4 font-sans !text-xs !font-bold">
+                Sign in ↗
               </Button>
             )}
           </div>
         </div>
       </header>
-      <div className="mx-auto max-w-[1800px] px-4 lg:px-7">
-        <div className="flex min-h-11 flex-wrap items-center justify-between gap-2 border-b border-line/50 py-2">
-          <div className="flex flex-wrap items-center gap-4">
-            <button type="button" className={`flex items-center gap-1.5 rounded-full border px-2.5 py-1 font-mono text-[10px] uppercase tracking-wider transition ${showOrbit ? "border-violet-400/45 bg-violet-400/15 text-ink" : "border-line/70 bg-transparent text-muted hover:text-ink"}`} onClick={() => setShowOrbit(v => !v)} aria-expanded={showOrbit} aria-controls="workspace-orbit-guide"><Icon name="radar" size={12}/><span>Visual guide</span><Icon name="chevron" size={11} className={showOrbit ? "rotate-180" : ""}/></button>
+
+      {/* BrandLint Full-Screen Menu Overlay */}
+      {menuOpen && user && (
+        <div
+          id="site-menu"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Navigation menu"
+          className="fixed inset-0 z-50 flex flex-col justify-between overflow-y-auto bg-carbon p-6 sm:p-10"
+        >
+          <div aria-hidden="true" className="guides pointer-events-none absolute inset-0" />
+          <div className="relative flex items-center justify-between">
+            <span className="flex items-center gap-2.5 font-display text-xl font-bold uppercase tracking-[-0.03em] text-bone">
+              <BrandLintLogo />
+              BrandLint · {displayBrandName}
+            </span>
+            <button
+              type="button"
+              onClick={() => setMenuOpen(false)}
+              className="cursor-pointer border-0 bg-transparent font-display text-lg font-bold uppercase tracking-[-0.03em] text-bone hover:text-iris"
+            >
+              Close ✕
+            </button>
           </div>
-          <div className="flex items-center gap-3">
-            <span className="hidden text-[10px] text-muted sm:inline"><strong className="text-ink">{activeCompany?.name || brand?.name || "Workspace"}</strong>{brand?.name && activeCompany?.name !== brand?.name ? ` · ${brand.name}` : ""} <span className="mx-1 text-muted/40">/</span> Human decisions. Traceable proof.</span>
-            {systemMode?.allow_reset && (
-              <button type="button" onClick={() => setShowReset(true)} disabled={!ready || switching} className="flex items-center gap-1 border-0 bg-transparent p-0 text-[10px] text-muted hover:text-ink"><Icon name="refresh" size={11}/>Reset demo</button>
-            )}
+
+          <div className="relative my-8 grid gap-8 lg:grid-cols-[1.4fr_1fr] lg:items-end">
+            <div>
+              <p className="font-label text-xs uppercase text-ash">On this site</p>
+              <ol className="mt-3 divide-y divide-line border-y border-line">
+                {TABS.map(item => (
+                  <li key={item.id}>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        navigate(item.id);
+                      }}
+                      className="group flex w-full cursor-pointer items-baseline justify-between gap-4 border-0 bg-transparent py-3 text-left"
+                    >
+                      <span className="flex items-baseline gap-4">
+                        <span className="font-mono text-xs text-iris">{item.num}</span>
+                        <span
+                          className={`font-display text-[clamp(1.6rem,3.6vw,2.75rem)] font-bold uppercase leading-[0.95] tracking-[-0.03em] transition-transform duration-300 group-hover:translate-x-2 ${
+                            screen === item.id ? "text-iris" : "text-bone"
+                          }`}
+                        >
+                          {item.label}
+                        </span>
+                      </span>
+                      <span className="hidden text-sm text-ash sm:inline">{item.hint}</span>
+                    </button>
+                  </li>
+                ))}
+              </ol>
+            </div>
+
+            <div className="space-y-4 rounded-2xl border border-line bg-panel p-6">
+              <p className="font-label text-xs uppercase text-ash">Signed in</p>
+              <p className="font-display text-2xl font-bold uppercase text-bone">{user.name}</p>
+              <p className="font-label text-xs uppercase text-iris">{activeRoleLabel}</p>
+
+              {systemMode?.allow_persona_switch !== false && (
+                <div className="border-t border-line pt-4">
+                  <p className="mb-2 font-label text-[11px] uppercase text-ash">Switch demo role</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {DEMO_USERS.map(u => (
+                      <button
+                        key={u.email}
+                        type="button"
+                        onClick={() => {
+                          setMenuOpen(false);
+                          void switchPersona(u.email);
+                        }}
+                        className={`cursor-pointer rounded-full border px-3 py-1 font-label text-[11px] font-semibold uppercase transition-colors ${
+                          u.email === user.email
+                            ? "border-iris bg-iris/20 text-iris"
+                            : "border-line bg-carbon text-bone/75 hover:border-bone hover:text-bone"
+                        }`}
+                      >
+                        {u.role} · {u.label.split(" ")[0]}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex flex-wrap gap-2 border-t border-line pt-4 font-label text-xs uppercase">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void openTeamModal();
+                  }}
+                  className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
+                >
+                  Team &amp; settings
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowTour(true);
+                  }}
+                  className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
+                >
+                  Workspace tour
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowOrbit(true);
+                  }}
+                  className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
+                >
+                  Architecture map
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    setShowPrivacy(true);
+                  }}
+                  className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
+                >
+                  Privacy &amp; AI status
+                </button>
+                {systemMode?.allow_reset && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      setShowReset(true);
+                    }}
+                    className="cursor-pointer rounded-full border border-line px-4 py-2 text-bone hover:border-bone"
+                  >
+                    Reset demo
+                  </button>
+                )}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false);
+                    void handleLogout();
+                  }}
+                  className="cursor-pointer rounded-full bg-bone px-4 py-2 font-bold text-carbon hover:bg-iris"
+                >
+                  Sign out
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div className="relative flex flex-wrap justify-between gap-4 font-label text-xs uppercase text-ash">
+            <span>BrandLint · {displayCompanyName}</span>
+            <span>Silence is never clearance · Evidence or silence</span>
           </div>
         </div>
-        {showOrbit && <div id="workspace-orbit-guide" className="pt-3"><GovernanceOrbit mode="compact" activeScreen={screen} onNavigate={navigate} onClose={() => setShowOrbit(false)} /></div>}
-      </div>
-      {error && <div className="mx-auto max-w-[1800px] px-4 py-4 lg:px-7"><Notice tone="danger"><div className="flex flex-wrap items-center justify-between gap-3"><span>{error}</span><Button onClick={() => { void bootstrap(); }}>Retry connection</Button></div></Notice></div>}
-      <main id="workspace" tabIndex={-1} className="mx-auto max-w-[1800px] px-4 pb-12 pt-6 outline-none sm:pt-8 lg:px-7" key={`${brand?.id}-${refresh}`}>
-        {ready && brand && user && <div className="lv-enter motion-workspace" key={screen}>
-          {screen === "intro" && (
-            <AppleIntro
-              brandId={brand.id}
-              companyId={activeCompany?.id || brand.company_id}
-              role={brand.role}
-              user={user}
-              privacy={privacy}
-              onOpenScreen={navigate}
-              onLaunchDraft={(id, persona) => {
-                if (persona) {
-                  void switchPersona(persona).then(me => {
-                    if (me) openDraft(id);
-                  });
-                } else openDraft(id);
+      )}
+
+      {/* Governance Orbit Architecture Map Modal */}
+      {showOrbit && (
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Architecture Map"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-md"
+        >
+          <div className="relative max-h-[90vh] w-full max-w-4xl overflow-y-auto rounded-3xl border border-line bg-panel p-6 shadow-2xl">
+            <div className="mb-4 flex items-center justify-between border-b border-line pb-3">
+              <span className="font-sans text-lg font-bold text-bone">Workspace Architecture Map</span>
+              <button
+                type="button"
+                onClick={() => setShowOrbit(false)}
+                className="cursor-pointer rounded-full p-1 text-ash hover:bg-white/10 hover:text-bone"
+                aria-label="Close Architecture Map"
+              >
+                <Icon name="close" size={16} />
+              </button>
+            </div>
+            <GovernanceOrbit
+              mode="compact"
+              activeScreen={screen}
+              onNavigate={(s) => {
+                setShowOrbit(false);
+                navigate(s);
               }}
-              onLaunchStep={() => {
-                setShowTour(true);
-              }}
+              onClose={() => setShowOrbit(false)}
             />
-          )}
-          {screen === "review" && <DraftReview brandId={brand.id} role={brand.role} selectedDraftId={selectedDraftId} onSelectDraft={setSelectedDraftId} onOpenQueue={id => { void openQueue(id); }}/ >}
-          {screen === "vault" && <EvidenceVault brandId={brand.id} role={brand.role} onOpenDraft={id => { void openRecalledDraft(id); }}/ >}
-          {screen === "queue" && <ReviewQueue brandId={brand.id} role={brand.role} selectedDraftId={selectedDraftId} onSelectDraft={setSelectedDraftId} onOpenEditor={openDraft} onSwitchReviewer={senior => { void switchReviewer(senior); }}/ >}
-          {screen === "insights" && <Insights brandId={brand.id} role={brand.role}/ >}
-          {screen === "library" && <BrandLibrary brandId={brand.id} role={brand.role}/ >}
-        </div>}
+          </div>
+        </div>
+      )}
+
+      {error && (
+        <div className="mx-auto max-w-[1400px] px-4 py-4 sm:px-6">
+          <Notice tone="danger">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <span>{error}</span>
+              <Button onClick={() => { void bootstrap(); }}>Retry connection</Button>
+            </div>
+          </Notice>
+        </div>
+      )}
+
+      <main id="workspace" tabIndex={-1} className="mx-auto max-w-[1400px] px-4 pb-12 pt-6 outline-none sm:px-6 sm:pt-8" key={`${brand?.id}-${refresh}`}>
+        {ready && brand && user && (
+          <div className="lv-enter motion-workspace" key={screen}>
+            {screen === "intro" && (
+              <AppleIntro
+                brandId={brand.id}
+                brandName={displayBrandName}
+                companyId={activeCompany?.id || brand.company_id}
+                role={brand.role}
+                user={user}
+                privacy={privacy}
+                onOpenScreen={navigate}
+                onSwitchPersona={email => { void switchPersona(email); }}
+                onLaunchDraft={(id, persona) => {
+                  if (persona) {
+                    void switchPersona(persona).then(me => {
+                      if (me) openDraft(id);
+                    });
+                  } else openDraft(id);
+                }}
+                onLaunchStep={() => {
+                  setShowTour(true);
+                }}
+              />
+            )}
+            {screen === "review" && (
+              <DraftReview
+                brandId={brand.id}
+                role={brand.role}
+                selectedDraftId={selectedDraftId}
+                onSelectDraft={setSelectedDraftId}
+                onOpenQueue={id => { void openQueue(id); }}
+              />
+            )}
+            {screen === "vault" && (
+              <EvidenceVault
+                brandId={brand.id}
+                role={brand.role}
+                onOpenDraft={id => { void openRecalledDraft(id); }}
+              />
+            )}
+            {screen === "queue" && (
+              <ReviewQueue
+                brandId={brand.id}
+                role={brand.role}
+                selectedDraftId={selectedDraftId}
+                onSelectDraft={setSelectedDraftId}
+                onOpenEditor={openDraft}
+                onSwitchReviewer={senior => { void switchReviewer(senior); }}
+              />
+            )}
+            {screen === "insights" && <Insights brandId={brand.id} role={brand.role} />}
+            {screen === "library" && <BrandLibrary brandId={brand.id} role={brand.role} />}
+          </div>
+        )}
+
         {!ready && !switching && (
-          <div className="py-24 text-center max-w-md mx-auto space-y-4">
-            <div className="mx-auto w-12 h-12 rounded-2xl bg-violet-400/10 border border-violet-400/20 flex items-center justify-center text-[var(--lv-accent)]">
-              <Icon name="lock" size={24} />
+          <div className="space-y-16 py-6">
+            {/* BrandLint Unauthenticated Landing Experience */}
+            <section className="guides contours ruler relative overflow-hidden rounded-2xl border border-line bg-carbon px-6 py-12 sm:px-10 sm:py-16">
+              <div className="grid items-center gap-12 lg:grid-cols-[1.15fr_0.85fr]">
+                <div>
+                  <p className="font-label text-xs uppercase text-iris">Before it&apos;s published · BrandLint</p>
+                  <h1 className="mt-4 font-display text-[clamp(2.5rem,6.5vw,5.25rem)] font-bold uppercase leading-[0.88] tracking-[-0.04em] text-bone">
+                    <span className="block">Every claim</span>
+                    <span className="relative mt-1 inline-block">
+                      <span className="strike-bg text-bone/45">40% faster</span>
+                      <span aria-hidden="true" className="swap-in mt-1 block text-[0.58em] leading-none text-ok sm:ml-4 sm:inline">
+                        → 18% higher throughput*
+                      </span>
+                    </span>
+                    <span className="mt-1 block">Checked.</span>
+                  </h1>
+                  <p className="mt-6 max-w-xl text-base leading-relaxed text-bone/75 sm:text-lg">
+                    {user
+                      ? "Your account is ready. Create your company workspace to start adding brand rules and approved facts, or accept an invitation from your team."
+                      : "Paste a draft or drop a scanned PDF. BrandLint checks every line against your brand's rules and Evidence Vault, cites the exact rule and words, and swaps in approved wording before it goes live."}
+                  </p>
+                  <div className="mt-8 flex flex-wrap items-center gap-3">
+                    <Button
+                      variant="primary"
+                      onClick={() => {
+                        setAuthMsg("");
+                        setAuthView(user ? "workspace" : "login");
+                      }}
+                      className="!h-12 !rounded-full !px-7 font-display !text-sm !font-bold uppercase"
+                    >
+                      {user ? "Create workspace" : "Sign in to workspace"} <Icon name="arrow" size={15} />
+                    </Button>
+                    {!user && (
+                      <Button
+                        variant="secondary"
+                        onClick={() => {
+                          setAuthMsg("");
+                          setAuthPassword("");
+                          setAuthView("register");
+                        }}
+                        className="!h-12 !rounded-full !px-6 font-display !text-sm !font-bold uppercase"
+                      >
+                        Create an account
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="relative mx-auto w-full max-w-lg">
+                  <div className="relative aspect-[16/10] overflow-hidden rounded-2xl border border-line bg-panel shadow-2xl">
+                    <img
+                      src="/ads/aura-glow-guarantee-ad.jpg"
+                      alt="Aura Glow Guarantee Banner Audit"
+                      className="h-full w-full object-cover"
+                    />
+                    <div aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-black/30" />
+                    <div aria-hidden="true" className="box-in absolute inset-x-4 top-[4%] h-[22%] rounded-lg border-2 border-blocking bg-blocking/15">
+                      <span className="absolute -bottom-5 left-2 rounded bg-blocking px-1.5 py-0.5 font-mono text-[10px] font-bold uppercase text-white">
+                        CLAIM-01 · Unqualified Guarantee
+                      </span>
+                    </div>
+                    <div aria-hidden="true" className="scan-y pointer-events-none absolute inset-x-0 h-16 bg-gradient-to-b from-transparent via-iris/35 to-transparent">
+                      <div className="h-0.5 w-full bg-iris shadow-[0_0_12px_#a39cff]" />
+                    </div>
+                    <div aria-hidden="true" className="finding-pop paper absolute inset-x-4 bottom-3 rounded-xl p-3.5">
+                      <div className="flex items-center justify-between gap-2 font-label text-[10px] font-bold uppercase">
+                        <span className="flex items-center gap-1.5 text-[#b42318]">
+                          <span className="size-2 rotate-45 bg-blocking" /> Aura Glow Ad #1 · Requires EV-1
+                        </span>
+                        <span className="font-mono text-ink/60">33.8% Text Density</span>
+                      </div>
+                      <p className="mt-1 rounded bg-[#1e7f55]/12 px-2.5 py-1 text-xs font-semibold text-[#145a3c]">
+                        ✓ Fix: “92% reported visibly brighter skin after 30 days (EV-1, n=124)”
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </section>
+
+            {/* Apple MacBook Pro PROLED XDR Display-Inspired Tandem Verification Showcase */}
+            <div className="overflow-hidden rounded-2xl border border-line">
+              <ProledXdrShowcase
+                onTryChecker={() => {
+                  setAuthMsg("");
+                  setAuthView(user ? "workspace" : "login");
+                }}
+              />
             </div>
-            <h2 className="text-xl font-semibold text-ink">{user ? "Set up your workspace" : "Sign in to BrandLint"}</h2>
-            <p className="text-xs text-muted leading-relaxed">
-              {user ? "Your account is ready. Create your company workspace to start adding brand rules and approved facts, or accept an invitation from your team." : "Sign in with your workspace account, or create an account to set up your company's brand rules, evidence and approval queues."}
-            </p>
-            <div className="pt-2">
-              <Button variant="primary" onClick={() => { setAuthMsg(""); setAuthView(user ? "workspace" : "login"); }} className="!px-6 !py-2.5">
-                {user ? "Create workspace" : "Sign in to workspace"}
-              </Button>
-              {!user && <Button variant="ghost" className="ml-2" onClick={() => { setAuthMsg(""); setAuthPassword(""); setAuthView("register"); }}>Create an account</Button>}
-            </div>
+
+            {/* Quick 1-click Demo Role Cards */}
+            {!user && systemMode?.allow_persona_switch !== false && (
+              <section id="try" className="space-y-6">
+                <div>
+                  <p className="font-label text-xs uppercase text-iris">Try the demo · Role-based governance</p>
+                  <h2 className="mt-2 font-display text-4xl font-bold uppercase leading-[0.9] tracking-[-0.03em] text-bone">
+                    Pick a role to step inside.
+                  </h2>
+                </div>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                  {[
+                    { email: DEMO_USERS[0].email, name: "Creator · Alex", blurb: "Checks drafts, applies fixes, submits for review.", num: "01", accent: "from-[#4b3fd1]/45 via-[#17171d] to-[#0b0b0d]", icon: "file" },
+                    { email: DEMO_USERS[1].email, name: "Reviewer · Samira", blurb: "Reviews submitted posts and gives first-stage approval.", num: "02", accent: "from-[#22c55e]/35 via-[#17171d] to-[#0b0b0d]", icon: "review" },
+                    { email: DEMO_USERS[2].email, name: "Senior · Morgan", blurb: "Signs off escalated claims and senior review routes.", num: "03", accent: "from-[#f59e0b]/35 via-[#17171d] to-[#0b0b0d]", icon: "shield" },
+                    { email: DEMO_USERS[3].email, name: "Brand Owner · Olivia", blurb: "Edits rules, gives final approval, reads guideline health.", num: "04", accent: "from-[#a39cff]/40 via-[#17171d] to-[#0b0b0d]", icon: "chart" },
+                  ].map(card => (
+                    <button
+                      key={card.email}
+                      type="button"
+                      onClick={() => { void switchPersona(card.email); }}
+                      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-panel text-left transition-colors hover:border-bone"
+                    >
+                      <div className={`guides contours relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br ${card.accent}`}>
+                        <div className="absolute inset-0 flex items-center justify-center">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-bone/15 bg-carbon/75 text-iris shadow-lg transition-transform duration-500 group-hover:scale-110">
+                            <Icon name={card.icon} size={22} />
+                          </div>
+                        </div>
+                        <span className="absolute left-3 top-3 rounded-full bg-carbon/80 px-2.5 py-0.5 font-mono text-[11px] text-bone">
+                          {card.num}
+                        </span>
+                      </div>
+                      <div className="flex flex-1 flex-col justify-between p-4">
+                        <div>
+                          <p className="font-display text-lg font-bold uppercase tracking-[-0.02em] text-bone">{card.name}</p>
+                          <p className="mt-1 text-xs leading-relaxed text-ash">{card.blurb}</p>
+                        </div>
+                        <span className="mt-4 inline-flex items-center justify-between border-t border-line pt-3 font-label text-xs font-bold uppercase text-bone group-hover:text-iris">
+                          <span>Enter workspace</span>
+                          <span aria-hidden="true" className="transition-transform group-hover:translate-x-1">→</span>
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </section>
+            )}
           </div>
         )}
       </main>
-      <footer className="mx-auto max-w-[1800px] px-4 pb-10 pt-2 lg:px-7">
-        <div className="lv-footer-shell">
-          <div className="flex flex-col justify-between gap-6 p-6 sm:p-7 lg:flex-row lg:items-center">
-            <div className="max-w-lg">
-              <div className="flex flex-wrap items-center gap-2.5">
-                <button type="button" onClick={() => navigate("intro")} className="inline-flex items-center gap-2.5 bg-transparent p-0 text-ink" aria-label="Return to BrandLint keynote">
-                  <span className="lv-logo"><span><Icon name="shield" size={18}/></span></span>
-                  <span className="font-display text-lg font-semibold tracking-tight">BrandLint</span>
-                </button>
-                <Badge tone="accent">Governance Studio</Badge>
-              </div>
-              <p className="lv-muted mt-2.5 text-xs leading-6">
-                Spell-check for your brand. Every promotional claim grounded in traceable proof — humans make the final call.
-              </p>
+
+      {/* =====================================================================
+          CODE-A-NOVA INSPIRED CONVERSION BANNER + 5-COLUMN ARCHITECTURAL FOOTER
+         ===================================================================== */}
+      <footer className="relative overflow-hidden bg-[#050508] text-white">
+        {/* Top Glowing Blue/Violet Gradient Line */}
+        <div
+          aria-hidden="true"
+          className="h-[2px] w-full bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-90 shadow-[0_0_24px_#6366f1]"
+        />
+
+        <div className="relative mx-auto max-w-[1400px] px-4 py-14 sm:px-6 sm:py-16">
+          {/* Code-A-Nova Rounded-3xl Conversion Banner */}
+          <div className="relative mb-14 overflow-hidden rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-[#0e1022] via-[#090a14] to-[#130f26] p-8 text-center shadow-2xl sm:p-12">
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute left-1/2 top-0 h-64 w-96 -translate-x-1/2 rounded-full bg-indigo-500/20 blur-[110px]"
+            />
+            <span className="relative inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-4 py-1 font-mono text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
+              <span>Silence Is Never Clearance · Evidence Or Silence</span>
+            </span>
+            <h2 className="relative mx-auto mt-4 max-w-3xl font-sans text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
+              Ready to Audit Your Brand&apos;s{" "}
+              <span className="bg-gradient-to-r from-indigo-400 via-sky-400 to-purple-400 bg-clip-text text-transparent">
+                Next Ad Campaign &amp; Copy?
+              </span>
+            </h2>
+            <p className="relative mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
+              Every check lists what it verified — and what still needs human judgement — so a clean result is never mistaken for a blanket sign-off.
+            </p>
+            <div className="relative mt-7 flex flex-wrap items-center justify-center gap-3.5">
+              <button
+                type="button"
+                onClick={() => navigate("review")}
+                className="cursor-pointer rounded-full bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-500 px-7 py-3.5 font-sans text-sm font-bold text-white shadow-[0_10px_30px_-5px_rgba(99,102,241,0.55)] transition hover:scale-[1.02]"
+              >
+                Open Content &amp; Ad Checker →
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  navigate("intro");
+                  setTimeout(() => {
+                    document.getElementById("ad-image-scanner")?.scrollIntoView({ behavior: "smooth" });
+                  }, 80);
+                }}
+                className="cursor-pointer rounded-full border border-white/15 bg-white/[0.05] px-6 py-3.5 font-sans text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.1]"
+              >
+                Scan Aura Glow Ads ↑
+              </button>
             </div>
-            <nav aria-label="Footer workspaces" className="flex flex-col gap-2.5 lg:items-end">
-              <span className="lv-kicker">Explore workspaces</span>
-              <div className="flex flex-wrap gap-2 lg:justify-end">
-                <button type="button" className="lv-footer-link" aria-current={screen === "review" ? "page" : undefined} onClick={() => navigate("review")}><Icon name="file" size={13}/>Check content</button>
-                <button type="button" className="lv-footer-link" aria-current={screen === "vault" ? "page" : undefined} onClick={() => navigate("vault")}><Icon name="radar" size={13}/>Approved facts</button>
-                <button type="button" className="lv-footer-link" aria-current={screen === "queue" ? "page" : undefined} onClick={() => navigate("queue")}><Icon name="review" size={13}/>Approvals</button>
-                <button type="button" className="lv-footer-link" aria-current={screen === "library" ? "page" : undefined} onClick={() => navigate("library")}><Icon name="book" size={13}/>Brand rules</button>
-                <button type="button" className="lv-footer-link" aria-current={screen === "insights" ? "page" : undefined} onClick={() => navigate("insights")}><Icon name="chart" size={13}/>Insights</button>
-              </div>
-            </nav>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-line/55 bg-well/40 px-6 py-3.5 sm:px-7">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted">
-              <span className="inline-flex items-center gap-1.5 text-ink/90"><Icon name="lock" size={12} className="lv-text-accent"/>Zero autonomous sign-off · Independent human approval</span>
-              {brand && <span className="text-muted/80">· {brand.name} ({brand.role.replace(/_/g, " ")})</span>}
+
+          {/* 5-Column Architectural Footer Grid (Matching Code-A-Nova Footer Layout) */}
+          <div className="grid gap-10 border-b border-white/10 pb-12 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
+            {/* Col 1: Brand Identity + Status */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-2.5">
+                <BrandLintLogo />
+                <span className="font-sans text-xl font-extrabold tracking-tight text-white">
+                  Brand<span className="bg-gradient-to-r from-indigo-400 to-sky-400 bg-clip-text text-transparent">Lint</span>
+                </span>
+              </div>
+              <p className="max-w-xs text-xs leading-relaxed text-slate-400">
+                Enterprise AI &amp; deterministic brand governance platform for ad images, product packaging labels, promotional copy, and four-eyes compliance sign-off.
+              </p>
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowPrivacy(true)}
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] text-slate-300 transition hover:border-indigo-400/50 hover:text-white"
+                >
+                  <span className={`size-2 rounded-full ${privacy?.hosted ? "bg-emerald-400" : "bg-amber-400"}`} />
+                  <span>
+                    {privacy ? (privacy.hosted ? `Live AI · ${privacy.provider}` : `Local Verifier · ${privacy.provider}`) : "Connecting"}
+                  </span>
+                </button>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button type="button" className="lv-footer-status" onClick={() => setShowPrivacy(true)}>
-                <span className={`lv-dot ${privacy?.hosted ? "text-[var(--lv-success)]" : "text-[var(--lv-warning)]"}`}/>
-                <span>{privacy ? (privacy.hosted ? `Live AI · ${privacy.provider}` : `Offline verifier · ${privacy.provider}`) : "Connecting"} · Processing & privacy</span>
-                <Icon name="arrow" size={11}/>
-              </button>
-              <button type="button" className="lv-footer-status" onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} aria-label="Scroll back to top">
-                <Icon name="chevron" size={12} className="rotate-180"/>
-                <span>Top</span>
-              </button>
+
+            {/* Col 2: SERVICES & CHECKERS */}
+            <div className="space-y-3">
+              <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-white">
+                Services &amp; Checkers
+              </h3>
+              <ul className="space-y-2.5 text-xs text-slate-400">
+                <li>
+                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("review")}>
+                    Text &amp; Post Claim Checker
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
+                    onClick={() => {
+                      navigate("intro");
+                      setTimeout(() => document.getElementById("ad-image-scanner")?.scrollIntoView({ behavior: "smooth" }), 80);
+                    }}
+                  >
+                    Ad Image &amp; Placement Scanner
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("library")}>
+                    Deterministic Brand Rulebook
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("vault")}>
+                    Evidence Vault Passports
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("insights")}>
+                    33-Case Evaluation Benchmark
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 3: AURA GLOW CAMPAIGN */}
+            <div className="space-y-3">
+              <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-white">
+                Aura Glow Campaign
+              </h3>
+              <ul className="space-y-2.5 text-xs text-slate-400">
+                <li>
+                  <button
+                    type="button"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
+                    onClick={() => {
+                      navigate("intro");
+                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
+                    }}
+                  >
+                    01 · Money-Back Guarantee Ad
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
+                    onClick={() => {
+                      navigate("intro");
+                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
+                    }}
+                  >
+                    02 · 3-SKU Packaging Lineup
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
+                    onClick={() => {
+                      navigate("intro");
+                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
+                    }}
+                  >
+                    03 · Bathroom Mirror Routine
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
+                    onClick={() => {
+                      navigate("intro");
+                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
+                    }}
+                  >
+                    04 · Cheek Dropper Portrait
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
+                    onClick={() => {
+                      navigate("intro");
+                      setTimeout(() => document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" }), 80);
+                    }}
+                  >
+                    05 · Macro Serum Texture
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            {/* Col 4: PLATFORMS & TOOLS */}
+            <div className="space-y-3">
+              <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-white">
+                Platforms &amp; Safe Zones
+              </h3>
+              <ul className="space-y-2.5 text-xs text-slate-400">
+                <li>LinkedIn Sponsored 1.91:1</li>
+                <li>Instagram Story &amp; Reels 9:16</li>
+                <li>Meta Feed &amp; Square 4:5</li>
+                <li>Landing Page &amp; Display 16:9</li>
+                <li>WCAG AA/AAA Contrast Engine</li>
+              </ul>
+            </div>
+
+            {/* Col 5: GOVERNANCE & ROLES */}
+            <div className="space-y-3">
+              <h3 className="font-mono text-xs font-bold uppercase tracking-wider text-white">
+                Governance &amp; Roles
+              </h3>
+              <ul className="space-y-2.5 text-xs text-slate-400">
+                <li>
+                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("queue")}>
+                    Four-Eyes Approvals Queue
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => setShowTour(true)}>
+                    5-Step Interactive Tour
+                  </button>
+                </li>
+                <li>
+                  <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => setShowPrivacy(true)}>
+                    Privacy &amp; AI Processing
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white"
+                    onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+                  >
+                    ↑ Back to Top
+                  </button>
+                </li>
+              </ul>
+            </div>
+          </div>
+
+          {/* Bottom Copyright & Quick Links Bar */}
+          <div className="mt-8 flex flex-wrap items-center justify-between gap-4 font-mono text-xs text-slate-400">
+            <p>© {new Date().getFullYear()} BrandLint · {displayCompanyName}. Built for verifiable brand &amp; ad governance.</p>
+            <div className="flex flex-wrap items-center gap-5">
+              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("intro")}>Home</button>
+              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("review")}>Check Content</button>
+              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("queue")}>Approvals</button>
+              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("library")}>Rules</button>
+              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("vault")}>Facts</button>
+              <button type="button" className="cursor-pointer border-0 bg-transparent p-0 text-slate-400 hover:text-white" onClick={() => navigate("insights")}>Insights</button>
             </div>
           </div>
         </div>
@@ -630,8 +1298,8 @@ export const App: React.FC = () => {
         open={(ready || !!error) && showTour && !authView && !showAcceptInvite}
         onClose={() => setShowTour(false)}
         user={user}
-        companyName={activeCompany?.name}
-        brandName={brand?.name}
+        companyName={displayCompanyName}
+        brandName={displayBrandName}
         role={brand?.role || activeCompany?.role}
         privacy={privacy}
         theme={theme}

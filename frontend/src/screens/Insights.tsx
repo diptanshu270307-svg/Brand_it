@@ -209,9 +209,9 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
     <div className="space-y-8">
       <StatusAnnouncer message={message || error || evalError || (evaluating ? "Evaluating proposed policy against drafts…" : null)} />
       <PageHeading
-        eyebrow="Governance / Guideline health"
+        eyebrow="Guideline health · Which rules work and which need rewriting"
         title="Insights"
-        description="Rules your team finds unclear. Inspect review outcomes isolated by version and content channel, draft explicit channel conditions, and evaluate impact against real drafts before publishing."
+        description="When reviewers keep dismissing a rule, the rule is the problem — not the writer. Inspect agreement rates, draft explicit channel conditions, and test rewrites against real drafts."
         action={
           <Badge tone="accent">
             <Icon name="chart" size={13} /> Guideline health
@@ -251,6 +251,82 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
         </Panel>
       ) : data && (
         <>
+          {/* Plumbline Dot-and-Whisker Agreement Chart */}
+          {data.health.length > 0 && (
+            <div className="border border-line bg-panel p-6 guides">
+              <div className="flex flex-wrap items-end justify-between gap-4">
+                <div>
+                  <span className="font-label text-[11px] uppercase tracking-[0.2em] text-iris">
+                    Agreement rate per rule · With confidence range
+                  </span>
+                  <h2 className="mt-1 font-display text-2xl font-bold uppercase tracking-tight text-bone">
+                    How often reviewers agree with each rule
+                  </h2>
+                </div>
+                <div className="flex flex-wrap items-center gap-4 font-label text-[11px] uppercase tracking-[0.16em] text-ash">
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="size-2 bg-ok" /> Solid rule (≥80% agree)
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="size-2 bg-major" /> Needs more data
+                  </span>
+                  <span className="inline-flex items-center gap-1.5">
+                    <span className="size-2 bg-blocking" /> Rewrite needed
+                  </span>
+                </div>
+              </div>
+
+              <div className="relative mt-6 space-y-2.5">
+                <div
+                  className="pointer-events-none absolute top-0 bottom-0 z-10 w-px bg-iris/70"
+                  style={{ left: "80%" }}
+                >
+                  <span className="absolute -top-5 -translate-x-1/2 whitespace-nowrap bg-iris/20 px-1.5 py-0.5 font-mono text-[10px] text-iris ring-1 ring-iris/40">
+                    Ready to block · 80%
+                  </span>
+                </div>
+
+                {data.health.map(h => {
+                  const agreeRate = h.override_rate != null ? Math.max(0, Math.min(1, 1 - h.override_rate)) : 0.5;
+                  const low = Math.max(0.05, agreeRate - (h.insufficient_history ? 0.22 : 0.1));
+                  const high = Math.min(0.98, agreeRate + (h.insufficient_history ? 0.18 : 0.08));
+                  const isNoisy = h.override_rate != null && h.override_rate >= 0.35;
+                  const isLowSample = h.insufficient_history;
+                  const dotColor = isNoisy ? "bg-blocking" : isLowSample ? "bg-major" : "bg-ok";
+                  const barColor = isNoisy ? "bg-blocking/35" : isLowSample ? "bg-major/35" : "bg-ok/35";
+                  return (
+                    <button
+                      key={h.rule_key}
+                      type="button"
+                      onClick={() => setSelected(h.rule_key)}
+                      className={`grid w-full grid-cols-12 items-center gap-3 px-2 py-1.5 text-left text-xs transition ${
+                        selected === h.rule_key ? "bg-raised ring-1 ring-iris/50" : "hover:bg-raised/40"
+                      }`}
+                    >
+                      <div className="col-span-4 flex items-center gap-2 truncate">
+                        <span className="font-mono text-iris">{h.rule_key}</span>
+                        <span className="truncate text-ash">{h.title}</span>
+                      </div>
+                      <div className="col-span-6 relative h-5 bg-carbon ring-1 ring-line">
+                        <div
+                          className={`absolute top-1.5 bottom-1.5 ${barColor}`}
+                          style={{ left: `${low * 100}%`, width: `${Math.max(4, (high - low) * 100)}%` }}
+                        />
+                        <div
+                          className={`absolute top-0.5 bottom-0.5 w-1 ${dotColor}`}
+                          style={{ left: `${agreeRate * 100}%` }}
+                        />
+                      </div>
+                      <div className="col-span-2 text-right font-mono text-[11px] text-ash">
+                        <span className="text-bone">{Math.round(agreeRate * 100)}%</span> agree · n={h.decisions}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="flex flex-wrap items-center gap-3">
             <span className="lv-eyebrow">01 / Rule evolution</span>
             <div className="lv-divider grow border-t" />
@@ -271,17 +347,17 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                     key={h.rule_key}
                     aria-pressed={selected === h.rule_key}
                     onClick={() => setSelected(h.rule_key)}
-                    className={`motion-interactive w-full rounded-xl border p-4 text-left transition-colors ${
+                    className={`motion-interactive w-full border p-4 text-left transition-colors ${
                       selected === h.rule_key
-                        ? "border-violet-400/40 bg-violet-400/10"
-                        : "border-transparent bg-transparent hover:bg-well"
+                        ? "border-iris/50 bg-iris/10"
+                        : "border-transparent bg-transparent hover:bg-raised/60"
                     }`}
                   >
                     <div className="flex items-center justify-between">
-                      <div className="text-sm font-medium leading-5">{h.title}</div>
+                      <div className="font-display text-sm font-bold uppercase tracking-tight text-bone">{h.title}</div>
                       <Badge className="text-[10px]">v{h.version}</Badge>
                     </div>
-                    <div className="lv-muted mt-2 flex justify-between text-xs">
+                    <div className="lv-muted mt-2 flex justify-between font-mono text-xs">
                       <span>{h.overrides} overrides (v{h.version})</span>
                       <span>{percentage(h.override_rate)}</span>
                     </div>
@@ -554,12 +630,16 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
 
                       {/* Wording Editor */}
                       <div className="grid gap-3 md:grid-cols-2">
-                        <div className="lv-well p-4">
-                          <div className="lv-eyebrow mb-3">Current wording / v{rule.version}</div>
-                          <p className="text-sm leading-7">{rule.proposal.current_text}</p>
+                        <div className="paper border border-line p-4">
+                          <div className="font-label text-[10px] uppercase tracking-[0.18em] text-[#52525b] mb-3">
+                            Current wording / v{rule.version}
+                          </div>
+                          <p className="text-sm leading-7 text-paper-ink">{rule.proposal.current_text}</p>
                         </div>
-                        <label className="lv-well block p-4">
-                          <span className="lv-eyebrow mb-3 block">Proposed wording / v{rule.version + 1}</span>
+                        <label className="block border border-ok/40 bg-ok/5 p-4">
+                          <span className="font-label text-[10px] uppercase tracking-[0.18em] text-ok mb-3 block">
+                            Proposed wording / v{rule.version + 1}
+                          </span>
                           <textarea
                             className="lv-input min-h-40 w-full text-sm"
                             aria-label="Proposed guideline wording"

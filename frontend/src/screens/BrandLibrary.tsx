@@ -87,9 +87,9 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
   return <div className="space-y-7">
     <StatusAnnouncer message={message || error || null} />
     <PageHeading
-      eyebrow="Policy & Governance"
+      eyebrow="Brand rulebook · What we say and don't say"
       title="Brand rules"
-      description="Your company's approved tone guidelines, required disclaimers, and prohibited wording."
+      description="Every rule your team writes by — tone, banned words, required disclaimers, and claim rules — each traced back to the exact page of your brand guide."
       action={
         <Button variant="primary" onClick={() => setTab("ingest")}>
           <Icon name="upload" size={15}/> Upload guidelines
@@ -126,7 +126,7 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
     </div>
 
     <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="lv-well flex flex-wrap gap-1 p-1.5" role="group" aria-label="Brand rule views">
+      <div className="border border-line bg-panel flex flex-wrap gap-1 p-1.5" role="group" aria-label="Brand rule views">
         {([['rules', 'Active rules', 'book'], ['ingest', 'Upload guidelines', 'upload'], ['docs', 'Source files', 'file']] as const).map(([key, labelText, icon]) => (
           <Button key={key} variant={tab === key ? "primary" : "ghost"} aria-pressed={tab === key} onClick={() => setTab(key)}>
             <Icon name={icon} size={15}/>{labelText}
@@ -137,6 +137,48 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
     </div>
 
     {tab === "rules" && <>
+      {/* Plumbline Category Distribution Grid */}
+      {!loading && categories.length > 0 && (
+        <div className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-5 border border-line">
+          <button
+            type="button"
+            onClick={() => setCategory("all")}
+            className={`p-4 text-left transition-colors ${category === "all" ? "bg-raised" : "bg-panel hover:bg-raised/60"}`}
+          >
+            <div className="font-label text-[10px] uppercase tracking-[0.18em] text-iris">All categories</div>
+            <div className="mt-1 font-display text-2xl font-extrabold uppercase text-bone">
+              All rules <span className="font-mono text-sm text-ash">({rules.length})</span>
+            </div>
+            <p className="mt-1 text-xs text-ash">Show every rule in the rulebook</p>
+          </button>
+          {categories.slice(0, 4).map(cat => {
+            const catRules = rules.filter(r => r.category === cat);
+            const blockCnt = catRules.filter(r => r.severity === "critical" || r.severity === "high").length;
+            const majCnt = catRules.filter(r => r.severity === "medium").length;
+            const minCnt = catRules.length - blockCnt - majCnt;
+            return (
+              <button
+                key={cat}
+                type="button"
+                onClick={() => setCategory(category === cat ? "all" : cat)}
+                className={`p-4 text-left transition-colors ${category === cat ? "bg-raised" : "bg-panel hover:bg-raised/60"}`}
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-label text-[10px] uppercase tracking-[0.18em] text-iris">{cat}</span>
+                  <span className="font-mono text-xs text-ash">{catRules.length}</span>
+                </div>
+                <div className="mt-1 font-display text-xl font-bold uppercase text-bone">{cat}</div>
+                <div className="mt-3 flex h-1.5 overflow-hidden bg-carbon">
+                  {blockCnt > 0 && <div className="bg-blocking" style={{ width: `${(blockCnt / catRules.length) * 100}%` }} />}
+                  {majCnt > 0 && <div className="bg-major" style={{ width: `${(majCnt / catRules.length) * 100}%` }} />}
+                  {minCnt > 0 && <div className="bg-minor" style={{ width: `${(minCnt / catRules.length) * 100}%` }} />}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
       <Panel className="p-4">
         <div className="flex flex-wrap items-center gap-3">
           <label className="relative min-w-48 grow">
@@ -169,67 +211,81 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
         <Panel className="p-8"><p className="lv-muted" role="status">Loading brand rules…</p></Panel>
       ) : filtered.length ? (
         <div className="grid items-start gap-5 lg:grid-cols-2 motion-stagger">
-          {filtered.map(r => (
-            <Panel key={r.id} className="flex h-full flex-col p-6">
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <span className="text-xs font-semibold text-ink">{r.title}</span>
-                <div className="flex gap-2">
-                  <Badge tone={r.severity === "critical" || r.severity === "high" ? "danger" : r.severity === "medium" ? "warning" : "neutral"}>
-                    {r.severity}
-                  </Badge>
-                  <Badge tone={r.status === "active" ? "success" : "warning"}>
-                    {r.status === "active" ? "Active" : "Pending review"}
-                  </Badge>
-                </div>
-              </div>
-              <p className="mt-3 text-sm leading-7 text-ink">{r.text}</p>
-              <div className="mt-3.5 flex flex-wrap gap-2">
-                <Badge tone="neutral">{r.category}</Badge>
-                {r.sensitive && <Badge tone="warning">Requires senior review</Badge>}
-                {r.banned.map((b, i) => (
-                  <Badge key={i} tone="danger"><span className="font-mono">Prohibited: {b}</span></Badge>
-                ))}
-              </div>
+          {filtered.map(r => {
+            const stripe =
+              r.severity === "critical" || r.severity === "high"
+                ? "bg-blocking"
+                : r.severity === "medium"
+                ? "bg-major"
+                : "bg-minor";
+            return (
+              <Panel key={r.id} className="flex h-full overflow-hidden">
+                <div className={`w-1 shrink-0 ${stripe}`} />
+                <div className="flex flex-1 flex-col p-6">
+                  <div className="flex flex-wrap items-center justify-between gap-3">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs text-iris">{r.ref}</span>
+                      <span className="font-display text-lg font-bold uppercase tracking-tight text-bone">{r.title}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <Badge tone={r.severity === "critical" || r.severity === "high" ? "danger" : r.severity === "medium" ? "warning" : "neutral"}>
+                        {r.severity}
+                      </Badge>
+                      <Badge tone={r.status === "active" ? "success" : "warning"}>
+                        {r.status === "active" ? "Active" : "Pending review"}
+                      </Badge>
+                    </div>
+                  </div>
+                  <p className="mt-3 text-sm leading-7 text-bone/90">{r.text}</p>
+                  <div className="mt-3.5 flex flex-wrap gap-2">
+                    <Badge tone="neutral">{r.category}</Badge>
+                    {r.sensitive && <Badge tone="warning">Requires senior review</Badge>}
+                    {r.banned.map((b, i) => (
+                      <Badge key={i} tone="danger"><span className="font-mono">Prohibited: {b}</span></Badge>
+                    ))}
+                  </div>
 
-              {/* Expandable Technical Rule Details */}
-              <div className="mt-4">
-                <ExpandableDetails title="Technical details & provenance">
-                  <div>Rule ID: <code className="text-ink">{r.ref}</code> (Version: v{r.version})</div>
-                  <div>Category: {r.category} · Severity: {r.severity}</div>
-                  {r.source ? (
-                    <div>Source: {r.source.title} · v{r.source.version} · p.{r.source.page || 1}</div>
-                  ) : (
-                    <div>Approved via: Insights wording evolution</div>
+                  {/* Expandable Technical Rule Details */}
+                  <div className="mt-4">
+                    <ExpandableDetails title="Technical details & provenance">
+                      <div>Rule ID: <code className="text-bone">{r.ref}</code> (Version: v{r.version})</div>
+                      <div>Category: {r.category} · Severity: {r.severity}</div>
+                      {r.source ? (
+                        <div>Source: {r.source.title} · v{r.source.version} · p.{r.source.page || 1}</div>
+                      ) : (
+                        <div>Approved via: Insights wording evolution</div>
+                      )}
+                    </ExpandableDetails>
+                  </div>
+
+                  <div className="mt-4 border border-line bg-carbon/60 p-3.5">
+                    <div className="lv-kicker mb-1">Source provenance</div>
+                    {r.source ? (
+                      <>
+                        <p className="lv-muted font-mono text-xs leading-5">{r.source.title} · p. {r.source.page || 1}</p>
+                        <Button variant="ghost" className="mt-2 !text-xs !py-1" onClick={() => setInspect({ docId: r.source!.document_id, page: r.source!.page || 1, excerpt: r.excerpt })}>
+                          Inspect source document <Icon name="arrow" size={13}/>
+                        </Button>
+                      </>
+                    ) : (
+                      <p className="lv-muted text-xs leading-5">Wording approved through Insights feedback.</p>
+                    )}
+                  </div>
+                  {r.status === "proposed" && (
+                    <div className="mt-4 flex flex-wrap gap-2 pt-2 border-t border-line">
+                      <Button variant="primary" disabled={!isOwner || busyRule !== null} onClick={() => decide(r, "approve")}>
+                        <Icon name="check" size={14}/>
+                        {busyRule === r.id ? "Activating…" : "Approve & activate"}
+                      </Button>
+                      <Button variant="danger" disabled={!isOwner || busyRule !== null} onClick={() => decide(r, "reject")}>
+                        Reject
+                      </Button>
+                    </div>
                   )}
-                </ExpandableDetails>
-              </div>
-
-              <div className="lv-well mt-4 p-3.5 rounded-xl">
-                <div className="lv-kicker mb-1">Source provenance</div>
-                {r.source ? (
-                  <>
-                    <p className="lv-muted text-xs leading-5">{r.source.title} · p. {r.source.page || 1}</p>
-                    <Button variant="ghost" className="mt-2 !text-xs !py-1" onClick={() => setInspect({ docId: r.source!.document_id, page: r.source!.page || 1, excerpt: r.excerpt })}>
-                      Inspect source document <Icon name="arrow" size={13}/>
-                    </Button>
-                  </>
-                ) : (
-                  <p className="lv-muted text-xs leading-5">Wording approved through Insights feedback.</p>
-                )}
-              </div>
-              {r.status === "proposed" && (
-                <div className="mt-4 flex flex-wrap gap-2 pt-2 border-t border-line/40">
-                  <Button variant="primary" disabled={!isOwner || busyRule !== null} onClick={() => decide(r, "approve")}>
-                    <Icon name="check" size={14}/>
-                    {busyRule === r.id ? "Activating…" : "Approve & activate"}
-                  </Button>
-                  <Button variant="danger" disabled={!isOwner || busyRule !== null} onClick={() => decide(r, "reject")}>
-                    Reject
-                  </Button>
                 </div>
-              )}
-            </Panel>
-          ))}
+              </Panel>
+            );
+          })}
         </div>
       ) : (
         <Empty title="No matching brand rules">

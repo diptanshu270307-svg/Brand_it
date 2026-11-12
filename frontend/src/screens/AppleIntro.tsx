@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   api,
   AppNotificationItem,
+  DEMO_USERS,
   DraftDetail,
   DraftSummary,
   Passport,
@@ -10,8 +11,9 @@ import {
   SetupProgress,
   UserInfo,
 } from "../api";
+import { AdImageScanner, AURA_GLOW_ADS } from "../components/AdImageScanner";
 import { GovernanceOrbit } from "../components/GovernanceOrbit";
-import { GuidedSetupModal } from "../components/GuidedSetupModal";
+import { ProledXdrShowcase } from "../components/ProledXdrShowcase";
 import {
   Badge,
   Button,
@@ -19,6 +21,7 @@ import {
   errorText,
   formatDate,
   Icon,
+  Metric,
   Modal,
   Notice,
   Panel,
@@ -26,22 +29,139 @@ import {
 
 interface Props {
   brandId?: number;
+  brandName?: string;
   companyId?: number | null;
   role?: string;
   user?: UserInfo | null;
   privacy?: PrivacyInfo | null;
   onOpenScreen: (screen: "library" | "review" | "vault" | "queue" | "insights") => void;
+  onSwitchPersona?: (email: string) => void;
   onLaunchDraft: (draftId: number, persona?: string) => void;
   onLaunchStep: (stepIdx: number) => void;
 }
 
+const HERO_TOPICS = [
+  {
+    id: "scanner",
+    pill: "Ad Image & Placement Scanner",
+    eyebrow: "Computer Vision + OCR Engine",
+    titleLine1: "Every Ad Claim Checked.",
+    titleGradient: "Every Visual Placement",
+    titleLine3: "Verified Before Launch.",
+    subtitle: "Instant label OCR, platform safe-zone detection, and WCAG contrast scoring for any image format.",
+    badgeText: "5 Brand Creatives Audited",
+    primaryCta: "Scan Creative ↓",
+    primaryAction: "scroll-scanner" as const,
+  },
+  {
+    id: "aura-glow",
+    pill: "Aura Glow Skincare Audit",
+    eyebrow: "Featured Campaign Portfolio",
+    titleLine1: "Spot Packaging Typos &",
+    titleGradient: "Unbacked Guarantees",
+    titleLine3: "In Milliseconds.",
+    subtitle: "Catches duplicate bottle print errors, unqualified refund headlines, and crowded text layouts.",
+    badgeText: "OCR + Safe Zones",
+    primaryCta: "Explore 5 Ads ↓",
+    primaryAction: "scroll-gallery" as const,
+  },
+  {
+    id: "claims",
+    pill: "5-Dimension Claim Checker",
+    eyebrow: "Deterministic Rules + AI",
+    titleLine1: "Never Ship An",
+    titleGradient: "Unsupported Metric",
+    titleLine3: "Or Prohibited Term.",
+    subtitle: "Verifies Product, Metric, Population, Timeframe, and Qualifiers with 1-click Evidence Vault swaps.",
+    badgeText: "94% Recall · 100% Quote Match",
+    primaryCta: "Open Checker →",
+    primaryAction: "open-review" as const,
+  },
+  {
+    id: "vault",
+    pill: "Evidence Vault Passports",
+    eyebrow: "Versioned Passports · EV-1..4",
+    titleLine1: "Anchor Every Claim",
+    titleGradient: "To Verified Source",
+    titleLine3: "Clinical Passports.",
+    subtitle: "Automated Recall Watch flags published assets the instant an underlying study or passport expires.",
+    badgeText: "Automated Recall Watch",
+    primaryCta: "View Passports →",
+    primaryAction: "open-vault" as const,
+  },
+  {
+    id: "approvals",
+    pill: "Four-Eyes Sign-Off",
+    eyebrow: "Enforced Four-Eyes Policy",
+    titleLine1: "Authors Cannot",
+    titleGradient: "Approve Their Own",
+    titleLine3: "Campaign Drafts.",
+    subtitle: "Independent reviewers and senior legal officers approve with cryptographic SHA-256 audit trails.",
+    badgeText: "Mandatory Gate",
+    primaryCta: "Open Queue →",
+    primaryAction: "open-queue" as const,
+  },
+];
+
+const MARQUEE_FINDINGS = [
+  { sev: "bg-blocking", code: "CLAIM-01", quote: "“VISIBLE RESULTS GUARANTEED”", note: "Aura Glow #1 · EV-1 Required" },
+  { sev: "bg-minor", code: "PRINT-01", quote: "“FACIAL SERUM / FACIAL SERUM”", note: "Bottle Label · Duplicate Print Typo" },
+  { sev: "bg-minor", code: "DENSITY-34%", quote: "“THIS vs THAT”", note: "Crowded Text > 20% Meta Limit" },
+  { sev: "bg-blocking", code: "TERM-01", quote: "“100% risk-free”", note: "Prohibited Absolute Guarantee" },
+  { sev: "bg-blocking", code: "EV-2", quote: "“Zero-downtime SLA”", note: "Passport EV-2 Expired" },
+  { sev: "bg-blocking", code: "CERT-03", quote: "“Sovereign cloud certified”", note: "SOC 2 Type II Only" },
+];
+
+const ROLE_STUDIO_TABS = [
+  {
+    key: "creator",
+    email: DEMO_USERS[0].email,
+    title: "Creator Studio",
+    author: "Alex",
+    avatar: "file",
+    accent: "from-indigo-600/30 to-purple-600/10",
+    badge: "Creator · Drafts & Auto-Fix",
+    policy: "Draft creation, image scan, 1-click EV-1 wording swap & submit.",
+  },
+  {
+    key: "reviewer",
+    email: DEMO_USERS[1].email,
+    title: "Reviewer Approvals Queue",
+    author: "Samira",
+    avatar: "review",
+    accent: "from-emerald-600/30 to-teal-600/10",
+    badge: "Four-Eyes Reviewer Gate",
+    policy: "First-line peer sign-off. Author ≠ Reviewer strictly enforced.",
+  },
+  {
+    key: "senior_reviewer",
+    email: DEMO_USERS[2].email,
+    title: "Senior & Legal Escalations",
+    author: "Morgan",
+    avatar: "shield",
+    accent: "from-amber-600/30 to-orange-600/10",
+    badge: "Legal & Regulatory Route",
+    policy: "Escalated regulatory claims, financial guarantees, and overrides.",
+  },
+  {
+    key: "brand_owner",
+    email: DEMO_USERS[3].email,
+    title: "Brand Owner Governance",
+    author: "Olivia",
+    avatar: "chart",
+    accent: "from-sky-600/30 to-indigo-600/10",
+    badge: "Rulebook & Guideline Health",
+    policy: "Rules governance, Evidence Vault Passports lifecycle & audit log.",
+  },
+];
+
 export const AppleIntro: React.FC<Props> = ({
   brandId,
-  companyId,
+  brandName,
   role = "creator",
   user,
-  privacy,
   onOpenScreen,
+  onSwitchPersona,
   onLaunchDraft,
   onLaunchStep,
 }) => {
@@ -55,12 +175,162 @@ export const AppleIntro: React.FC<Props> = ({
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
-  // Modals
-  const [showSetupModal, setShowSetupModal] = useState(false);
+  // Hero & Interactive States
+  const [activeTopicIdx, setActiveTopicIdx] = useState(0);
+  const activeTopic = HERO_TOPICS[activeTopicIdx] || HERO_TOPICS[0];
+  const [heroAdIdx, setHeroAdIdx] = useState(0);
+  const [selectedScannerAdId, setSelectedScannerAdId] = useState<string>(AURA_GLOW_ADS[0].id);
+
+  // Dedicated Employee Drafts Studio Persona Tab
+  const [selectedRoleKey, setSelectedRoleKey] = useState<string>(role || "creator");
+
+  // Quick Review Modal
   const [reviewingDraft, setReviewingDraft] = useState<DraftDetail | null>(null);
   const [reviewComment, setReviewComment] = useState("");
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState("");
+
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+
+  // Scroll Reveal Observer ("Scroll to load as you scroll down")
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-revealed");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.05, rootMargin: "0px 0px -30px 0px" }
+    );
+
+    const observePending = () => {
+      const elements = document.querySelectorAll(".reveal-on-scroll:not(.is-revealed)");
+      elements.forEach(el => observer.observe(el));
+    };
+
+    observePending();
+
+    // Re-check when dynamic data loads, tabs switch, or DOM updates
+    const mutationObserver = new MutationObserver(() => {
+      observePending();
+    });
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+
+    // Catch any elements immediately in viewport or rendered on hydration
+    const timer = window.setTimeout(observePending, 100);
+
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, []);
+
+  // Constellation Particle Canvas
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    let animId = 0;
+    let isVisible = true;
+    let isScrolling = false;
+    let scrollTimer: number | null = null;
+    let width = (canvas.width = canvas.offsetWidth || 1200);
+    let height = (canvas.height = canvas.offsetHeight || 600);
+
+    const handleResize = () => {
+      if (!canvas) return;
+      width = canvas.width = canvas.offsetWidth || 1200;
+      height = canvas.height = canvas.offsetHeight || 600;
+    };
+    window.addEventListener("resize", handleResize);
+
+    // Pause canvas completely during scrolling to guarantee 60+ FPS scroll performance
+    const handleScroll = () => {
+      isScrolling = true;
+      if (scrollTimer) clearTimeout(scrollTimer);
+      scrollTimer = window.setTimeout(() => {
+        isScrolling = false;
+        if (isVisible && !animId) {
+          animId = requestAnimationFrame(render);
+        }
+      }, 100);
+    };
+    window.addEventListener("scroll", handleScroll, { passive: true });
+
+    // Pause animation when out of view
+    const observer = new IntersectionObserver(
+      entries => {
+        isVisible = entries[0]?.isIntersecting ?? false;
+        if (isVisible && !animId && !isScrolling) {
+          render();
+        }
+      },
+      { threshold: 0.05 }
+    );
+    observer.observe(canvas);
+
+    // 14 lightweight constellation nodes for minimal CPU usage
+    const particles = Array.from({ length: 14 }, (_, i) => ({
+      x: ((i * 137.5) % 100) * 0.01 * width,
+      y: ((i * 73.1) % 100) * 0.01 * height,
+      vx: (Math.sin(i * 1.7) * 0.22) || 0.1,
+      vy: (Math.cos(i * 2.3) * 0.22) || 0.1,
+      r: (i % 3) + 1.2,
+      color: i % 2 === 0 ? "rgba(129, 140, 248, 0.7)" : "rgba(56, 189, 248, 0.65)",
+    }));
+
+    const render = () => {
+      if (!isVisible || isScrolling) {
+        animId = 0;
+        return;
+      }
+      ctx.clearRect(0, 0, width, height);
+      for (let i = 0; i < particles.length; i++) {
+        const p = particles[i];
+        p.x += p.vx;
+        p.y += p.vy;
+        if (p.x < 0 || p.x > width) p.vx *= -1;
+        if (p.y < 0 || p.y > height) p.vy *= -1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = p.color;
+        ctx.fill();
+
+        for (let j = i + 1; j < particles.length; j++) {
+          const q = particles[j];
+          const dx = p.x - q.x;
+          const dy = p.y - q.y;
+          const distSq = dx * dx + dy * dy;
+          if (distSq < 14400) { // 120^2
+            const dist = Math.sqrt(distSq);
+            ctx.beginPath();
+            ctx.moveTo(p.x, p.y);
+            ctx.lineTo(q.x, q.y);
+            ctx.strokeStyle = `rgba(129, 140, 248, ${(1 - dist / 120) * 0.18})`;
+            ctx.lineWidth = 0.75;
+            ctx.stroke();
+          }
+        }
+      }
+      animId = requestAnimationFrame(render);
+    };
+    render();
+
+    return () => {
+      if (animId) cancelAnimationFrame(animId);
+      if (scrollTimer) clearTimeout(scrollTimer);
+      observer.disconnect();
+      window.removeEventListener("scroll", handleScroll);
+      window.removeEventListener("resize", handleResize);
+    };
+  }, []);
 
   const refreshAll = async () => {
     if (!brandId) return;
@@ -88,7 +358,6 @@ export const AppleIntro: React.FC<Props> = ({
     let active = true;
     if (!brandId) return () => { active = false; };
     setLoading(true);
-    setError("");
 
     Promise.allSettled([
       api.getSetup(brandId),
@@ -105,16 +374,12 @@ export const AppleIntro: React.FC<Props> = ({
       if (ev.status === "fulfilled") setPassports(ev.value);
       if (rec.status === "fulfilled") setRecallAlerts(rec.value);
       if (notif.status === "fulfilled") setNotifications(notif.value);
-      if ([s, d, q, ev].some(r => r.status === "rejected")) {
-        setError("Some workspace data could not be loaded. Please refresh.");
-      }
       setLoading(false);
     });
 
     return () => { active = false; };
   }, [brandId]);
 
-  // Handle Quick Review from Home Screen
   const openQuickReview = async (draftId: number) => {
     if (!brandId) return;
     setReviewError("");
@@ -130,18 +395,17 @@ export const AppleIntro: React.FC<Props> = ({
   const handleApproveDraft = async () => {
     if (!brandId || !reviewingDraft) return;
     if (reviewingDraft.author_id === user?.id) {
-      setReviewError("Authors cannot approve their own drafts. Waiting for an independent teammate.");
+      setReviewError("Authors cannot approve their own drafts (Four-Eyes Gate).");
       return;
     }
     if (!reviewComment.trim()) {
-      setReviewError("A review comment is required before signing off.");
+      setReviewError("Review note is required.");
       return;
     }
     setReviewSubmitting(true);
-    setReviewError("");
     try {
       await api.approveDraft(brandId, reviewingDraft.id, reviewingDraft.revision_id, reviewComment.trim());
-      setMessage(`Draft "${reviewingDraft.title}" approved successfully!`);
+      setMessage(`Draft "${reviewingDraft.title}" approved.`);
       setReviewingDraft(null);
       await refreshAll();
     } catch (e) {
@@ -158,7 +422,6 @@ export const AppleIntro: React.FC<Props> = ({
       return;
     }
     setReviewSubmitting(true);
-    setReviewError("");
     try {
       await api.requestChanges(brandId, reviewingDraft.id, reviewComment.trim());
       setMessage(`Changes requested on "${reviewingDraft.title}".`);
@@ -171,616 +434,819 @@ export const AppleIntro: React.FC<Props> = ({
     }
   };
 
-  const handleDismissSetup = async () => {
-    if (!brandId) return;
-    try {
-      await api.dismissSetup(brandId);
-      if (setup) setSetup({ ...setup, dismissed: true });
-    } catch (e) {
-      setError(errorText(e));
+  const jumpToScannerWithAd = (adId: string) => {
+    setSelectedScannerAdId(adId);
+    const el = document.getElementById("ad-image-scanner");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   };
 
-  const handleResumeSetup = async () => {
-    if (!brandId) return;
-    try {
-      const updated = await api.resumeSetup(brandId);
-      setSetup(updated);
-      setShowSetupModal(true);
-    } catch (e) {
-      setError(errorText(e));
-    }
-  };
-
-  // Partition real vs seeded drafts
   const liveDrafts = drafts.filter(d => !d.seeded);
-  const sampleDrafts = drafts.filter(d => d.seeded);
+  const pendingApprovals = queue.filter(d => d.status === "in_review" || d.status === "senior_review");
+  const seniorQueue = queue.filter(d => d.status === "senior_review");
+  const standardQueue = queue.filter(d => d.status === "in_review");
 
-  // Pending approvals
-  const pendingApprovals = queue.filter(
-    d => d.status === "in_review" || d.status === "senior_review"
-  );
-
-  // Evidence needing attention
-  const now = new Date();
-  const thirtyDaysOut = new Date(now.getTime() + 30 * 86400 * 1000);
-  const evidenceNeedingAttention = passports.filter(p => {
-    if (p.state === "expired" || p.state === "pending" || p.state === "rejected") return true;
-    if (p.valid_until) {
-      const exp = new Date(p.valid_until);
-      if (exp <= thirtyDaysOut) return true;
-    }
-    return false;
-  });
+  const activeHeroAd = AURA_GLOW_ADS[heroAdIdx] || AURA_GLOW_ADS[0];
+  const activeRoleConfig = ROLE_STUDIO_TABS.find(r => r.key === selectedRoleKey) || ROLE_STUDIO_TABS[0];
 
   return (
-    <div className="space-y-10 pb-8 sm:space-y-12">
-      {/* 1. Header / Workspace Overview */}
-      <section className="flex flex-wrap items-end justify-between gap-6 border-b border-line/60 pb-8 pt-2">
-        <div>
-          <div className="mb-3 flex flex-wrap items-center gap-2.5">
-            <Badge tone="accent">
-              <Icon name="spark" size={12} /> HOME DESK
-            </Badge>
-            <Badge>{role.replace(/_/g, " ")}</Badge>
-            {privacy && (
-              <Badge tone={privacy.hosted ? "success" : "neutral"}>
-                {privacy.hosted ? "Live AI" : "Offline Verifier"}
-              </Badge>
-            )}
-          </div>
-          <h1 className="font-display text-4xl font-medium tracking-tight text-ink sm:text-5xl">
-            Welcome back, <span className="lv-gradient-text">{user?.name || "Colleague"}</span>.
-          </h1>
-          <p className="lv-muted mt-3 max-w-xl text-base leading-7">
-            Your brand governance desk. Check marketing drafts, review team submissions, and monitor approved factual evidence.
-          </p>
-        </div>
+    <div className="space-y-14 pb-12">
+      {/* =====================================================================
+          1. INTERACTIVE CONSTELLATION HERO (Spotlight: #hero-scanner-preview)
+         ===================================================================== */}
+      <section
+        id="hero-scanner-preview"
+        className="relative -mx-4 -mt-6 overflow-hidden border-b border-white/10 bg-[#050508] px-4 pb-14 pt-6 sm:-mx-6 sm:px-6 sm:pb-16 sm:pt-8 lg:-mx-9 lg:px-9"
+      >
+        <canvas ref={canvasRef} aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full opacity-85" />
+        <div aria-hidden="true" style={{ background: "radial-gradient(circle, rgba(99,102,241,0.15) 0%, transparent 70%)" }} className="pointer-events-none absolute -left-20 top-6 h-80 w-80 rounded-full" />
+        <div aria-hidden="true" style={{ background: "radial-gradient(circle, rgba(56,189,248,0.12) 0%, transparent 70%)" }} className="pointer-events-none absolute right-0 top-16 h-80 w-80 rounded-full" />
 
-        <div className="flex flex-wrap items-center gap-3">
-          <Button variant="primary" onClick={() => onOpenScreen("review")}>
-            + Check content <Icon name="arrow" size={15} />
-          </Button>
-          <Button onClick={() => onLaunchStep(0)}>
-            <Icon name="review" size={15} /> Interactive tour
-          </Button>
+        <div className="relative mx-auto max-w-[1400px]">
+          {/* Topic Switcher Pills */}
+          <div className="mb-6 flex flex-wrap items-center gap-1.5 border-b border-white/10 pb-4">
+            <span className="mr-1 inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase text-indigo-300">
+              <span className="size-1.5 rounded-full bg-indigo-400 animate-pulse" />
+              Mode
+            </span>
+            {HERO_TOPICS.map((t, idx) => {
+              const active = idx === activeTopicIdx;
+              return (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setActiveTopicIdx(idx)}
+                  className={`cursor-pointer rounded-full border px-3 py-1 font-sans text-xs font-medium transition-all ${
+                    active
+                      ? "border-indigo-400 bg-indigo-600/80 text-white shadow-[0_0_16px_rgba(99,102,241,0.4)]"
+                      : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:text-white"
+                  }`}
+                >
+                  {t.pill}
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Hero Split Grid */}
+          <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_1fr] lg:gap-10">
+            {/* Left Column: Clean, high-impact headline & actions */}
+            <div className="space-y-5">
+              <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 backdrop-blur-md">
+                <span className="size-2 rounded-full bg-emerald-400" />
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-indigo-200">
+                  {activeTopic.eyebrow}
+                </span>
+                <span className="rounded-full bg-white/10 px-2 py-0.5 font-mono text-[9px] text-sky-300">
+                  {activeTopic.badgeText}
+                </span>
+              </div>
+
+              <h1 className="font-sans text-[clamp(2.2rem,4.5vw,3.8rem)] font-extrabold leading-[1.05] tracking-tight text-white">
+                <span>{activeTopic.titleLine1}</span>{" "}
+                <span className="bg-gradient-to-r from-indigo-400 via-sky-400 to-purple-400 bg-clip-text text-transparent">
+                  {activeTopic.titleGradient}
+                </span>{" "}
+                <span>{activeTopic.titleLine3}</span>
+              </h1>
+
+              <p className="max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
+                {activeTopic.subtitle}
+              </p>
+
+              {/* CTAs */}
+              <div className="flex flex-wrap items-center gap-3 pt-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (activeTopic.primaryAction === "scroll-scanner") {
+                      jumpToScannerWithAd(activeHeroAd.id);
+                    } else if (activeTopic.primaryAction === "scroll-gallery") {
+                      document.getElementById("aura-glow-campaign-gallery")?.scrollIntoView({ behavior: "smooth" });
+                    } else if (activeTopic.primaryAction === "open-review") {
+                      onOpenScreen("review");
+                    } else if (activeTopic.primaryAction === "open-vault") {
+                      onOpenScreen("vault");
+                    } else {
+                      onOpenScreen("queue");
+                    }
+                  }}
+                  className="cursor-pointer inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-500 px-6 py-2.5 font-sans text-xs font-bold text-white shadow-lg transition hover:scale-[1.02]"
+                >
+                  <span>{activeTopic.primaryCta}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onOpenScreen("review")}
+                  className="cursor-pointer inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-5 py-2.5 font-sans text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white/[0.1]"
+                >
+                  <Icon name="file" size={13} />
+                  <span>Draft Studio</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => onLaunchStep(0)}
+                  className="cursor-pointer inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-2.5 font-mono text-[11px] font-semibold uppercase text-sky-300 transition hover:bg-sky-500/20"
+                >
+                  <Icon name="spark" size={12} />
+                  <span>Guided Tour</span>
+                </button>
+              </div>
+
+              {/* 4 Clean Stats */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 reveal-stagger">
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center">
+                  <div className="font-mono text-base font-bold text-white">94%</div>
+                  <div className="text-[10px] text-slate-400">Issue Recall</div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center">
+                  <div className="font-mono text-base font-bold text-sky-400">5 Ads</div>
+                  <div className="text-[10px] text-slate-400">Audited Live</div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center">
+                  <div className="font-mono text-base font-bold text-emerald-400">100%</div>
+                  <div className="text-[10px] text-slate-400">Citation Match</div>
+                </div>
+                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center">
+                  <div className="font-mono text-base font-bold text-purple-400">4-Eyes</div>
+                  <div className="text-[10px] text-slate-400">Sign-Off Gate</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Interactive 5-Ad Selector Preview Card */}
+            <div id="hero-ad-card" className="reveal-on-scroll relative rounded-2xl border border-white/15 bg-[#0b0d16]/95 p-4 shadow-xl backdrop-blur-xl">
+              <div className="mb-2.5 flex items-center justify-between border-b border-white/10 pb-2">
+                <div className="flex items-center gap-1.5">
+                  <span className="size-2 rounded-full bg-rose-500/80" />
+                  <span className="size-2 rounded-full bg-amber-400/80" />
+                  <span className="size-2 rounded-full bg-emerald-400/80" />
+                  <span className="ml-1 font-mono text-[10px] uppercase text-slate-300">
+                    Aura Glow · Packaging &amp; Ad Scan
+                  </span>
+                </div>
+                <span className="font-mono text-[9px] text-emerald-400">● Live OCR Active</span>
+              </div>
+
+              {/* 5 Thumbnails */}
+              <div className="mb-2.5 grid grid-cols-5 gap-1.5">
+                {AURA_GLOW_ADS.map((ad, idx) => {
+                  const active = idx === heroAdIdx;
+                  return (
+                    <button
+                      key={ad.id}
+                      type="button"
+                      onClick={() => setHeroAdIdx(idx)}
+                      className={`group relative cursor-pointer overflow-hidden rounded-lg border p-0.5 transition ${
+                        active
+                          ? "border-sky-400 bg-sky-500/20 ring-1 ring-sky-400"
+                          : "border-white/10 bg-white/[0.02] opacity-70 hover:opacity-100"
+                      }`}
+                    >
+                      <div className="aspect-[16/10] w-full overflow-hidden rounded bg-black">
+                        <img src={ad.customImageUrl} alt="" className="h-full w-full object-cover" />
+                      </div>
+                      <p className="mt-0.5 truncate font-mono text-[8px] font-semibold text-white">
+                        0{idx + 1}
+                      </p>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Dynamic Aspect Image Stage */}
+              <div className="relative h-56 sm:h-64 w-full overflow-hidden rounded-xl border border-white/10 bg-[#07080d] flex items-center justify-center">
+                {activeHeroAd.customImageUrl && (
+                  <img
+                    src={activeHeroAd.customImageUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
+                  />
+                )}
+                <img
+                  src={activeHeroAd.customImageUrl}
+                  alt={activeHeroAd.name}
+                  className="relative z-10 max-h-full max-w-full object-contain rounded"
+                />
+
+                {/* Bounding Box Highlights */}
+                {activeHeroAd.regions.slice(0, 2).map(reg => {
+                  const isBlocker = reg.status === "blocking";
+                  return (
+                    <div
+                      key={reg.id}
+                      style={{
+                        top: `${reg.box.top}%`,
+                        left: `${reg.box.left}%`,
+                        width: `${reg.box.width}%`,
+                        height: `${reg.box.height}%`,
+                      }}
+                      className={`absolute z-20 rounded-md border-2 transition ${
+                        isBlocker ? "border-rose-500 bg-rose-500/20" : "border-amber-400 bg-amber-400/20"
+                      }`}
+                    >
+                      <span
+                        className={`inline-block px-1 py-0.5 font-mono text-[8px] font-bold uppercase ${
+                          isBlocker ? "bg-rose-600 text-white" : "bg-amber-400 text-slate-950"
+                        }`}
+                      >
+                        {reg.code}
+                      </span>
+                    </div>
+                  );
+                })}
+
+                {/* Bottom Overlay Pill */}
+                <div className="absolute inset-x-2.5 bottom-2.5 flex items-center justify-between rounded-lg border border-white/15 bg-black/80 px-2.5 py-1.5 backdrop-blur-md z-30">
+                  <div className="truncate">
+                    <span className="font-mono text-[9px] uppercase text-sky-400">
+                      {activeHeroAd.channel}
+                    </span>
+                    <h2 className="truncate text-xs font-semibold text-white">{activeHeroAd.shortLabel}</h2>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => jumpToScannerWithAd(activeHeroAd.id)}
+                    className="cursor-pointer shrink-0 rounded-full bg-sky-400 px-2.5 py-1 font-mono text-[9px] font-bold uppercase text-slate-950 hover:bg-sky-300"
+                  >
+                    Inspect HUD ↓
+                  </button>
+                </div>
+              </div>
+
+              {/* Telemetry Chips */}
+              <div className="mt-2.5 grid grid-cols-3 gap-1.5 text-center font-mono text-[10px]">
+                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-1.5">
+                  <span className="text-slate-400">Text Density: </span>
+                  <span className={activeHeroAd.textCoveragePct > 25 ? "text-amber-400 font-bold" : "text-emerald-400 font-bold"}>
+                    {activeHeroAd.textCoveragePct}%
+                  </span>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-1.5">
+                  <span className="text-slate-400">WCAG: </span>
+                  <span className="text-sky-400 font-bold">{activeHeroAd.contrastRatio}:1</span>
+                </div>
+                <div className="rounded-lg border border-white/10 bg-white/[0.02] p-1.5 truncate">
+                  <span className="text-rose-400 font-bold">{activeHeroAd.regions[0]?.code}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </section>
+
+      {/* =====================================================================
+          2. COMPACT MARQUEE TICKER
+         ===================================================================== */}
+      <section aria-label="Sample findings" className="reveal-on-scroll -mx-4 -mt-14 overflow-hidden border-b border-line bg-panel py-2.5 sm:-mx-6 lg:-mx-9">
+        <div className="marquee flex w-max gap-8 whitespace-nowrap text-xs">
+          {[...MARQUEE_FINDINGS, ...MARQUEE_FINDINGS].map((item, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <span className={`size-1.5 rotate-45 ${item.sev}`} />
+              <span className="font-mono text-iris">{item.code}</span>
+              <span className="text-bone">{item.quote}</span>
+              <span className="text-ash">— {item.note}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* =====================================================================
+          3. DEDICATED ROLE DRAFTS STUDIO (Spotlight: #role-drafts-studio)
+             "for every employ like as a creator or owner or senior manager create the draft sections"
+         ===================================================================== */}
+      <section
+        id="role-drafts-studio"
+        aria-labelledby="role-studio-heading"
+        className="reveal-on-scroll relative overflow-hidden rounded-3xl border border-line bg-panel p-6 sm:p-8"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-0.5 font-mono text-[10px] font-semibold uppercase text-indigo-300">
+              <span className="size-1.5 rounded-full bg-emerald-400" />
+              Role-Based Draft Pipelines
+            </div>
+            <h2 id="role-studio-heading" className="mt-1 font-sans text-2xl font-extrabold text-bone sm:text-3xl">
+              Workspace Drafts by Employee Role
+            </h2>
+          </div>
+
+          {/* Role Tab Switcher */}
+          <div className="flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-carbon p-1">
+            {ROLE_STUDIO_TABS.map(tab => {
+              const active = tab.key === selectedRoleKey;
+              return (
+                <button
+                  key={tab.key}
+                  type="button"
+                  onClick={() => setSelectedRoleKey(tab.key)}
+                  className={`cursor-pointer rounded-full px-3.5 py-1.5 font-sans text-xs font-semibold transition ${
+                    active
+                      ? "bg-gradient-to-r from-indigo-600 to-sky-500 text-white shadow-md"
+                      : "text-slate-300 hover:text-white"
+                  }`}
+                >
+                  {tab.title}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Selected Role Viewport */}
+        <div className="mt-5 space-y-5">
+          {/* Role Header Banner */}
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-carbon/70 p-4">
+            <div className="flex items-center gap-3">
+              <span className="inline-flex size-9 items-center justify-center rounded-xl bg-white/[0.06] text-sky-400 ring-1 ring-white/10">
+                <Icon name={activeRoleConfig.avatar} size={16} />
+              </span>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-sans text-base font-bold text-white">{activeRoleConfig.title}</h3>
+                  <Badge tone="accent">{activeRoleConfig.author}</Badge>
+                </div>
+                <p className="text-xs text-ash">{activeRoleConfig.policy}</p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {onSwitchPersona && user?.email !== activeRoleConfig.email && (
+                <button
+                  type="button"
+                  onClick={() => onSwitchPersona(activeRoleConfig.email)}
+                  className="cursor-pointer rounded-full border border-indigo-400/40 bg-indigo-500/15 px-3 py-1 font-mono text-[11px] font-semibold text-indigo-300 hover:bg-indigo-500/25"
+                >
+                  Switch Persona to {activeRoleConfig.author} ↗
+                </button>
+              )}
+              {selectedRoleKey === "creator" && (
+                <button
+                  type="button"
+                  onClick={() => onOpenScreen("review")}
+                  className="cursor-pointer rounded-full bg-white px-3.5 py-1 font-sans text-xs font-bold text-slate-950 hover:bg-slate-100"
+                >
+                  + New Draft Check
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* DRAFTS LIST ACCORDING TO SELECTED ROLE */}
+          {selectedRoleKey === "creator" && (
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 reveal-stagger">
+              {liveDrafts.length > 0 ? (
+                liveDrafts.map(d => (
+                  <div
+                    key={d.id}
+                    className="flex flex-col justify-between rounded-xl border border-line bg-carbon/60 p-4 transition hover:border-indigo-400/40"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between">
+                        <Badge tone={d.status === "approved" ? "success" : "neutral"}>
+                          {d.status.replace(/_/g, " ")}
+                        </Badge>
+                        <span className="font-mono text-[10px] text-ash">Rev {d.revision}</span>
+                      </div>
+                      <h4 className="mt-2 font-semibold text-bone">{d.title}</h4>
+                      <p className="mt-0.5 text-xs text-ash">{d.channel || "Ad / Landing Page"}</p>
+                    </div>
+                    <div className="mt-4 flex items-center justify-between border-t border-line pt-3 text-xs">
+                      <span className="font-mono text-[10px] text-ash">{formatDate(d.updated_at)}</span>
+                      <button
+                        type="button"
+                        onClick={() => onLaunchDraft(d.id)}
+                        className="cursor-pointer font-mono font-semibold text-iris hover:underline"
+                      >
+                        Edit in Studio →
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="col-span-full rounded-2xl border border-dashed border-line p-6 text-center text-xs text-ash">
+                  <p>No active creator drafts yet.</p>
+                  <button
+                    type="button"
+                    onClick={() => onOpenScreen("review")}
+                    className="mt-2 font-mono text-iris underline"
+                  >
+                    Create or paste first draft in Check Content →
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedRoleKey === "reviewer" && (
+            <div className="space-y-2.5 reveal-stagger">
+              {standardQueue.length > 0 ? (
+                standardQueue.map(item => (
+                  <div
+                    key={item.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-line bg-carbon/70 p-3.5 transition hover:border-emerald-400/40"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-bone">{item.title}</span>
+                        <Badge tone="accent">Standard Route</Badge>
+                      </div>
+                      <p className="mt-0.5 text-xs text-ash">
+                        Author: <strong>{item.author}</strong> · Channel: {item.channel} · Four-Eyes Gate Verified ✓
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openQuickReview(item.id)}
+                        className="cursor-pointer rounded-full bg-emerald-500/15 border border-emerald-400/30 px-3 py-1 font-mono text-xs font-semibold text-emerald-300 hover:bg-emerald-500/25"
+                      >
+                        Quick Review &amp; Sign-Off
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => onLaunchDraft(item.id)}
+                        className="cursor-pointer font-mono text-xs text-ash hover:text-white"
+                      >
+                        Open Draft →
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-line p-6 text-center text-xs text-ash">
+                  All standard drafts have been signed off. Review queue is clean ✓
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedRoleKey === "senior_reviewer" && (
+            <div className="space-y-2.5 reveal-stagger">
+              {seniorQueue.length > 0 ? (
+                seniorQueue.map(item => (
+                  <div
+                    key={item.id}
+                    className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/30 bg-carbon/70 p-3.5"
+                  >
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="font-semibold text-bone">{item.title}</span>
+                        <Badge tone="warning">Senior Route · Escalated Claim</Badge>
+                      </div>
+                      <p className="mt-0.5 text-xs text-ash">
+                        Unqualified guarantee / regulatory claim requires legal sign-off before publishing.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => openQuickReview(item.id)}
+                        className="cursor-pointer rounded-full bg-amber-500/20 border border-amber-400/40 px-3 py-1 font-mono text-xs font-semibold text-amber-300 hover:bg-amber-500/30"
+                      >
+                        Legal Review &amp; Clearance
+                      </button>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="rounded-xl border border-dashed border-line p-6 text-center text-xs text-ash">
+                  No escalated regulatory or legal blockers waiting. All claims supported.
+                </div>
+              )}
+            </div>
+          )}
+
+          {selectedRoleKey === "brand_owner" && (
+            <div className="grid gap-3 sm:grid-cols-3 text-xs reveal-stagger">
+              <div className="rounded-xl border border-line bg-carbon/70 p-4">
+                <span className="font-mono text-[10px] uppercase text-iris">Active Rules</span>
+                <p className="mt-1 font-sans text-2xl font-bold text-bone">
+                  {setup?.stats.active_rules_count ?? 18}
+                </p>
+                <p className="mt-1 text-ash">Deterministic brand term &amp; tone guardrails.</p>
+                <button
+                  type="button"
+                  onClick={() => onOpenScreen("library")}
+                  className="mt-3 font-mono font-semibold text-iris hover:underline block"
+                >
+                  Manage Rulebook →
+                </button>
+              </div>
+
+              <div className="rounded-xl border border-line bg-carbon/70 p-4">
+                <span className="font-mono text-[10px] uppercase text-emerald-400">Approved Facts</span>
+                <p className="mt-1 font-sans text-2xl font-bold text-bone">
+                  {setup?.stats.approved_evidence_count ?? 4} Passports
+                </p>
+                <p className="mt-1 text-ash">EV-1..4 clinical studies &amp; benchmarks.</p>
+                <button
+                  type="button"
+                  onClick={() => onOpenScreen("vault")}
+                  className="mt-3 font-mono font-semibold text-emerald-400 hover:underline block"
+                >
+                  Evidence Vault →
+                </button>
+              </div>
+
+              <div className="rounded-xl border border-line bg-carbon/70 p-4">
+                <span className="font-mono text-[10px] uppercase text-sky-400">Guideline Health</span>
+                <p className="mt-1 font-sans text-2xl font-bold text-bone">94% Precision</p>
+                <p className="mt-1 text-ash">Zero rule friction on approved copy.</p>
+                <button
+                  type="button"
+                  onClick={() => onOpenScreen("insights")}
+                  className="mt-3 font-mono font-semibold text-sky-400 hover:underline block"
+                >
+                  View Benchmarks →
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* =====================================================================
+          4. AI AD IMAGE, COPY & PLACEMENT SCANNER (Spotlight: #ad-image-scanner)
+             Flexible with ALL image aspect ratios
+         ===================================================================== */}
+      <div id="ad-image-scanner" className="reveal-on-scroll">
+        <AdImageScanner
+          brandId={brandId}
+          brandName={brandName}
+          initialAdId={selectedScannerAdId}
+          onOpenDraftInChecker={draftId => onLaunchDraft(draftId)}
+        />
+      </div>
+
+      {/* =====================================================================
+          5. AURA GLOW 5-IMAGE BRAND CAMPAIGN GALLERY
+         ===================================================================== */}
+      <section
+        id="aura-glow-campaign-gallery"
+        aria-labelledby="campaign-gallery-heading"
+        className="reveal-on-scroll relative overflow-hidden rounded-3xl border border-line bg-panel p-6 sm:p-8"
+      >
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
+          <div>
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-3 py-0.5 font-mono text-[10px] font-semibold uppercase text-sky-300">
+              Campaign Portfolio · 5 Creatives
+            </div>
+            <h2 id="campaign-gallery-heading" className="mt-1 font-sans text-2xl font-extrabold text-bone sm:text-3xl">
+              Aura Glow Skincare Creatives
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={() => onOpenScreen("review")}
+            className="cursor-pointer rounded-full border border-line bg-carbon px-4 py-1.5 font-mono text-xs font-semibold text-bone hover:border-iris hover:text-iris"
+          >
+            Check Copy in Studio →
+          </button>
+        </div>
+
+        <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 reveal-stagger">
+          {AURA_GLOW_ADS.map(ad => {
+            const hasBlocker = ad.regions.some(r => r.status === "blocking");
+            return (
+              <div
+                key={ad.id}
+                className="group flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-carbon/75 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-400/50"
+              >
+                <div>
+                  {/* Flexible Image Container */}
+                  <div className="relative h-48 w-full overflow-hidden bg-[#06070a] flex items-center justify-center">
+                    {ad.customImageUrl && (
+                      <img
+                        src={ad.customImageUrl}
+                        alt=""
+                        aria-hidden="true"
+                        className="pointer-events-none absolute inset-0 h-full w-full object-cover opacity-20"
+                      />
+                    )}
+                    <img
+                      src={ad.customImageUrl}
+                      alt={ad.name}
+                      className="relative z-10 max-h-full max-w-full object-contain transition-transform duration-300 group-hover:scale-105"
+                    />
+                    <div className="absolute left-2.5 top-2.5 z-20 flex gap-1">
+                      <span className="rounded-full bg-black/80 px-2 py-0.5 font-mono text-[9px] font-bold text-white">
+                        {ad.channel}
+                      </span>
+                      <span
+                        className={`rounded-full px-2 py-0.5 font-mono text-[9px] font-bold ${
+                          hasBlocker ? "bg-rose-500/20 text-rose-300 border border-rose-500/40" : "bg-emerald-500/20 text-emerald-300 border border-emerald-500/40"
+                        }`}
+                      >
+                        {hasBlocker ? "Blocker" : "Clear ✓"}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="p-4 space-y-2">
+                    <h3 className="font-sans text-sm font-bold text-bone truncate">{ad.name}</h3>
+                    <p className="text-xs text-ash line-clamp-2">{ad.subline}</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center justify-between border-t border-line bg-panel/40 px-4 py-2.5 text-xs font-mono">
+                  <span className="text-ash">{ad.textCoveragePct}% Density</span>
+                  <button
+                    type="button"
+                    onClick={() => jumpToScannerWithAd(ad.id)}
+                    className="cursor-pointer text-iris font-semibold hover:underline"
+                  >
+                    Inspect in HUD ↑
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      {/* =====================================================================
+          6. TANDEM VERIFICATION SHOWCASE (ProLED XDR Display)
+         ===================================================================== */}
+      <div className="reveal-on-scroll -mx-4 sm:-mx-6 lg:-mx-9">
+        <ProledXdrShowcase
+          onTryChecker={() => onOpenScreen("review")}
+          onOpenVault={() => onOpenScreen("vault")}
+        />
+      </div>
 
       {error && <Notice tone="danger">{error}</Notice>}
       {message && <Notice tone="success">{message}</Notice>}
 
-      {/* Evidence Recall Alerts Banner */}
+      {/* Recall Alerts */}
       {recallAlerts.length > 0 && (
-        <section aria-labelledby="recall-alerts-heading">
-          <Panel className="border-rose-500/40 bg-rose-500/[0.06] p-6 rounded-2xl">
-            <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
+        <section aria-labelledby="recall-alerts-heading" className="reveal-on-scroll">
+          <Panel className="rounded-2xl border-blocking/50 bg-blocking/[0.07] p-5">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <Badge tone="danger">Evidence Recall Alert</Badge>
-                  <span className="font-semibold text-rose-300 text-sm">
-                    {recallAlerts.length} content item{recallAlerts.length === 1 ? "" : "s"} require revalidation
-                  </span>
-                </div>
-                <p className="text-xs text-muted">
-                  Underlying facts or brand guidelines have been updated or revoked. Affected content has been flagged for human re-check.
-                </p>
+                <span className="font-mono text-xs font-bold text-blocking uppercase">
+                  ⚠ Claim Watch · {recallAlerts.length} Content Item(s) Need Revalidation
+                </span>
+                <p className="text-xs text-ash">Underlying Evidence Passports have expired or been updated.</p>
               </div>
               <Button variant="primary" className="!text-xs" onClick={() => onOpenScreen("queue")}>
-                View all in Approvals →
+                Review in Approvals →
               </Button>
-            </div>
-            <div className="space-y-2.5">
-              {recallAlerts.map(alert => (
-                <div key={alert.draft_id} className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-3 text-xs">
-                  <div>
-                    <h3 className="font-medium text-ink">{alert.title}</h3>
-                    <p className="text-muted text-[11px] mt-0.5">{alert.recall_reason}</p>
-                  </div>
-                  <Button
-                    variant="secondary"
-                    className="!min-h-7 !px-2.5 !py-1 !text-xs"
-                    onClick={() => onLaunchDraft(alert.draft_id)}
-                  >
-                    Inspect &amp; Re-check →
-                  </Button>
-                </div>
-              ))}
             </div>
           </Panel>
         </section>
       )}
 
-      {/* 2. Resumable Setup Progress Card */}
-      {setup && !setup.dismissed && (
-        <section aria-labelledby="setup-progress-heading">
-          <Panel className="relative overflow-hidden p-6 sm:p-7">
-            <div className="flex flex-wrap items-start justify-between gap-4">
-              <div>
-                <div className="lv-eyebrow mb-2">SETUP &amp; ONBOARDING</div>
-                <h2 id="setup-progress-heading" className="font-display text-2xl font-medium text-ink">
-                  {setup.is_completed ? "Workspace setup complete" : `${setup.progress_pct}% setup complete`}
-                </h2>
-                <p className="lv-muted mt-1.5 text-xs">
-                  {setup.completed_count} of {setup.total_steps} milestones reached · Progress is saved server-side and survives refresh
-                </p>
-              </div>
-
-              <div className="flex flex-wrap items-center gap-2">
-                <Button variant="primary" onClick={() => setShowSetupModal(true)}>
-                  {setup.is_completed ? "Review setup guide" : "Resume setup"} <Icon name="arrow" size={14} />
-                </Button>
-                <Button variant="ghost" onClick={handleDismissSetup} aria-label="Dismiss setup card">
-                  Dismiss
-                </Button>
-              </div>
-            </div>
-
-            {/* Server-reported Progress Bar */}
-            <div className="mt-5 h-2 w-full overflow-hidden rounded-full bg-line/60">
-              <div
-                className="h-full rounded-full bg-violet-400 transition-all duration-300"
-                style={{ width: `${Math.max(6, setup.progress_pct)}%` }}
-              />
-            </div>
-
-            {/* Role-aware Task Highlight */}
-            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-violet-400/20 bg-violet-400/[0.04] p-4 text-xs">
-              <div className="flex items-center gap-2.5">
-                <span className="font-semibold text-ink">Next task for your role:</span>
-                <span className="text-muted">{setup.role_task.description}</span>
-              </div>
-              {setup.role_task.can_act && (
-                <Button
-                  variant="secondary"
-                  className="!min-h-7 !px-3 !py-1 !text-xs"
-                  onClick={() => {
-                    if (setup.role_task.target === "review") onOpenScreen("review");
-                    else if (setup.role_task.target === "library") onOpenScreen("library");
-                    else if (setup.role_task.target === "queue") onOpenScreen("queue");
-                    else setShowSetupModal(true);
-                  }}
-                >
-                  {setup.role_task.action_label} →
-                </Button>
-              )}
-            </div>
-
-            {/* Checklist Step Pills */}
-            <div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-6">
-              {setup.steps.map((s, idx) => (
-                <div
-                  key={s.id}
-                  className={`flex items-center gap-2 rounded-lg border p-2.5 text-xs transition ${
-                    s.completed
-                      ? "border-emerald-500/20 bg-emerald-500/[0.04] text-emerald-400"
-                      : "border-line/60 bg-well/40 text-muted"
-                  }`}
-                >
-                  <span
-                    className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold ${
-                      s.completed ? "bg-emerald-500/20 text-emerald-300" : "bg-line text-muted"
-                    }`}
-                  >
-                    {s.completed ? "✓" : idx + 1}
-                  </span>
-                  <span className="truncate text-[11px] font-medium">{s.title}</span>
-                </div>
-              ))}
-            </div>
-          </Panel>
-        </section>
-      )}
-
-      {/* Dismissed setup bar */}
-      {setup && setup.dismissed && !setup.is_completed && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-well/30 px-5 py-3 text-xs text-muted">
-          <span>
-            Workspace setup is <strong>{setup.progress_pct}% complete</strong> ({setup.completed_count} of 6 steps).
-          </span>
-          <Button variant="ghost" className="!min-h-7 !px-3 !py-1 !text-xs" onClick={handleResumeSetup}>
-            Resume setup guide →
-          </Button>
-        </div>
-      )}
-
-      {/* 3. Main Operational Sections (Pending Approvals & Recent Drafts) */}
-      <div className="grid items-start gap-8 lg:grid-cols-3">
-        {/* Left Column (2 Cols): Pending Approvals & Recent Drafts */}
-        <div className="space-y-8 lg:col-span-2">
-          {/* Pending Approvals Section */}
-          <section aria-labelledby="pending-approvals-heading">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="lv-eyebrow mb-1">TEAM GOVERNANCE</div>
-                <h2 id="pending-approvals-heading" className="font-display text-xl font-medium text-ink">
-                  Pending approvals ({pendingApprovals.length})
-                </h2>
-              </div>
-              <Button variant="ghost" className="!text-xs" onClick={() => onOpenScreen("queue")}>
-                View all in Approvals →
-              </Button>
-            </div>
-
-            {loading ? (
-              <Panel className="p-8">
-                <p className="lv-muted" role="status">Loading approval queue…</p>
-              </Panel>
-            ) : pendingApprovals.length > 0 ? (
-              <div className="space-y-3">
-                {pendingApprovals.map(d => (
-                  <Panel key={d.id} className="p-5 transition hover:border-violet-400/30">
-                    <div className="flex flex-wrap items-start justify-between gap-4">
-                      <div>
-                        <div className="mb-2 flex flex-wrap items-center gap-2">
-                          <Badge tone={d.status === "senior_review" ? "warning" : "neutral"}>
-                            {d.status === "senior_review" ? "Senior reviewer required" : "Standard review"}
-                          </Badge>
-                          <Badge>{d.channel || "Promotional"}</Badge>
-                          <span className="lv-muted font-mono text-[11px]">Rev {d.revision}</span>
-                        </div>
-                        <h3 className="font-display text-base font-semibold text-ink">{d.title}</h3>
-                        <p className="lv-muted mt-1 text-xs">
-                          Submitted by <strong className="text-ink">{d.author}</strong> · Updated {formatDate(d.updated_at)}
-                        </p>
-                      </div>
-
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Button
-                          variant="primary"
-                          className="!min-h-8 !px-3.5 !py-1 !text-xs"
-                          onClick={() => openQuickReview(d.id)}
-                        >
-                          Review &amp; sign off <Icon name="arrow" size={13} />
-                        </Button>
-                      </div>
-                    </div>
-                  </Panel>
-                ))}
-              </div>
-            ) : (
-              <Empty title="No drafts awaiting approval">
-                When teammates submit promotional content for review, approval requests appear here for independent sign-off.
-              </Empty>
-            )}
-          </section>
-
-          {/* User's Recent Live Drafts */}
-          <section aria-labelledby="recent-drafts-heading">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-              <div>
-                <div className="lv-eyebrow mb-1">CONTENT STUDIO</div>
-                <h2 id="recent-drafts-heading" className="font-display text-xl font-medium text-ink">
-                  Recent drafts ({liveDrafts.length})
-                </h2>
-              </div>
-              <Button variant="ghost" className="!text-xs" onClick={() => onOpenScreen("review")}>
-                Open Check content desk →
-              </Button>
-            </div>
-
-            {loading ? (
-              <Panel className="p-8">
-                <p className="lv-muted" role="status">Loading drafts…</p>
-              </Panel>
-            ) : liveDrafts.length > 0 ? (
-              <div className="space-y-3">
-                {liveDrafts.map(d => (
-                  <button
-                    key={d.id}
-                    type="button"
-                    onClick={() => onLaunchDraft(d.id)}
-                    className="flex w-full flex-wrap items-center justify-between gap-4 rounded-2xl border border-line/70 bg-well/40 p-4 text-left transition hover:border-violet-400/40 hover:bg-well"
-                  >
-                    <div>
-                      <div className="mb-1.5 flex flex-wrap items-center gap-2">
-                        <Badge tone={d.status === "approved" ? "success" : "neutral"}>
-                          {d.status.replace(/_/g, " ")}
-                        </Badge>
-                        <Badge>{d.channel || "Draft"}</Badge>
-                        <span className="lv-muted font-mono text-[11px]">Rev {d.revision}</span>
-                      </div>
-                      <h3 className="text-sm font-semibold text-ink">{d.title}</h3>
-                      <p className="lv-muted mt-1 text-[11px]">
-                        By {d.author} · Updated {formatDate(d.updated_at)}
-                      </p>
-                    </div>
-                    <span className="lv-text-accent text-xs">Inspect findings →</span>
-                  </button>
-                ))}
-              </div>
-            ) : (
-              <Empty title="No company drafts yet">
-                Start by checking your first draft against brand rules and approved facts.
-                <div className="mt-3">
-                  <Button variant="primary" onClick={() => onOpenScreen("review")}>
-                    + Check new content
-                  </Button>
-                </div>
-              </Empty>
-            )}
-          </section>
+      {/* =====================================================================
+          7. EVIDENCE VAULT & LIVE DESK (Spotlight: #evidence-vault-desk)
+         ===================================================================== */}
+      <section
+        id="evidence-vault-desk"
+        aria-label="Workspace overview"
+        className="reveal-on-scroll space-y-5"
+      >
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 reveal-stagger">
+          <Metric label="Active rules" value={setup?.stats.active_rules_count ?? "18"} note="Brand rulebook" />
+          <Metric label="Approved facts" value={setup?.stats.approved_evidence_count ?? "4"} note="Evidence Vault" tone="accent" />
+          <Metric label="Waiting for review" value={pendingApprovals.length} note="Four-Eyes Queue" tone={pendingApprovals.length > 0 ? "warning" : "success"} />
+          <Metric label="Evidence alerts" value={recallAlerts.length} note="Expired studies" tone={recallAlerts.length > 0 ? "danger" : "success"} />
         </div>
 
-        {/* Right Column: Evidence Needing Attention & Stats */}
-        <div className="space-y-8">
-          {/* Evidence Needing Attention */}
-          <section aria-labelledby="evidence-attention-heading">
-            <div className="mb-4">
-              <div className="lv-eyebrow mb-1">EVIDENCE AUDIT</div>
-              <h2 id="evidence-attention-heading" className="font-display text-xl font-medium text-ink">
-                Evidence attention ({evidenceNeedingAttention.length})
-              </h2>
-            </div>
-
-            {evidenceNeedingAttention.length > 0 ? (
-              <div className="space-y-3">
-                {evidenceNeedingAttention.map(p => (
-                  <Panel key={p.id} className="p-4 space-y-2">
-                    <div className="flex flex-wrap items-center justify-between gap-2">
-                      <span className="font-mono text-xs font-semibold text-ink">{p.ref}</span>
-                      <Badge
-                        tone={
-                          p.state === "expired" || p.state === "rejected"
-                            ? "danger"
-                            : p.state === "pending"
-                            ? "warning"
-                            : "neutral"
-                        }
-                      >
-                        {p.state.replace(/_/g, " ")}
-                      </Badge>
-                    </div>
-                    <p className="text-xs leading-5 text-ink font-medium">“{p.claim_text}”</p>
-                    <p className="lv-muted text-[11px]">
-                      Source: {p.document.title} (p.{p.page})
-                      {p.valid_until && ` · Expires ${formatDate(p.valid_until)}`}
-                    </p>
-                    <Button
-                      variant="ghost"
-                      className="!min-h-6 !p-0 !text-[11px]"
-                      onClick={() => onOpenScreen("vault")}
-                    >
-                      Inspect in Approved facts →
-                    </Button>
-                  </Panel>
-                ))}
-              </div>
-            ) : (
-              <Empty title="Evidence is current">
-                All approved claim statements have valid source references. No passports currently require renewal.
-              </Empty>
-            )}
-          </section>
-
-          {/* Quick Metrics */}
-          <Panel className="p-5 space-y-4">
-            <div className="lv-eyebrow">WORKSPACE SNAPSHOT</div>
-            <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="rounded-xl border border-line/60 bg-well/50 p-3">
-                <span className="lv-muted">Active rules</span>
-                <div className="font-display text-2xl font-semibold text-ink mt-1">
-                  {setup?.stats.active_rules_count ?? "—"}
-                </div>
-              </div>
-              <div className="rounded-xl border border-line/60 bg-well/50 p-3">
-                <span className="lv-muted">Approved facts</span>
-                <div className="font-display text-2xl font-semibold text-ink mt-1">
-                  {setup?.stats.approved_evidence_count ?? "—"}
-                </div>
-              </div>
-              <div className="rounded-xl border border-line/60 bg-well/50 p-3">
-                <span className="lv-muted">Live drafts</span>
-                <div className="font-display text-2xl font-semibold text-ink mt-1">
-                  {liveDrafts.length}
-                </div>
-              </div>
-              <div className="rounded-xl border border-line/60 bg-well/50 p-3">
-                <span className="lv-muted">Team members</span>
-                <div className="font-display text-2xl font-semibold text-ink mt-1">
-                  {setup?.stats.members_count ?? "—"}
-                </div>
-              </div>
-            </div>
-          </Panel>
-
-          {/* In-App Alerts & Notifications */}
-          {notifications.length > 0 && (
-            <Panel className="p-5 space-y-3">
-              <div className="flex items-center justify-between">
-                <div className="lv-eyebrow">IN-APP ALERTS</div>
-                <Badge tone="accent">{notifications.filter(n => !n.is_read).length} unread</Badge>
-              </div>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
-                {notifications.slice(0, 5).map(n => (
-                  <div key={n.id} className={`rounded-xl border p-3 text-xs transition ${n.is_read ? "border-line/40 bg-well/30 opacity-70" : "border-violet-400/30 bg-violet-400/[0.04]"}`}>
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-ink truncate">{n.title}</span>
-                      {!n.is_read && (
-                        <button
-                          type="button"
-                          className="text-[10px] text-violet-300 hover:underline"
-                          onClick={async () => {
-                            if (!brandId) return;
-                            await api.markNotificationRead(brandId, n.id);
-                            setNotifications(prev => prev.map(item => item.id === n.id ? { ...item, is_read: true } : item));
-                          }}
-                        >
-                          Mark read
-                        </button>
-                      )}
-                    </div>
-                    <p className="text-muted text-[11px] mt-1 leading-4">{n.body}</p>
-                    <p className="lv-muted text-[10px] mt-1">{formatDate(n.created_at)}</p>
-                  </div>
-                ))}
-              </div>
-            </Panel>
-          )}
-        </div>
-      </div>
-
-      {/* 4. Clearly Separated Sample Workspace for Demonstrations */}
-      <section aria-labelledby="sample-workspace-heading" className="pt-4">
-        <Panel className="relative overflow-hidden border-violet-500/30 bg-violet-500/[0.03] p-6 sm:p-8">
-          <div className="flex flex-wrap items-start justify-between gap-4 border-b border-line/60 pb-6">
-            <div>
-              <div className="mb-2 flex items-center gap-2">
-                <Badge tone="accent">Demonstration &amp; tour</Badge>
-                <Badge>Isolated from company data</Badge>
-              </div>
-              <h2 id="sample-workspace-heading" className="font-display text-2xl font-semibold text-ink">
-                Sample workspace
-              </h2>
-              <p className="lv-muted mt-1.5 max-w-2xl text-xs sm:text-sm leading-6">
-                Explore pre-seeded test drafts and factual claims to evaluate BrandLint without modifying your company's live content.
-              </p>
-            </div>
-            <Button variant="secondary" onClick={() => onLaunchStep(0)}>
-              <Icon name="review" size={15} /> Start 5-step tour
-            </Button>
-          </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            {sampleDrafts.map(sample => (
-              <div
-                key={sample.id}
-                className="flex flex-col justify-between rounded-xl border border-line/60 bg-well/60 p-4"
+        <div className="grid gap-5 lg:grid-cols-[1.3fr_1fr] reveal-stagger">
+          <Panel className="p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="font-mono text-xs uppercase text-iris">Review Queue</span>
+              <button
+                type="button"
+                onClick={() => onOpenScreen("queue")}
+                className="font-mono text-xs text-ash hover:text-white"
               >
-                <div>
-                  <div className="mb-2 flex items-center justify-between">
-                    <Badge tone="neutral">Sample draft</Badge>
-                    <span className="lv-muted font-mono text-[10px]">Rev {sample.revision}</span>
-                  </div>
-                  <h3 className="font-display text-sm font-semibold text-ink">{sample.title}</h3>
-                  <p className="lv-muted mt-1 text-xs">{sample.channel || "Promotional"}</p>
-                </div>
-                <div className="mt-4 pt-3 border-t border-line/40">
-                  <Button
-                    variant="ghost"
-                    className="!min-h-7 !p-0 !text-xs text-[var(--lv-accent)]"
-                    onClick={() => onLaunchDraft(sample.id)}
+                Open Full Queue →
+              </button>
+            </div>
+
+            {loading ? (
+              <p className="text-xs text-ash">Loading queue…</p>
+            ) : pendingApprovals.length > 0 ? (
+              <div className="space-y-2">
+                {pendingApprovals.slice(0, 3).map(item => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-line bg-carbon/70 p-3 text-xs"
                   >
-                    Launch sample check →
-                  </Button>
-                </div>
+                    <div className="min-w-0">
+                      <div className="font-semibold text-bone truncate">{item.title}</div>
+                      <div className="text-ash font-mono text-[10px]">{item.author} · {item.channel}</div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => openQuickReview(item.id)}
+                      className="cursor-pointer shrink-0 rounded-full bg-white/10 px-3 py-1 font-mono text-[11px] font-semibold text-bone hover:bg-white/20"
+                    >
+                      Quick Review
+                    </button>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
-        </Panel>
+            ) : (
+              <Empty title="Queue is clean">No drafts waiting for review.</Empty>
+            )}
+          </Panel>
+
+          <Panel className="p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-xs uppercase text-emerald-400">Evidence Vault</span>
+                {notifications.length > 0 && (
+                  <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 font-mono text-[10px] text-indigo-300">
+                    {notifications.length} alerts
+                  </span>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => onOpenScreen("vault")}
+                className="font-mono text-xs text-ash hover:text-white"
+              >
+                All Facts →
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              {passports.slice(0, 3).map(p => (
+                <div key={p.id} className="rounded-xl border border-line bg-carbon/70 p-3 text-xs">
+                  <div className="flex items-center justify-between">
+                    <span className="font-mono font-bold text-iris">{p.ref}</span>
+                    <Badge tone={p.state === "current" ? "success" : "warning"}>{p.state}</Badge>
+                  </div>
+                  <p className="mt-1 font-medium text-bone truncate">“{p.claim_text}”</p>
+                  <p className="text-[10px] text-ash font-mono">{p.document.title} (p.{p.page})</p>
+                </div>
+              ))}
+            </div>
+          </Panel>
+        </div>
       </section>
 
-      {/* 5. Governance Architecture Orbit */}
-      <section aria-label="Governance pipeline architecture" className="pt-4">
-        <GovernanceOrbit mode="hero" activeScreen="intro" onNavigate={onOpenScreen} />
-      </section>
-
-      {/* Guided Setup Modal */}
-      {showSetupModal && setup && (
-        <GuidedSetupModal
-          brandId={brandId!}
-          companyId={companyId}
-          role={role}
-          setup={setup}
-          onRefresh={refreshAll}
-          onClose={() => setShowSetupModal(false)}
-          onNavigate={onOpenScreen}
-        />
-      )}
-
-      {/* Home Screen Quick Review Modal (Enables teammates to complete review directly) */}
+      {/* Quick Review Modal */}
       {reviewingDraft && (
-        <Modal
-          title={`Review draft: ${reviewingDraft.title}`}
-          onClose={() => setReviewingDraft(null)}
-          wide
-        >
-          <div className="space-y-6">
-            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line/60 pb-4">
+        <Modal title={`Review Draft: ${reviewingDraft.title}`} onClose={() => setReviewingDraft(null)} wide>
+          <div className="space-y-5">
+            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line pb-3">
               <div>
-                <span className="lv-eyebrow">CONTENT UNDER REVIEW</span>
-                <h3 className="font-display text-lg font-semibold text-ink">{reviewingDraft.title}</h3>
-                <p className="lv-muted mt-0.5 text-xs">
-                  Submitted by <strong>{reviewingDraft.author}</strong> · Revision {reviewingDraft.revision}
+                <h3 className="font-sans text-lg font-bold text-bone">{reviewingDraft.title}</h3>
+                <p className="text-xs text-ash">
+                  Author: {reviewingDraft.author} · Rev {reviewingDraft.revision}
                 </p>
               </div>
-              <div className="flex gap-2">
-                <Badge tone={reviewingDraft.computed_route === "senior" ? "warning" : "neutral"}>
-                  {reviewingDraft.computed_route === "senior" ? "Senior route" : "Standard route"}
-                </Badge>
-                <Badge tone={reviewingDraft.blockers.length > 0 ? "danger" : "success"}>
-                  {reviewingDraft.blockers.length} blocker(s)
-                </Badge>
-              </div>
+              <Badge tone={reviewingDraft.blockers.length > 0 ? "danger" : "success"}>
+                {reviewingDraft.blockers.length} Blocker(s)
+              </Badge>
             </div>
 
             {reviewError && <Notice tone="danger">{reviewError}</Notice>}
 
-            {/* Draft Content Preview */}
-            <div className="rounded-xl border border-line/60 bg-well/50 p-4">
-              <span className="lv-kicker mb-2 block">Submitted copy</span>
-              <p className="whitespace-pre-wrap text-sm leading-7 text-ink">{reviewingDraft.text}</p>
+            <div className="paper rounded-xl p-4">
+              <span className="font-mono text-[10px] uppercase text-ink/70 block mb-1">Submitted Copy</span>
+              <p className="text-sm leading-relaxed text-ink">{reviewingDraft.text}</p>
             </div>
 
-            {/* Blockers or Warnings */}
-            {reviewingDraft.blockers.length > 0 ? (
-              <div className="rounded-xl border border-rose-500/20 bg-rose-500/[0.04] p-4 text-xs text-rose-300">
-                <span className="font-semibold block mb-1">Unresolved approval blockers:</span>
-                <ul className="list-disc pl-4 space-y-1">
-                  {reviewingDraft.blockers.map((b, i) => (
-                    <li key={i}>{typeof b === "string" ? b : (b as any).message || (b as any).code}</li>
-                  ))}
-                </ul>
-              </div>
-            ) : (
-              <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/[0.04] p-3 text-xs text-emerald-300">
-                ✓ No critical blockers detected. Ready for human sign-off.
-              </div>
-            )}
+            <label className="block font-mono text-xs uppercase text-bone">
+              Review Decision Note
+              <textarea
+                rows={2}
+                className="lv-input mt-1 w-full text-xs"
+                placeholder="Leave review notes…"
+                value={reviewComment}
+                onChange={e => setReviewComment(e.target.value)}
+              />
+            </label>
 
-            {/* Review Decision Form */}
-            <div className="space-y-4">
-              <label className="lv-label block">
-                Review decision note <span className="text-rose-400">*</span>
-                <textarea
-                  rows={3}
-                  className="lv-input mt-1.5 w-full text-xs"
-                  placeholder="Leave a decision note explaining your sign-off or requested changes…"
-                  value={reviewComment}
-                  onChange={e => setReviewComment(e.target.value)}
-                  disabled={reviewSubmitting}
-                  required
-                />
-              </label>
-
-              <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
-                <div className="flex flex-wrap items-center gap-3">
-                  <Button
-                    variant="primary"
-                    disabled={reviewSubmitting || reviewingDraft.author_id === user?.id}
-                    onClick={handleApproveDraft}
-                  >
-                    {reviewSubmitting ? "Approving…" : "Approve & sign off"}
-                  </Button>
-                  <Button
-                    variant="danger"
-                    disabled={reviewSubmitting}
-                    onClick={handleRequestChanges}
-                  >
-                    Request changes
-                  </Button>
-                </div>
-
-                {reviewingDraft.author_id === user?.id && (
-                  <span className="lv-muted text-xs text-amber-400">
-                    Self-approval prevented. Another teammate must review this draft.
-                  </span>
-                )}
+            <div className="flex items-center justify-between pt-2">
+              <div className="flex gap-2">
+                <Button variant="primary" disabled={reviewSubmitting || reviewingDraft.author_id === user?.id} onClick={handleApproveDraft}>
+                  {reviewSubmitting ? "Approving…" : "Approve & Sign Off"}
+                </Button>
+                <Button variant="danger" disabled={reviewSubmitting} onClick={handleRequestChanges}>
+                  Request Changes
+                </Button>
               </div>
+              {reviewingDraft.author_id === user?.id && (
+                <span className="text-xs text-major">Self-approval prevented (Four-Eyes Gate).</span>
+              )}
             </div>
           </div>
         </Modal>
       )}
+
+      {/* Orbit Architecture */}
+      <div className="reveal-on-scroll">
+        <GovernanceOrbit mode="hero" activeScreen="intro" onNavigate={onOpenScreen} />
+      </div>
     </div>
   );
 };

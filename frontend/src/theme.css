@@ -47,15 +47,18 @@ body {
    BrandLint 3D Vanta Dots Intro Loader (.bl-loader*)
    ========================================================================== */
 .bl-loader {
+  --verify: #22c55e;
+  --flag: #ef4444;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
   position: fixed;
   inset: 0;
   z-index: 9999;
-  background: #0b1220;
-  color: #f8fafc;
+  background: #0b0b0d;
+  color: #f3efe6;
   display: grid;
   place-items: center;
   clip-path: inset(0 0 0 0);
-  transition: opacity 0.45s var(--ease), transform 0.55s var(--ease), clip-path 0.6s var(--ease);
+  transition: opacity 0.55s var(--ease), transform 0.65s var(--ease), clip-path 0.75s var(--ease);
 }
 
 .bl-loader.is-done,
@@ -105,79 +108,78 @@ body {
 .bl-loader-core {
   position: relative;
   z-index: 2;
-  width: min(560px, 90vw);
+  width: min(580px, 90vw);
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 16px;
-  backdrop-filter: blur(18px);
-  background: rgba(17, 26, 46, 0.94);
-  border: 1px solid rgba(148, 163, 184, 0.22);
-  box-shadow: 0 24px 60px rgba(2, 6, 23, 0.55);
-  border-radius: 16px;
-  padding: 32px 32px;
+  backdrop-filter: blur(22px);
+  background: rgba(20, 20, 24, 0.88);
+  border: 1px solid #26262f;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, 0.78), 0 0 0 1px rgba(163, 156, 255, 0.14);
+  border-radius: 20px;
+  padding: 34px 36px;
 }
 
 .bl-loader-logo {
-  width: 58px;
-  height: 58px;
-  border-radius: 14px;
+  width: 62px;
+  height: 62px;
+  border-radius: 16px;
   display: grid;
   place-items: center;
-  color: #f8fafc;
-  background: #0a2540;
-  border: 1.5px solid rgba(20, 184, 166, 0.55);
-  box-shadow: 0 8px 20px rgba(2, 6, 23, 0.35);
-  animation: blPulse 2s ease-out infinite, blPop 0.65s var(--ease) both;
+  color: #fff;
+  background: linear-gradient(135deg, #4b3fd1, #a39cff);
+  box-shadow: 0 0 0 0 rgba(163, 156, 255, 0.55);
+  animation: blPulse 1.8s ease-out infinite, blPop 0.75s var(--ease) both;
 }
 
 @keyframes blPulse {
   to {
-    box-shadow: 0 0 0 18px rgba(20, 184, 166, 0);
+    box-shadow: 0 0 0 26px rgba(163, 156, 255, 0);
   }
 }
 
 @keyframes blPop {
   from {
-    transform: scale(0.85);
+    transform: scale(0.4) rotate(-18deg);
     opacity: 0;
   }
 }
 
 .bl-loader-word {
-  font-family: var(--font-display), "Inter Tight", sans-serif;
+  font-family: var(--font-display), "Archivo", sans-serif;
   font-weight: 800;
-  font-size: 34px;
-  line-height: 1;
-  letter-spacing: -0.025em;
+  font-size: 38px;
+  line-height: 0.95;
+  letter-spacing: -0.03em;
   text-transform: uppercase;
-  color: #f8fafc;
-  animation: blRise 0.6s 0.1s var(--ease) both;
+  color: #f3efe6;
+  animation: blRise 0.75s 0.12s var(--ease) both;
 }
 
 @keyframes blRise {
   from {
     opacity: 0;
-    transform: translateY(12px);
+    transform: translateY(14px);
   }
 }
 
 .bl-draft {
   position: relative;
   width: 100%;
-  margin-top: 6px;
-  padding: 24px 20px 44px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 12px;
-  background: #0b1220;
+  margin-top: 8px;
+  padding: 26px 22px 46px;
+  border: 1px solid #26262f;
+  border-radius: 14px;
+  background: #0b0b0d;
   overflow: hidden;
-  animation: blRise 0.6s 0.24s var(--ease) both;
+  animation: blRise 0.75s 0.3s var(--ease) both;
 }
 
 .bl-draft p {
-  font: 500 clamp(15px, 2.4vw, 18px) / 1.8 var(--font-sans), "Inter", sans-serif;
+  font: 500 clamp(15px, 2.5vw, 19px) / 1.85 var(--font-sans), "Inter", sans-serif;
   text-align: center;
-  color: #f8fafc;
+  color: #f3efe6;
   margin: 0;
 }
 
@@ -258,10 +260,10 @@ body {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 88px;
-  left: -88px;
-  background: linear-gradient(90deg, transparent, rgba(20, 184, 166, 0.25), transparent);
-  animation: blScan 1.25s 0.45s ease-in-out 1;
+  width: 100px;
+  left: -100px;
+  background: linear-gradient(90deg, transparent, rgba(163, 156, 255, 0.5), transparent);
+  animation: blScan 1.35s 0.45s ease-in-out 1;
 }
 
 @keyframes blScan {
@@ -300,7 +302,7 @@ body {
   justify-content: space-between;
   align-items: center;
   font: 500 11.5px "JetBrains Mono", monospace;
-  color: #94a3b8;
+  color: #8a8680;
 }
 
 .bl-stage {
@@ -308,7 +310,7 @@ body {
 }
 
 .bl-pct {
-  color: #14b8a6;
+  color: #a39cff;
   font-weight: 700;
 }
 
@@ -316,7 +318,7 @@ body {
   width: 100%;
   height: 4px;
   border-radius: 4px;
-  background: rgba(148, 163, 184, 0.16);
+  background: rgba(243, 239, 230, 0.1);
   overflow: hidden;
 }
 
@@ -324,8 +326,8 @@ body {
   display: block;
   height: 100%;
   transform-origin: left;
-  background: #14b8a6;
-  transition: transform 0.12s linear;
+  background: linear-gradient(90deg, #4b3fd1, #a39cff, #22c55e);
+  transition: transform 0.08s linear;
 }
 
 .bl-slow {

@@ -571,7 +571,7 @@ export const ReviewQueue: React.FC<Props> = memo(({ brandId, role, selectedDraft
                 <ol className="space-y-4 border-l border-line pl-4">
                   {history.decisions.map(d => (
                     <li key={d.id} className="relative text-xs">
-                      <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-indigo-400"/>
+                      <span className="absolute -left-[21px] top-1.5 h-2 w-2 rounded-full bg-teal"/>
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium text-ink">{d.by}</span>
                         <Badge tone={d.kind === "approved" ? "success" : "neutral"}>{d.kind.replace(/_/g, " ")}</Badge>

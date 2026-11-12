@@ -812,7 +812,7 @@ export const DraftReview: React.FC<Props> = memo(({ brandId, role, selectedDraft
                                   <label className="mt-2.5 flex cursor-pointer items-start gap-2">
                                     <input
                                       type="checkbox"
-                                      className="mt-0.5 accent-indigo-400"
+                                      className="mt-0.5 accent-teal"
                                       checked={Boolean(confirmed[finding.id])}
                                       disabled={pending || !canEdit}
                                       onChange={e => setConfirmed(previous => ({ ...previous, [finding.id]: e.target.checked }))}

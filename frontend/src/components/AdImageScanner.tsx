@@ -205,8 +205,8 @@ export const AdImageScanner: React.FC<Props> = ({
           topZoneBusy,
           bottomZoneBusy,
           focalBalancePct,
-          gradient: "from-[#1e1b4b] via-[#0f172a] to-[#090a0f]",
-          accent: "#a39cff",
+          gradient: "from-[#0a2540] via-[#0b1220] to-[#08101c]",
+          accent: "#14b8a6",
           customImageUrl: dataUrl,
           showTextOverlay: false,
           gridWeights,
@@ -621,9 +621,9 @@ export const AdImageScanner: React.FC<Props> = ({
                 {/* Laser Scanning Beam */}
                 <div
                   aria-hidden="true"
-                  className="scan-y pointer-events-none absolute inset-x-0 h-14 bg-gradient-to-b from-transparent via-blue-500/35 to-transparent"
+                  className="scan-y pointer-events-none absolute inset-x-0 h-14 bg-gradient-to-b from-transparent via-teal/20 to-transparent"
                 >
-                  <div className="h-0.5 w-full bg-blue-400 shadow-[0_0_14px_#3b82f6]" />
+                  <div className="h-0.5 w-full bg-teal" />
                 </div>
 
                 {/* HUD MODE 1: Interactive Detection Bounding Boxes */}

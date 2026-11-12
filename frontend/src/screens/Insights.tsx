@@ -467,7 +467,7 @@ export const Insights: React.FC<Props> = memo(({ brandId, role }) => {
                           </thead>
                           <tbody className="divide-y divide-line/40">
                             {rule.version_breakdown.map(v => (
-                              <tr key={v.version} className={v.version === rule.version ? "bg-violet-500/5 font-medium" : ""}>
+                              <tr key={v.version} className={v.version === rule.version ? "bg-teal/5 font-medium" : ""}>
                                 <td className="p-3 font-semibold">v{v.version}</td>
                                 <td className="p-3">
                                   <Badge tone={v.status === "active" ? "accent" : "neutral"} className="text-[10px]">

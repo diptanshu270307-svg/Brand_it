@@ -75,13 +75,7 @@ export const App: React.FC = () => {
   const [refresh, setRefresh] = useState(0);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showOrbit, setShowOrbit] = useState(false);
-  const [showTour, setShowTour] = useState<boolean>(() => {
-    try {
-      return localStorage.getItem("brandlint_hide_tour_on_start") !== "true";
-    } catch {
-      return true;
-    }
-  });
+  const [showTour, setShowTour] = useState<boolean>(false);
   const [tourStep, setTourStep] = useState<number>(0);
   const [showReset, setShowReset] = useState(false);
   const [authView, setAuthView] = useState<"login" | "register" | "workspace" | "forgot" | "reset" | null>(null);
@@ -518,6 +512,52 @@ export const App: React.FC = () => {
   const handleSwitchReviewerProp = useCallback((senior?: boolean) => { void switchReviewer(senior); }, [switchReviewer]);
   const [loaderActive, setLoaderActive] = useState(true);
   const ready = !!user && !!brand;
+
+  // Global once-only GPU scroll-reveal observer across all workspace views and landing sections
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const prefersReduced = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false;
+    const revealAllPending = () => {
+      document.querySelectorAll(".reveal-on-scroll:not(.is-revealed)").forEach(el => {
+        el.classList.add("is-revealed");
+      });
+    };
+
+    if (prefersReduced || typeof IntersectionObserver === "undefined") {
+      revealAllPending();
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      entries => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add("is-revealed");
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.06, rootMargin: "0px 0px -24px 0px" }
+    );
+
+    const scan = () => {
+      document.querySelectorAll(".reveal-on-scroll:not(.is-revealed)").forEach(el => {
+        observer.observe(el);
+      });
+    };
+
+    scan();
+    const timer = window.setTimeout(scan, 80);
+    const rootNode = document.getElementById("workspace") || document.body;
+    const mutationObserver = new MutationObserver(() => scan());
+    mutationObserver.observe(rootNode, { childList: true, subtree: true });
+
+    return () => {
+      window.clearTimeout(timer);
+      observer.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, [screen, ready]);
   const activeRoleLabel = (brand?.role || activeCompany?.role || "creator").replace(/_/g, " ");
   const cleanWorkspaceName = (raw?: string | null) =>
     (raw || "")
@@ -790,8 +830,8 @@ export const App: React.FC = () => {
                         CLAIM-01 · Unqualified Guarantee
                       </span>
                     </div>
-                    <div aria-hidden="true" className="scan-y pointer-events-none absolute inset-x-0 h-16 bg-gradient-to-b from-transparent via-iris/35 to-transparent">
-                      <div className="h-0.5 w-full bg-iris shadow-[0_0_12px_#a39cff]" />
+                    <div aria-hidden="true" className="scan-y pointer-events-none absolute inset-x-0 h-14 bg-gradient-to-b from-transparent via-teal/20 to-transparent">
+                      <div className="h-0.5 w-full bg-teal" />
                     </div>
                     <div aria-hidden="true" className="finding-pop paper absolute inset-x-4 bottom-3 rounded-xl p-3.5">
                       <div className="flex items-center justify-between gap-2 font-label text-[10px] font-bold uppercase">
@@ -810,7 +850,7 @@ export const App: React.FC = () => {
             </section>
 
             {/* Apple MacBook Pro PROLED XDR Display-Inspired Tandem Verification Showcase */}
-            <div id="numbers" className="overflow-hidden rounded-2xl border border-line">
+            <div id="numbers" className="reveal-on-scroll overflow-hidden rounded-2xl border border-line">
               <Suspense fallback={<ShowcaseSkeleton height="h-[520px]" />}>
                 <ProledXdrShowcase
                   onTryChecker={() => {
@@ -823,33 +863,33 @@ export const App: React.FC = () => {
 
             {/* Quick 1-click Demo Role Cards */}
             {!user && systemMode?.allow_persona_switch !== false && (
-              <section id="try" className="space-y-6">
+              <section id="try" className="reveal-on-scroll space-y-6">
                 <div>
                   <p className="font-label text-xs uppercase text-iris">Try the demo · Role-based governance</p>
                   <h2 className="mt-2 font-display text-4xl font-bold uppercase leading-[0.9] tracking-[-0.03em] text-bone">
                     Pick a role to step inside.
                   </h2>
                 </div>
-                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div className="reveal-stagger grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   {[
-                    { email: DEMO_USERS[0].email, name: "Creator · Alex", blurb: "Checks drafts, applies fixes, submits for review.", num: "01", accent: "from-[#4b3fd1]/45 via-[#17171d] to-[#0b0b0d]", icon: "file" },
-                    { email: DEMO_USERS[1].email, name: "Reviewer · Samira", blurb: "Reviews submitted posts and gives first-stage approval.", num: "02", accent: "from-[#22c55e]/35 via-[#17171d] to-[#0b0b0d]", icon: "review" },
-                    { email: DEMO_USERS[2].email, name: "Senior · Morgan", blurb: "Signs off escalated claims and senior review routes.", num: "03", accent: "from-[#f59e0b]/35 via-[#17171d] to-[#0b0b0d]", icon: "shield" },
-                    { email: DEMO_USERS[3].email, name: "Brand Owner · Olivia", blurb: "Edits rules, gives final approval, reads guideline health.", num: "04", accent: "from-[#a39cff]/40 via-[#17171d] to-[#0b0b0d]", icon: "chart" },
+                    { email: DEMO_USERS[0].email, name: "Creator · Alex", blurb: "Checks drafts, applies fixes, submits for review.", num: "01", accent: "bg-[#0a2540] border-b border-teal/25", icon: "file" },
+                    { email: DEMO_USERS[1].email, name: "Reviewer · Samira", blurb: "Reviews submitted posts and gives first-stage approval.", num: "02", accent: "bg-[#0f2924] border-b border-ok/25", icon: "review" },
+                    { email: DEMO_USERS[2].email, name: "Senior · Morgan", blurb: "Signs off escalated claims and senior review routes.", num: "03", accent: "bg-[#221d12] border-b border-major/25", icon: "shield" },
+                    { email: DEMO_USERS[3].email, name: "Brand Owner · Olivia", blurb: "Edits rules, gives final approval, reads guideline health.", num: "04", accent: "bg-[#0b1f33] border-b border-teal/30", icon: "chart" },
                   ].map(card => (
                     <button
                       key={card.email}
                       type="button"
                       onClick={() => { void switchPersona(card.email); }}
-                      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-panel text-left transition-colors hover:border-bone"
+                      className="group relative flex cursor-pointer flex-col overflow-hidden rounded-2xl border border-line bg-panel text-left transition-colors hover:border-teal"
                     >
-                      <div className={`guides contours relative aspect-[4/3] w-full overflow-hidden bg-gradient-to-br ${card.accent}`}>
+                      <div className={`guides contours relative aspect-[4/3] w-full overflow-hidden ${card.accent}`}>
                         <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-bone/15 bg-carbon/75 text-iris shadow-lg transition-transform duration-500 group-hover:scale-110">
+                          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-white/15 bg-navy/85 text-teal shadow-sm transition-transform duration-300 group-hover:scale-105">
                             <Icon name={card.icon} size={22} />
                           </div>
                         </div>
-                        <span className="absolute left-3 top-3 rounded-full bg-carbon/80 px-2.5 py-0.5 font-mono text-[11px] text-bone">
+                        <span className="absolute left-3 top-3 rounded-full border border-white/15 bg-[#0b1220]/85 px-2.5 py-0.5 font-mono text-[11px] text-white">
                           {card.num}
                         </span>
                       </div>
@@ -873,70 +913,62 @@ export const App: React.FC = () => {
       </main>
 
       {/* =====================================================================
-          CODE-A-NOVA INSPIRED CONVERSION BANNER + 5-COLUMN ARCHITECTURAL FOOTER
+          CORPORATE CONVERSION BANNER + 5-COLUMN ARCHITECTURAL FOOTER
          ===================================================================== */}
-      <footer id="contact" className="relative overflow-hidden bg-[#050508] text-white">
-        {/* Top Glowing Blue/Violet Gradient Line */}
+      <footer id="contact" className="relative overflow-hidden border-t border-line bg-[#0b1220] text-white">
         <div
           aria-hidden="true"
-          className="h-[2px] w-full bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-90 shadow-[0_0_24px_#6366f1]"
+          className="h-[2px] w-full bg-teal/50"
         />
 
         <div className="relative mx-auto max-w-[1400px] px-4 py-14 sm:px-6 sm:py-16">
-          {/* Code-A-Nova Rounded-3xl Conversion Banner */}
-          <div className="relative mb-14 overflow-hidden rounded-3xl border border-indigo-500/30 bg-gradient-to-br from-[#0e1022] via-[#090a14] to-[#130f26] p-8 text-center shadow-2xl sm:p-12">
-            <div
-              aria-hidden="true"
-              className="pointer-events-none absolute left-1/2 top-0 h-64 w-96 -translate-x-1/2 rounded-full bg-indigo-500/20 blur-[110px]"
-            />
-            <span className="relative inline-flex items-center gap-2 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-4 py-1 font-mono text-[11px] font-semibold uppercase tracking-wider text-indigo-300">
+          <div className="reveal-on-scroll relative mb-14 overflow-hidden rounded-2xl border border-white/15 bg-[#111a2e] p-8 text-center shadow-lustro-card sm:p-12">
+            <span className="inline-flex items-center gap-2 rounded-full border border-teal/35 bg-teal/10 px-4 py-1 font-mono text-[11px] font-semibold uppercase tracking-wider text-[#2dd4bf]">
               <span>Silence Is Never Clearance · Evidence Or Silence</span>
             </span>
-            <h2 className="relative mx-auto mt-4 max-w-3xl font-sans text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
+            <h2 className="mx-auto mt-4 max-w-3xl font-sans text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
               Ready to Audit Your Brand&apos;s{" "}
-              <span className="bg-gradient-to-r from-indigo-400 via-sky-400 to-purple-400 bg-clip-text text-transparent">
+              <span className="text-[#14b8a6]">
                 Next Ad Campaign &amp; Copy?
               </span>
             </h2>
-            <p className="relative mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
+            <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-slate-300 sm:text-base">
               Every check lists what it verified — and what still needs human judgement — so a clean result is never mistaken for a blanket sign-off.
             </p>
-            <div className="relative mt-7 flex flex-wrap items-center justify-center gap-3.5">
+            <div className="mt-7 flex flex-wrap items-center justify-center gap-3.5">
               <button
                 type="button"
                 onClick={() => openWorkspaceOrAuth("review")}
-                className="cursor-pointer rounded-full bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-500 px-7 py-3.5 font-sans text-sm font-bold text-white shadow-[0_10px_30px_-5px_rgba(99,102,241,0.55)] transition hover:scale-[1.02]"
+                className="cursor-pointer rounded-full bg-[#14b8a6] px-7 py-3.5 font-sans text-sm font-bold text-[#0a2540] transition hover:bg-[#2dd4bf]"
               >
                 Open Content &amp; Ad Checker →
               </button>
               <button
                 type="button"
                 onClick={() => openWorkspaceOrAuth("intro", "ad-image-scanner")}
-                className="cursor-pointer rounded-full border border-white/15 bg-white/[0.05] px-6 py-3.5 font-sans text-sm font-semibold text-white transition hover:border-white/30 hover:bg-white/[0.1]"
+                className="cursor-pointer rounded-full border border-white/20 bg-white/[0.06] px-6 py-3.5 font-sans text-sm font-semibold text-white transition hover:border-white/35 hover:bg-white/[0.12]"
               >
                 Scan Aura Glow Ads ↑
               </button>
             </div>
           </div>
 
-          {/* 5-Column Architectural Footer Grid (Matching Code-A-Nova Footer Layout) */}
           <div className="grid gap-10 border-b border-white/10 pb-12 md:grid-cols-2 lg:grid-cols-[1.5fr_1fr_1fr_1fr_1fr]">
-            {/* Col 1: Brand Identity + Status */}
             <div className="space-y-4">
               <div className="flex items-center gap-2.5">
                 <BrandLintLogo />
                 <span className="font-sans text-xl font-extrabold tracking-tight text-white">
-                  Brand<span className="bg-gradient-to-r from-indigo-400 to-sky-400 bg-clip-text text-transparent">Lint</span>
+                  Brand<span className="text-[#14b8a6]">Lint</span>
                 </span>
               </div>
-              <p className="max-w-xs text-xs leading-relaxed text-slate-400">
+              <p className="max-w-xs text-xs leading-relaxed text-slate-300">
                 Enterprise AI &amp; deterministic brand governance platform for ad images, product packaging labels, promotional copy, and four-eyes compliance sign-off.
               </p>
               <div className="flex flex-wrap items-center gap-2 pt-1">
                 <button
                   type="button"
                   onClick={() => setShowPrivacy(true)}
-                  className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] text-slate-300 transition hover:border-indigo-400/50 hover:text-white"
+                  className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-white/15 bg-white/[0.04] px-3 py-1.5 font-mono text-[11px] text-slate-200 transition hover:border-teal/50 hover:text-white"
                 >
                   <span className={`size-2 rounded-full ${privacy?.hosted ? "bg-emerald-400" : "bg-amber-400"}`} />
                   <span>
@@ -1168,7 +1200,7 @@ export const App: React.FC = () => {
                       }}
                       className={`px-2 py-1.5 text-left text-xs rounded-lg border transition ${
                         authEmail === u.email
-                          ? "border-violet-400/60 bg-violet-400/15 text-ink"
+                          ? "border-teal/60 bg-teal/15 text-ink"
                           : "border-line/50 bg-well/60 text-muted hover:text-ink hover:bg-well"
                       }`}
                     >
@@ -1287,28 +1319,28 @@ export const App: React.FC = () => {
             <div className="flex border-b border-line/60 gap-2 pb-2">
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${teamTab === "members" ? "bg-violet-400/20 text-[var(--lv-accent)]" : "text-muted hover:text-ink"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${teamTab === "members" ? "bg-teal/15 text-iris" : "text-muted hover:text-ink"}`}
                 onClick={() => { setTeamTab("members"); setTeamMsg(""); }}
               >
                 Members ({members.length})
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${teamTab === "invite" ? "bg-violet-400/20 text-[var(--lv-accent)]" : "text-muted hover:text-ink"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${teamTab === "invite" ? "bg-teal/15 text-iris" : "text-muted hover:text-ink"}`}
                 onClick={() => { setTeamTab("invite"); setTeamMsg(""); setInviteResult(null); }}
               >
                 Invite Member
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${teamTab === "settings" ? "bg-violet-400/20 text-[var(--lv-accent)]" : "text-muted hover:text-ink"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${teamTab === "settings" ? "bg-teal/15 text-iris" : "text-muted hover:text-ink"}`}
                 onClick={() => { setTeamTab("settings"); setTeamMsg(""); }}
               >
                 Settings
               </button>
               <button
                 type="button"
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${teamTab === "roles" ? "bg-violet-400/20 text-[var(--lv-accent)]" : "text-muted hover:text-ink"}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition ${teamTab === "roles" ? "bg-teal/15 text-iris" : "text-muted hover:text-ink"}`}
                 onClick={() => { setTeamTab("roles"); setTeamMsg(""); }}
               >
                 Role Reference
@@ -1480,7 +1512,7 @@ export const App: React.FC = () => {
                           onClick={() => switchWorkspace(c.id)}
                           className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
                             c.id === activeCompany?.id
-                              ? "border-violet-400/60 bg-violet-400/20 text-ink"
+                              ? "border-teal/60 bg-teal/15 text-ink"
                               : "border-line/60 bg-well text-muted hover:text-ink"
                           }`}
                         >
@@ -1597,7 +1629,7 @@ export const App: React.FC = () => {
         <Modal title="Workspace Invitation" onClose={() => setShowAcceptInvite(false)}>
           <form onSubmit={handleAcceptInvitation} className="space-y-4">
             {inviteDetails ? (
-              <div className="p-3 bg-violet-400/10 border border-violet-400/30 rounded-xl space-y-1">
+              <div className="p-3 bg-teal/10 border border-teal/30 rounded-xl space-y-1">
                 <p className="text-xs text-ink">
                   You have been invited to join <strong>{inviteDetails.company_name}</strong> as <strong>{inviteDetails.role_label}</strong>.
                 </p>

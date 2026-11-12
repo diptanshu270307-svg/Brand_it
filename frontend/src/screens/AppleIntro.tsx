@@ -135,7 +135,7 @@ const ROLE_STUDIO_TABS = [
     title: "Creator Studio",
     author: "Alex",
     avatar: "file",
-    accent: "from-indigo-600/30 to-purple-600/10",
+    accent: "border-teal/25 bg-[#0a2540]",
     badge: "Creator · Drafts & Auto-Fix",
     policy: "Draft creation, image scan, 1-click EV-1 wording swap & submit.",
   },
@@ -145,7 +145,7 @@ const ROLE_STUDIO_TABS = [
     title: "Reviewer Approvals Queue",
     author: "Samira",
     avatar: "review",
-    accent: "from-emerald-600/30 to-teal-600/10",
+    accent: "border-ok/25 bg-[#0f2924]",
     badge: "Four-Eyes Reviewer Gate",
     policy: "First-line peer sign-off. Author ≠ Reviewer strictly enforced.",
   },
@@ -155,7 +155,7 @@ const ROLE_STUDIO_TABS = [
     title: "Senior & Legal Escalations",
     author: "Morgan",
     avatar: "shield",
-    accent: "from-amber-600/30 to-orange-600/10",
+    accent: "border-major/25 bg-[#221d12]",
     badge: "Legal & Regulatory Route",
     policy: "Escalated regulatory claims, financial guarantees, and overrides.",
   },
@@ -165,7 +165,7 @@ const ROLE_STUDIO_TABS = [
     title: "Brand Owner Governance",
     author: "Olivia",
     avatar: "chart",
-    accent: "from-sky-600/30 to-indigo-600/10",
+    accent: "border-teal/30 bg-[#0b1f33]",
     badge: "Rulebook & Guideline Health",
     policy: "Rules governance, Evidence Vault Passports lifecycle & audit log.",
   },
@@ -206,46 +206,18 @@ export const AppleIntro: React.FC<Props> = memo(({
   const [reviewSubmitting, setReviewSubmitting] = useState(false);
   const [reviewError, setReviewError] = useState("");
 
-  // Scroll Reveal Observer ("Scroll to load as you scroll down")
+  // Progressive Scroll-Down Content Loading Observer (GPU-only, respects reduced motion)
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      entries => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add("is-revealed");
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.05, rootMargin: "0px 0px -30px 0px" }
-    );
+    const prefersReduced =
+      typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
-    const observePending = () => {
-      const elements = document.querySelectorAll(".reveal-on-scroll:not(.is-revealed)");
-      elements.forEach(el => observer.observe(el));
-    };
+    if (prefersReduced || typeof IntersectionObserver === "undefined") {
+      document.querySelectorAll<HTMLElement>(".scroll-load-card:not(.is-loaded)").forEach(card => {
+        card.classList.add("is-loaded");
+      });
+      return;
+    }
 
-    observePending();
-
-    // Re-check when dynamic data loads, tabs switch, or DOM updates
-    const mutationObserver = new MutationObserver(() => {
-      observePending();
-    });
-    mutationObserver.observe(document.body, { childList: true, subtree: true });
-
-    // Catch any elements immediately in viewport or rendered on hydration
-    const timer = window.setTimeout(observePending, 100);
-
-    return () => {
-      window.clearTimeout(timer);
-      observer.disconnect();
-      mutationObserver.disconnect();
-    };
-  }, []);
-
-  // Progressive Scroll-Down Content Loading Animation Observer
-  // "while loading scrolling down the website there must be the content loading animation like as we scroll down the content gets loaded"
-  useEffect(() => {
     const contentObserver = new IntersectionObserver(
       entries => {
         entries.forEach(entry => {
@@ -253,22 +225,19 @@ export const AppleIntro: React.FC<Props> = memo(({
             const el = entry.target as HTMLElement;
             const delay = parseInt(el.dataset.delay || "0", 10);
 
-            // 1. Kick off active holographic scan and shimmer
             window.setTimeout(() => {
               el.classList.add("is-loading");
-
-              // 2. Resolve to fully loaded content with verification badge
               window.setTimeout(() => {
                 el.classList.remove("is-loading");
                 el.classList.add("is-loaded");
-              }, 480);
+              }, 360);
             }, delay);
 
             contentObserver.unobserve(el);
           }
         });
       },
-      { threshold: 0.1, rootMargin: "0px 0px -30px 0px" }
+      { threshold: 0.08, rootMargin: "0px 0px -24px 0px" }
     );
 
     const observeCards = () => {
@@ -277,8 +246,6 @@ export const AppleIntro: React.FC<Props> = memo(({
     };
 
     observeCards();
-
-    // Re-observe when roles switch or dynamic lists change
     const t = window.setTimeout(observeCards, 80);
 
     return () => {
@@ -412,19 +379,17 @@ export const AppleIntro: React.FC<Props> = memo(({
          ===================================================================== */}
       <section
         id="hero-scanner-preview"
-        className="relative -mx-4 -mt-6 overflow-hidden border-b border-white/10 bg-[#040914] px-4 pb-14 pt-6 sm:-mx-6 sm:px-6 sm:pb-16 sm:pt-8 lg:-mx-9 lg:px-9"
+        className="relative -mx-4 -mt-6 overflow-hidden border-b border-white/10 bg-[#0b1220] px-4 pb-14 pt-6 sm:-mx-6 sm:px-6 sm:pb-16 sm:pt-8 lg:-mx-9 lg:px-9"
       >
         <Suspense fallback={null}>
-          <ThreeBackdrop density="hero" className="absolute inset-0 h-full w-full opacity-95" />
+          <ThreeBackdrop density="hero" className="absolute inset-0 h-full w-full opacity-90" />
         </Suspense>
-        <div aria-hidden="true" style={{ background: "radial-gradient(circle, rgba(20,184,166,0.14) 0%, transparent 70%)" }} className="pointer-events-none absolute -left-20 top-6 h-80 w-80 rounded-full" />
-        <div aria-hidden="true" style={{ background: "radial-gradient(circle, rgba(56,189,248,0.10) 0%, transparent 70%)" }} className="pointer-events-none absolute right-0 top-16 h-80 w-80 rounded-full" />
 
         <div className="relative mx-auto max-w-[1400px]">
           {/* Topic Switcher Pills */}
           <div className="mb-6 flex flex-wrap items-center gap-1.5 border-b border-white/10 pb-4">
-            <span className="mr-1 inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase text-indigo-300">
-              <span className="size-1.5 rounded-full bg-indigo-400 animate-pulse" />
+            <span className="mr-1 inline-flex items-center gap-1.5 rounded-full border border-teal/35 bg-teal/10 px-2.5 py-1 font-mono text-[10px] font-semibold uppercase text-[#2dd4bf]">
+              <span className="size-1.5 rounded-full bg-teal" />
               Mode
             </span>
             {HERO_TOPICS.map((t, idx) => {
@@ -434,10 +399,10 @@ export const AppleIntro: React.FC<Props> = memo(({
                   key={t.id}
                   type="button"
                   onClick={() => setActiveTopicIdx(idx)}
-                  className={`cursor-pointer rounded-full border px-3 py-1 font-sans text-xs font-medium transition-all ${
+                  className={`cursor-pointer rounded-full border px-3 py-1 font-sans text-xs font-medium transition-colors ${
                     active
-                      ? "border-indigo-400 bg-indigo-600/80 text-white shadow-[0_0_16px_rgba(99,102,241,0.4)]"
-                      : "border-white/10 bg-white/[0.03] text-slate-300 hover:border-white/20 hover:text-white"
+                      ? "border-teal bg-[#14b8a6] font-semibold text-[#0a2540]"
+                      : "border-white/15 bg-white/[0.04] text-slate-200 hover:border-white/30 hover:text-white"
                   }`}
                 >
                   {t.pill}
@@ -448,28 +413,28 @@ export const AppleIntro: React.FC<Props> = memo(({
 
           {/* Hero Split Grid */}
           <div className="grid items-center gap-8 lg:grid-cols-[1.1fr_1fr] lg:gap-10">
-            {/* Left Column: Clean, high-impact headline & actions */}
+            {/* Left Column: Clean, concise headline & actions */}
             <div className="space-y-5">
-              <div className="inline-flex items-center gap-2 rounded-full border border-indigo-500/30 bg-indigo-500/10 px-3.5 py-1 backdrop-blur-md">
+              <div className="inline-flex items-center gap-2 rounded-full border border-teal/30 bg-[#111a2e]/90 px-3.5 py-1">
                 <span className="size-2 rounded-full bg-emerald-400" />
-                <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-indigo-200">
+                <span className="font-mono text-[10px] font-semibold uppercase tracking-wider text-slate-200">
                   {activeTopic.eyebrow}
                 </span>
-                <span className="rounded-full bg-white/10 px-2 py-0.5 font-mono text-[9px] text-sky-300">
+                <span className="rounded-full bg-teal/15 px-2 py-0.5 font-mono text-[9px] text-[#5eead4]">
                   {activeTopic.badgeText}
                 </span>
               </div>
 
               <h1 className="font-sans text-[clamp(2.2rem,4.5vw,3.8rem)] font-extrabold leading-[1.05] tracking-tight text-white">
                 <span>{activeTopic.titleLine1}</span>{" "}
-                <span className="bg-gradient-to-r from-indigo-400 via-sky-400 to-purple-400 bg-clip-text text-transparent">
+                <span className="text-[#14b8a6]">
                   {activeTopic.titleGradient}
                 </span>{" "}
                 <span>{activeTopic.titleLine3}</span>
               </h1>
 
-              <div className="flex items-center gap-2 text-xs font-medium text-slate-300 sm:text-sm">
-                <Icon name="check" size={14} className="shrink-0 text-mint" />
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-200 sm:text-sm">
+                <Icon name="check" size={14} className="shrink-0 text-teal" />
                 <span>{activeTopic.subtitle}</span>
               </div>
 
@@ -490,7 +455,7 @@ export const AppleIntro: React.FC<Props> = memo(({
                       onOpenScreen("queue");
                     }
                   }}
-                  className="cursor-pointer inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-indigo-600 via-violet-600 to-sky-500 px-6 py-2.5 font-sans text-xs font-bold text-white shadow-lg transition hover:scale-[1.02]"
+                  className="cursor-pointer inline-flex items-center gap-2 rounded-full bg-[#14b8a6] px-6 py-2.5 font-sans text-xs font-bold text-[#0a2540] transition hover:bg-[#2dd4bf]"
                 >
                   <span>{activeTopic.primaryCta}</span>
                 </button>
@@ -498,7 +463,7 @@ export const AppleIntro: React.FC<Props> = memo(({
                 <button
                   type="button"
                   onClick={() => onOpenScreen("review")}
-                  className="cursor-pointer inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/[0.05] px-5 py-2.5 font-sans text-xs font-semibold text-white backdrop-blur-md transition hover:bg-white/[0.1]"
+                  className="cursor-pointer inline-flex items-center gap-2 rounded-full border border-white/20 bg-white/[0.06] px-5 py-2.5 font-sans text-xs font-semibold text-white transition hover:bg-white/[0.12]"
                 >
                   <Icon name="file" size={13} />
                   <span>Draft Studio</span>
@@ -507,36 +472,36 @@ export const AppleIntro: React.FC<Props> = memo(({
                 <button
                   type="button"
                   onClick={() => onLaunchStep(0)}
-                  className="cursor-pointer inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-500/10 px-4 py-2.5 font-mono text-[11px] font-semibold uppercase text-sky-300 transition hover:bg-sky-500/20"
+                  className="cursor-pointer inline-flex items-center gap-1.5 rounded-full border border-teal/35 bg-teal/10 px-4 py-2.5 font-mono text-[11px] font-semibold uppercase text-[#5eead4] transition hover:bg-teal/20"
                 >
                   <Icon name="spark" size={12} />
-                  <span>Guided Tour</span>
+                  <span>Walkthrough Guide</span>
                 </button>
               </div>
 
               {/* 4 Clean Stats */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 reveal-stagger">
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center">
+                <div className="rounded-xl border border-white/10 bg-[#111a2e]/75 p-2.5 text-center">
                   <div className="font-mono text-base font-bold text-white">94%</div>
-                  <div className="text-[10px] text-slate-400">Issue Recall</div>
+                  <div className="text-[10px] text-slate-300">Issue Recall</div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center">
-                  <div className="font-mono text-base font-bold text-sky-400">5 Ads</div>
-                  <div className="text-[10px] text-slate-400">Audited Live</div>
+                <div className="rounded-xl border border-white/10 bg-[#111a2e]/75 p-2.5 text-center">
+                  <div className="font-mono text-base font-bold text-[#2dd4bf]">5 Ads</div>
+                  <div className="text-[10px] text-slate-300">Audited Live</div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center">
+                <div className="rounded-xl border border-white/10 bg-[#111a2e]/75 p-2.5 text-center">
                   <div className="font-mono text-base font-bold text-emerald-400">100%</div>
-                  <div className="text-[10px] text-slate-400">Citation Match</div>
+                  <div className="text-[10px] text-slate-300">Citation Match</div>
                 </div>
-                <div className="rounded-xl border border-white/10 bg-white/[0.02] p-2.5 text-center">
-                  <div className="font-mono text-base font-bold text-purple-400">4-Eyes</div>
-                  <div className="text-[10px] text-slate-400">Sign-Off Gate</div>
+                <div className="rounded-xl border border-white/10 bg-[#111a2e]/75 p-2.5 text-center">
+                  <div className="font-mono text-base font-bold text-[#2dd4bf]">4-Eyes</div>
+                  <div className="text-[10px] text-slate-300">Sign-Off Gate</div>
                 </div>
               </div>
             </div>
 
             {/* Right Column: Interactive 5-Ad Selector Preview Card */}
-            <div id="hero-ad-card" className="reveal-on-scroll relative rounded-2xl border border-white/15 bg-[#0b0d16]/95 p-4 shadow-xl backdrop-blur-xl">
+            <div id="hero-ad-card" className="reveal-on-scroll relative rounded-2xl border border-white/15 bg-[#111a2e]/95 p-4 shadow-lustro-card">
               <div className="mb-2.5 flex items-center justify-between border-b border-white/10 pb-2">
                 <div className="flex items-center gap-1.5">
                   <span className="size-2 rounded-full bg-rose-500/80" />
@@ -704,7 +669,7 @@ export const AppleIntro: React.FC<Props> = memo(({
       >
         <div id="role-studio-controls" className="flex flex-wrap items-center justify-between gap-4 border-b border-line pb-4">
           <div>
-            <div className="inline-flex items-center gap-1.5 rounded-full border border-indigo-400/30 bg-indigo-500/10 px-3 py-0.5 font-mono text-[10px] font-semibold uppercase text-indigo-300">
+            <div className="inline-flex items-center gap-1.5 rounded-full border border-teal/35 bg-teal/10 px-3 py-0.5 font-mono text-[10px] font-semibold uppercase text-iris">
               <span className="size-1.5 rounded-full bg-emerald-400" />
               Role-Based Draft Pipelines
             </div>
@@ -714,7 +679,7 @@ export const AppleIntro: React.FC<Props> = memo(({
           </div>
 
           {/* Role Tab Switcher */}
-          <div className="flex flex-wrap items-center gap-1.5 rounded-full border border-white/10 bg-carbon p-1">
+          <div className="flex flex-wrap items-center gap-1.5 rounded-full border border-line bg-carbon p-1">
             {ROLE_STUDIO_TABS.map(tab => {
               const active = tab.key === selectedRoleKey;
               return (
@@ -724,8 +689,8 @@ export const AppleIntro: React.FC<Props> = memo(({
                   onClick={() => setSelectedRoleKey(tab.key)}
                   className={`cursor-pointer rounded-full px-3.5 py-1.5 font-sans text-xs font-semibold transition ${
                     active
-                      ? "bg-gradient-to-r from-indigo-600 to-sky-500 text-white shadow-md"
-                      : "text-slate-300 hover:text-white"
+                      ? "bg-[#0a2540] text-white border border-teal/40"
+                      : "text-ash hover:text-bone"
                   }`}
                 >
                   {tab.title}
@@ -738,14 +703,14 @@ export const AppleIntro: React.FC<Props> = memo(({
         {/* Selected Role Viewport */}
         <div className="mt-5 space-y-5">
           {/* Role Header Banner */}
-          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-carbon/70 p-4">
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-carbon/70 p-4">
             <div className="flex items-center gap-3">
-              <span className="inline-flex size-9 items-center justify-center rounded-xl bg-white/[0.06] text-sky-400 ring-1 ring-white/10">
+              <span className="inline-flex size-9 items-center justify-center rounded-xl border border-teal/30 bg-teal/10 text-iris">
                 <Icon name={activeRoleConfig.avatar} size={16} />
               </span>
               <div>
                 <div className="flex items-center gap-2">
-                  <h3 className="font-sans text-base font-bold text-white">{activeRoleConfig.title}</h3>
+                  <h3 className="font-sans text-base font-bold text-bone">{activeRoleConfig.title}</h3>
                   <Badge tone="accent">{activeRoleConfig.author}</Badge>
                 </div>
                 <p className="text-xs text-ash">{activeRoleConfig.policy}</p>
@@ -757,7 +722,7 @@ export const AppleIntro: React.FC<Props> = memo(({
                 <button
                   type="button"
                   onClick={() => onSwitchPersona(activeRoleConfig.email)}
-                  className="cursor-pointer rounded-full border border-indigo-400/40 bg-indigo-500/15 px-3 py-1 font-mono text-[11px] font-semibold text-indigo-300 hover:bg-indigo-500/25"
+                  className="cursor-pointer rounded-full border border-teal/35 bg-teal/10 px-3 py-1 font-mono text-[11px] font-semibold text-iris hover:bg-teal/20"
                 >
                   Switch Persona to {activeRoleConfig.author} ↗
                 </button>
@@ -766,7 +731,7 @@ export const AppleIntro: React.FC<Props> = memo(({
                 <button
                   type="button"
                   onClick={() => onOpenScreen("review")}
-                  className="cursor-pointer rounded-full bg-white px-3.5 py-1 font-sans text-xs font-bold text-slate-950 hover:bg-slate-100"
+                  className="cursor-pointer rounded-full bg-iris px-3.5 py-1 font-sans text-xs font-bold text-carbon hover:opacity-90"
                 >
                   + New Draft Check
                 </button>
@@ -782,7 +747,7 @@ export const AppleIntro: React.FC<Props> = memo(({
                   <div
                     key={d.id}
                     data-delay={idx * 75}
-                    className="scroll-load-card relative flex flex-col justify-between rounded-xl border border-line bg-carbon/60 p-4 transition hover:border-indigo-400/40"
+                    className="scroll-load-card relative flex flex-col justify-between rounded-xl border border-line bg-carbon/60 p-4 transition hover:border-teal/50"
                   >
                     <div className="scroll-load-hud">
                       <span className="load-badge-loading">
@@ -1029,7 +994,7 @@ export const AppleIntro: React.FC<Props> = memo(({
               <div
                 key={ad.id}
                 data-delay={idx * 100}
-                className="scroll-load-card group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-carbon/75 transition-all duration-300 hover:-translate-y-1 hover:border-indigo-400/50"
+                className="scroll-load-card group relative flex flex-col justify-between overflow-hidden rounded-2xl border border-line bg-carbon/75 transition-all duration-300 hover:-translate-y-1 hover:border-teal/50"
               >
                 {/* Interactive Scroll-Loading HUD Badge */}
                 <div className="scroll-load-hud">
@@ -1246,7 +1211,7 @@ export const AppleIntro: React.FC<Props> = memo(({
               <div className="flex items-center gap-2">
                 <span className="font-mono text-xs uppercase text-emerald-400">Evidence Vault</span>
                 {notifications.length > 0 && (
-                  <span className="rounded-full bg-indigo-500/20 px-2 py-0.5 font-mono text-[10px] text-indigo-300">
+                  <span className="rounded-full bg-teal/15 px-2 py-0.5 font-mono text-[10px] text-iris">
                     {notifications.length} alerts
                   </span>
                 )}

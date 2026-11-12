@@ -369,7 +369,7 @@ export const BrandLibrary: React.FC<Props> = memo(({ brandId, role }) => {
               </label>
             )}
             <div>
-              <label htmlFor={fileId} className={`lv-well flex min-h-40 cursor-pointer flex-col items-center justify-center gap-2.5 border-dashed p-6 text-center focus-within:outline focus-within:outline-2 focus-within:outline-violet-400 rounded-2xl ${dragging ? "border-violet-400 bg-violet-400/10" : ""}`} onDragOver={e => { e.preventDefault(); if (isOwner) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={e => { e.preventDefault(); setDragging(false); if (isOwner && !busy) chooseFile(e.dataTransfer.files[0] || null); }}>
+              <label htmlFor={fileId} className={`lv-well flex min-h-40 cursor-pointer flex-col items-center justify-center gap-2.5 border-dashed p-6 text-center focus-within:outline focus-within:outline-2 focus-within:outline-teal rounded-2xl ${dragging ? "border-teal bg-teal/10" : ""}`} onDragOver={e => { e.preventDefault(); if (isOwner) setDragging(true); }} onDragLeave={() => setDragging(false)} onDrop={e => { e.preventDefault(); setDragging(false); if (isOwner && !busy) chooseFile(e.dataTransfer.files[0] || null); }}>
                 <Icon name="upload" size={24}/>
                 <span className="text-sm font-medium">{file ? file.name : "Drop a file here, or click to choose"}</span>
                 <span className="lv-muted text-xs">PDF, scanned PDF, image (.png/.jpg/.webp), or .txt file · up to 10 MB (Gemini OCR)</span>

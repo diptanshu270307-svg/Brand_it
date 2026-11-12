@@ -362,8 +362,8 @@ export const Navbar: React.FC<NavbarProps> = memo(({
           },
           {
             id: "interactive-tour",
-            label: "Interactive Tour",
-            description: "5-step guided spotlight walkthrough across the workspace.",
+            label: "Walkthrough Guide",
+            description: "Step-by-step flow: Scan, Evidence, Approval & Publish.",
             icon: "spark",
             onSelect: () => handleSelectAction(onOpenTour),
           },
@@ -492,7 +492,7 @@ export const Navbar: React.FC<NavbarProps> = memo(({
                   <div className="text-xs font-bold tracking-tight">
                     BrandLint · {ready ? brandName : companyName}
                   </div>
-                  <div className="font-mono text-[10px] uppercase text-slate-400">
+                  <div className="font-mono text-[10px] uppercase text-ash">
                     {user ? `${user.name} · ${activeRoleLabel}` : "Interactive Workspace Navigation"}
                   </div>
                 </div>
@@ -548,7 +548,7 @@ export const Navbar: React.FC<NavbarProps> = memo(({
                             <span className="bl-mega-item-title">
                               <span>{item.label}</span>
                               {item.active && (
-                                <span className="rounded-full bg-teal-400/20 px-1.5 py-0.5 font-mono text-[9px] uppercase text-teal-300">
+                                <span className="rounded-full bg-teal/15 px-1.5 py-0.5 font-mono text-[9px] uppercase text-iris">
                                   Active
                                 </span>
                               )}
@@ -568,7 +568,7 @@ export const Navbar: React.FC<NavbarProps> = memo(({
               <div className="flex flex-wrap items-center gap-1.5">
                 {user && systemMode?.allow_persona_switch !== false && (
                   <>
-                    <span className="mr-1 font-mono text-[10px] uppercase text-slate-400">
+                    <span className="mr-1 font-mono text-[10px] uppercase text-ash">
                       Role:
                     </span>
                     {DEMO_USERS.map(persona => {
@@ -580,7 +580,7 @@ export const Navbar: React.FC<NavbarProps> = memo(({
                           disabled={switching}
                           onClick={() => handleSelectAction(() => onSwitchPersona(persona.email))}
                           className={`bl-mega-chip-btn ${
-                            isCurrent ? "border-teal-400/60 bg-teal-500/20 text-teal-200" : ""
+                            isCurrent ? "border-teal/60 bg-teal/15 text-iris" : ""
                           }`}
                         >
                           {persona.role} · {persona.label.split(" ")[0]}
@@ -592,11 +592,11 @@ export const Navbar: React.FC<NavbarProps> = memo(({
 
                 {companies.length > 1 && (
                   <label className="inline-flex items-center gap-1.5 font-mono text-[10px] uppercase">
-                    <span className="text-slate-400">Workspace:</span>
+                    <span className="text-ash">Workspace:</span>
                     <select
                       value={activeCompanyId || ""}
                       onChange={e => handleSelectAction(() => onSwitchWorkspace(Number(e.target.value)))}
-                      className="rounded-full border border-slate-500/40 bg-transparent px-2.5 py-1 text-[11px] font-semibold"
+                      className="rounded-full border border-line bg-transparent px-2.5 py-1 text-[11px] font-semibold"
                     >
                       {companies.map(c => (
                         <option key={c.id} value={c.id} className="bg-carbon text-bone">
@@ -613,7 +613,7 @@ export const Navbar: React.FC<NavbarProps> = memo(({
                   type="button"
                   onClick={onToggleTheme}
                   className="bl-mega-chip-btn"
-                  aria-label={`Switch to ${theme === "dark" ? "Daylight" : "Carbon"} theme`}
+                  aria-label={`Switch to ${theme === "dark" ? "Light" : "Dark"} mode`}
                 >
                   <Icon name={theme === "dark" ? "sun" : "moon"} size={13} />
                   <span>{theme === "dark" ? "Light mode" : "Dark mode"}</span>
@@ -633,7 +633,7 @@ export const Navbar: React.FC<NavbarProps> = memo(({
                   <button
                     type="button"
                     onClick={() => handleSelectAction(onLogout)}
-                    className="bl-mega-chip-btn border-rose-400/40 text-rose-300"
+                    className="bl-mega-chip-btn border-blocking/45 text-blocking"
                   >
                     Sign out
                   </button>
@@ -641,7 +641,7 @@ export const Navbar: React.FC<NavbarProps> = memo(({
                   <button
                     type="button"
                     onClick={() => handleSelectAction(onOpenAuth)}
-                    className="bl-mega-chip-btn border-teal-400/50 bg-teal-500/20 text-teal-200"
+                    className="bl-mega-chip-btn border-teal/50 bg-teal/15 text-iris"
                   >
                     Sign in →
                   </button>

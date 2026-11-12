@@ -257,7 +257,7 @@ export const GuidedSetupModal: React.FC<Props> = ({
           </div>
           <div className="mt-4 h-2 w-full overflow-hidden rounded-full bg-line/60">
             <div
-              className="h-full rounded-full bg-violet-400 transition-all duration-300"
+              className="h-full rounded-full bg-teal transition-all duration-300"
               style={{ width: `${Math.max(8, setup.progress_pct)}%` }}
             />
           </div>
@@ -283,7 +283,7 @@ export const GuidedSetupModal: React.FC<Props> = ({
                   }}
                   className={`flex w-full items-center justify-between rounded-xl border p-3 text-left transition ${
                     isCurrent
-                      ? "border-violet-400/40 bg-violet-400/10 text-ink"
+                      ? "border-teal/40 bg-teal/10 text-ink"
                       : "border-transparent bg-transparent text-muted hover:bg-well/60"
                   }`}
                 >
@@ -293,7 +293,7 @@ export const GuidedSetupModal: React.FC<Props> = ({
                         s.completed
                           ? "bg-emerald-500/20 text-emerald-400"
                           : isCurrent
-                          ? "bg-violet-400/20 text-violet-300"
+                          ? "bg-teal/20 text-iris"
                           : "bg-line/60 text-muted"
                       }`}
                     >

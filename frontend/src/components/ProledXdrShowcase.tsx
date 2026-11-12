@@ -227,7 +227,7 @@ export const ProledXdrShowcase: React.FC<Props> = React.memo(({ onTryChecker, on
                   onClick={() => setActiveTab(t.id)}
                   className={`flex items-center gap-2 rounded-full px-4 py-2 text-xs font-medium transition-all ${
                     active
-                      ? "bg-bone text-carbon font-semibold shadow-[0_0_25px_rgba(129,140,248,0.45)]"
+                      ? "bg-[#0a2540] text-white font-semibold border border-teal/40 shadow-sm"
                       : "text-ash hover:text-bone"
                   }`}
                 >
@@ -247,7 +247,7 @@ export const ProledXdrShowcase: React.FC<Props> = React.memo(({ onTryChecker, on
 
         {/* ProLED XDR Display Hardware Frame */}
         <div className="mt-8">
-          <div className="relative mx-auto overflow-hidden rounded-[22px] border border-white/15 bg-[#070810] shadow-[0_25px_80px_-20px_rgba(0,0,0,0.9),0_0_50px_-15px_rgba(99,102,241,0.25)]">
+          <div className="relative mx-auto overflow-hidden rounded-[22px] border border-line bg-[#0b1220] shadow-lustro-card">
             {/* Top Bezel with Interactive Dynamic Island */}
             <div className="relative flex items-center justify-between border-b border-white/10 bg-[#05060b] px-5 py-3">
               <div className="flex items-center gap-2 font-mono text-[11px] text-ash">
@@ -266,7 +266,7 @@ export const ProledXdrShowcase: React.FC<Props> = React.memo(({ onTryChecker, on
                 aria-expanded={islandExpanded}
                 title="Click to expand Live Verification Island"
                 className={`group relative flex items-center gap-3 rounded-full border border-white/15 bg-black px-4 py-1.5 text-xs transition-all duration-300 hover:border-iris/60 ${
-                  islandExpanded ? "px-6 py-2 shadow-[0_0_30px_rgba(99,102,241,0.45)]" : ""
+                  islandExpanded ? "px-6 py-2 border-teal/50 shadow-sm" : ""
                 }`}
               >
                 <span className="relative flex size-2">
@@ -679,7 +679,7 @@ export const ProledXdrShowcase: React.FC<Props> = React.memo(({ onTryChecker, on
                   {/* Vertical Draggable Divider Handle */}
                   <div
                     style={{ left: `${curtainPos}%` }}
-                    className="pointer-events-none absolute top-0 bottom-0 z-30 w-0.5 -translate-x-1/2 bg-iris shadow-[0_0_20px_#6366f1]"
+                    className="pointer-events-none absolute top-0 bottom-0 z-30 w-0.5 -translate-x-1/2 bg-teal"
                   >
                     <div className="absolute top-1/2 -translate-x-1/2 -translate-y-1/2 flex size-9 items-center justify-center rounded-full border border-iris bg-carbon text-iris shadow-2xl">
                       <Icon name="shield" size={16} />

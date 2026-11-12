@@ -60,7 +60,7 @@ export const ThreeBackdrop: React.FC<ThreeBackdropProps> = ({
 
     const dprCap = isMobile ? 1.5 : 1.75;
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, dprCap));
-    renderer.setClearColor(0x040914, 0);
+    renderer.setClearColor(0x0b1220, 0);
 
     const width = host.clientWidth || window.innerWidth;
     const height = host.clientHeight || window.innerHeight;
@@ -75,8 +75,8 @@ export const ThreeBackdrop: React.FC<ThreeBackdropProps> = ({
     camera.position.z = 22;
 
     const count = density === "minimal"
-      ? (isMobile ? 22 : 42)
-      : (isMobile ? 32 : 64);
+      ? (isMobile ? 16 : 30)
+      : (isMobile ? 22 : 44);
 
     const spreadX = isMobile ? 22 : 34;
     const spreadY = isMobile ? 16 : 20;
@@ -87,10 +87,10 @@ export const ThreeBackdrop: React.FC<ThreeBackdropProps> = ({
     const velocities = new Float32Array(count * 3);
 
     const palette = [
-      new THREE.Color("#0d9488"), // Deep teal
-      new THREE.Color("#2dd4bf"), // Bright teal
-      new THREE.Color("#38bdf8"), // Teal-sky cyan
-      new THREE.Color("#1e40af"), // Navy highlight
+      new THREE.Color("#0a2540"), // Corporate navy
+      new THREE.Color("#0f766e"), // Muted corporate teal
+      new THREE.Color("#14b8a6"), // Primary teal accent
+      new THREE.Color("#5eead4"), // Soft teal highlight
     ];
 
     for (let i = 0; i < count; i++) {
@@ -115,13 +115,13 @@ export const ThreeBackdrop: React.FC<ThreeBackdropProps> = ({
 
     const dotTexture = createTealDotTexture();
     const pointMat = new THREE.PointsMaterial({
-      size: isMobile ? 0.55 : 0.48,
+      size: isMobile ? 0.45 : 0.4,
       map: dotTexture ?? undefined,
       vertexColors: true,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.46,
       depthWrite: false,
-      blending: THREE.AdditiveBlending,
+      blending: THREE.NormalBlending,
       sizeAttenuation: true,
     });
 
@@ -129,7 +129,7 @@ export const ThreeBackdrop: React.FC<ThreeBackdropProps> = ({
     scene.add(points);
 
     // Sparse low-density connection lines
-    const maxSegments = isMobile ? 24 : 56;
+    const maxSegments = isMobile ? 18 : 38;
     const linePositions = new Float32Array(maxSegments * 6);
     const lineGeo = new THREE.BufferGeometry();
     const lineAttr = new THREE.BufferAttribute(linePositions, 3);
@@ -139,7 +139,7 @@ export const ThreeBackdrop: React.FC<ThreeBackdropProps> = ({
     const lineMat = new THREE.LineBasicMaterial({
       color: 0x14b8a6,
       transparent: true,
-      opacity: 0.14,
+      opacity: 0.09,
       depthWrite: false,
     });
     const lines = new THREE.LineSegments(lineGeo, lineMat);
@@ -289,7 +289,7 @@ export const ThreeBackdrop: React.FC<ThreeBackdropProps> = ({
       className={`pointer-events-none select-none ${className}`}
       style={{
         background:
-          "radial-gradient(circle at 20% 20%, rgba(13, 148, 136, 0.16) 0%, rgba(6, 12, 26, 0.92) 55%, #040914 100%)",
+          "radial-gradient(circle at 20% 20%, rgba(20, 184, 166, 0.08) 0%, rgba(11, 18, 32, 0.94) 55%, #0b1220 100%)",
       }}
     />
   );

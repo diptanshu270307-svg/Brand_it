@@ -574,7 +574,7 @@ html[data-theme="light"] .bl-mega-item-desc {
 
 .bl-mega-chip-btn {
   display: inline-flex;
-  min-height: 36px;
+  min-height: 40px;
   align-items: center;
   gap: 0.35rem;
   border-radius: 9999px;

@@ -28,9 +28,9 @@ const TANDEM_LAYERS: StackLayer[] = [
     subtitle: "Scatters untrusted instructions & prompt glare at ingestion",
     metric: "0.0%",
     metricLabel: "Prompt injection bleed",
-    color: "#a5b4fc",
-    borderGlow: "rgba(165, 180, 252, 0.65)",
-    bgTint: "linear-gradient(135deg, rgba(129,140,248,0.22) 0%, rgba(20,22,37,0.82) 100%)",
+    color: "#94a3b8",
+    borderGlow: "rgba(148, 163, 184, 0.35)",
+    bgTint: "linear-gradient(135deg, rgba(15, 23, 42, 0.65) 0%, rgba(17, 26, 46, 0.92) 100%)",
     description:
       "Like nano-texture glass etched at the nanometer scale to scatter ambient glare, BrandLint's outermost ingestion layer strips embedded system prompts and adversarial instructions from uploaded PDFs and drafts before analysis begins.",
     specs: ["Untrusted PDF isolation", "Instruction flag quarantine", "UTF-8 character offset map"],
@@ -43,8 +43,8 @@ const TANDEM_LAYERS: StackLayer[] = [
     metric: "100%",
     metricLabel: "Verbatim span accuracy",
     color: "#38bdf8",
-    borderGlow: "rgba(56, 189, 248, 0.65)",
-    bgTint: "linear-gradient(135deg, rgba(56,189,248,0.20) 0%, rgba(20,22,37,0.85) 100%)",
+    borderGlow: "rgba(56, 189, 248, 0.4)",
+    bgTint: "linear-gradient(135deg, rgba(10, 37, 64, 0.72) 0%, rgba(17, 26, 46, 0.92) 100%)",
     description:
       "Integrated directly into the draft surface, the claim sensor locates every percentage, timeframe, guarantee, and product name—pinning exact start/end character coordinates so you can click any underlined span to inspect it.",
     specs: ["Exact [start, end] offsets", "Protected CTA & number lock", "Zero paraphrased quotes"],
@@ -56,11 +56,11 @@ const TANDEM_LAYERS: StackLayer[] = [
     subtitle: "Two verification layers firing in tandem for extreme precision",
     metric: "2×",
     metricLabel: "Tandem verification planes",
-    color: "#6366f1",
-    borderGlow: "rgba(99, 102, 241, 0.85)",
-    bgTint: "linear-gradient(135deg, rgba(99,102,241,0.34) 0%, rgba(168,85,247,0.18) 55%, rgba(15,17,28,0.9) 100%)",
+    color: "#14b8a6",
+    borderGlow: "rgba(20, 184, 166, 0.45)",
+    bgTint: "linear-gradient(135deg, rgba(15, 118, 110, 0.28) 0%, rgba(11, 18, 32, 0.94) 100%)",
     description:
-      "Inspired by PROLED XDR tandem display architecture, two self-illuminating verification planes operate in parallel: Plane A enforces versioned Brand Rules while Plane B cross-examines every claim against Approved Evidence Passports.",
+      "Two parallel verification planes operate together: Plane A enforces versioned Brand Rules while Plane B cross-examines every claim against Approved Evidence Passports.",
     specs: ["Plane A: Versioned Rulebook", "Plane B: Evidence Passports (EV-1..4)", "Pinned PDF page & expiry window"],
   },
   {
@@ -70,9 +70,9 @@ const TANDEM_LAYERS: StackLayer[] = [
     subtitle: "Pixel-level verification across all 5 factual dimensions",
     metric: "5 / 5",
     metricLabel: "Required alignment axes",
-    color: "#4ade80",
-    borderGlow: "rgba(74, 222, 128, 0.65)",
-    bgTint: "linear-gradient(135deg, rgba(74,222,128,0.20) 0%, rgba(20,22,37,0.86) 100%)",
+    color: "#34d399",
+    borderGlow: "rgba(52, 211, 153, 0.42)",
+    bgTint: "linear-gradient(135deg, rgba(22, 163, 74, 0.16) 0%, rgba(17, 26, 46, 0.92) 100%)",
     description:
       "A matching number is never enough—'40% lower cost' does not prove '40% lower downtime.' Every claim is independently dimmed and checked across Product, Metric, Population, Timeframe, and Qualifiers.",
     specs: ["Product & Metric match", "Population & Timeframe lock", "Protected term confirmation"],
@@ -85,8 +85,8 @@ const TANDEM_LAYERS: StackLayer[] = [
     metric: "4-Eyes",
     metricLabel: "Independent human sign-off",
     color: "#fbbf24",
-    borderGlow: "rgba(251, 191, 36, 0.65)",
-    bgTint: "linear-gradient(135deg, rgba(251,191,36,0.20) 0%, rgba(20,22,37,0.90) 100%)",
+    borderGlow: "rgba(251, 191, 36, 0.42)",
+    bgTint: "linear-gradient(135deg, rgba(180, 83, 9, 0.16) 0%, rgba(17, 26, 46, 0.94) 100%)",
     description:
       "The structural backplane locks every check, override rationale, and approval to a cryptographic revision history. Authors cannot approve their own drafts, and expired evidence automatically triggers a revalidation recall.",
     specs: ["Self-approval hardware block", "Senior Reviewer escalation route", "Automated expiry recall"],
@@ -349,7 +349,7 @@ export const ProledXdrShowcase: React.FC<Props> = React.memo(({ onTryChecker, on
                           value={explosionPct}
                           onChange={e => setExplosionPct(Number(e.target.value))}
                           style={{
-                            background: `linear-gradient(90deg, #4b3fd1 0%, #a39cff ${
+                            background: `linear-gradient(90deg, #0a2540 0%, #14b8a6 ${
                               ((explosionPct - 15) / 85) * 100
                             }%, rgba(255,255,255,0.12) ${((explosionPct - 15) / 85) * 100}%)`,
                           }}
@@ -370,8 +370,7 @@ export const ProledXdrShowcase: React.FC<Props> = React.memo(({ onTryChecker, on
                       className="pointer-events-none absolute top-4 bottom-4 left-1/2 z-20 w-px -translate-x-1/2"
                       style={{
                         background:
-                          "linear-gradient(to bottom, transparent, rgba(129,140,248,0.9) 20%, rgba(56,189,248,0.9) 50%, rgba(74,222,128,0.9) 80%, transparent)",
-                        boxShadow: "0 0 16px rgba(99, 102, 241, 0.8)",
+                          "linear-gradient(to bottom, transparent, rgba(148,163,184,0.35) 20%, rgba(20,184,166,0.55) 50%, rgba(52,211,153,0.45) 80%, transparent)",
                       }}
                     />
 
@@ -448,7 +447,7 @@ export const ProledXdrShowcase: React.FC<Props> = React.memo(({ onTryChecker, on
                           onClick={() => setSelectedLayerId(l.id)}
                           className={`rounded-lg px-2.5 py-1 font-mono text-xs transition ${
                             selectedLayerId === l.id
-                              ? "bg-iris text-bone font-semibold"
+                              ? "bg-iris text-carbon font-semibold"
                               : "bg-panel text-ash hover:text-bone border border-line"
                           }`}
                         >
@@ -560,7 +559,7 @@ export const ProledXdrShowcase: React.FC<Props> = React.memo(({ onTryChecker, on
                         value={curtainPos}
                         onChange={e => setCurtainPos(Number(e.target.value))}
                         style={{
-                          background: `linear-gradient(90deg, #ff6a5c 0%, #a39cff ${curtainPos}%, #3dc48a ${curtainPos}%, #3dc48a 100%)`,
+                          background: `linear-gradient(90deg, #dc2626 0%, #14b8a6 ${curtainPos}%, #16a34a ${curtainPos}%, #16a34a 100%)`,
                         }}
                         className="xdr-range-slider"
                       />

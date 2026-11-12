@@ -18,7 +18,7 @@ export const BrandLintLogo: React.FC<{ className?: string; size?: number }> = ({
         aria-hidden="true"
       >
         <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
-        <path d="m9 12 2 2 4-4" stroke="#a39cff" />
+        <path d="m9 12 2 2 4-4" stroke="#14b8a6" />
       </svg>
     </span>
   </span>
@@ -28,9 +28,9 @@ export const HeaderCalibrationSvg: React.FC<{ className?: string }> = ({
   className = "pointer-events-none absolute -top-6 right-2 hidden h-[calc(100%+1.5rem)] w-14 sm:block",
 }) => (
   <svg aria-hidden="true" viewBox="0 0 60 200" preserveAspectRatio="xMidYMin meet" className={className}>
-    <line x1="30" y1="0" x2="30" y2="128" stroke="#A39CFF" strokeWidth="1" strokeDasharray="3 3" opacity="0.55" />
-    <rect x="16" y="128" width="28" height="28" rx="6" fill="#17171d" stroke="#4B3FD1" strokeWidth="1.5" />
-    <path d="M30 135l7 2.6v5.2c0 4.3-7 7.7-7 7.7s-7-3.4-7-7.7v-5.2l7-2.6z" fill="#4B3FD1" fillOpacity="0.25" stroke="#A39CFF" strokeWidth="1.2" />
+    <line x1="30" y1="0" x2="30" y2="128" stroke="#14b8a6" strokeWidth="1" strokeDasharray="3 3" opacity="0.55" />
+    <rect x="16" y="128" width="28" height="28" rx="6" fill="#0a2540" stroke="#14b8a6" strokeWidth="1.5" />
+    <path d="M30 135l7 2.6v5.2c0 4.3-7 7.7-7 7.7s-7-3.4-7-7.7v-5.2l7-2.6z" fill="#14b8a6" fillOpacity="0.2" stroke="#2dd4bf" strokeWidth="1.2" />
     <path d="m27.5 143 1.8 1.8 3.5-3.5" fill="none" stroke="#22c55e" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );

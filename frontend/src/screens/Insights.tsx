@@ -8,12 +8,15 @@ import {
   PrivacyInfo,
   SimulationResult,
 } from "../api";
+import { SectionMockup } from "../components/SectionMockup";
 import {
   Badge,
   Button,
+  CompactList,
   Empty,
   errorText,
   ExpandableDetails,
+  FlowDiagram,
   Icon,
   Metric,
   Notice,
@@ -209,9 +212,9 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
     <div className="space-y-8">
       <StatusAnnouncer message={message || error || evalError || (evaluating ? "Evaluating proposed policy against drafts…" : null)} />
       <PageHeading
-        eyebrow="Guideline health · Which rules work and which need rewriting"
+        eyebrow="Guideline Health · Agreement & Rule Rewrites"
         title="Insights"
-        description="When reviewers keep dismissing a rule, the rule is the problem — not the writer. Inspect agreement rates, draft explicit channel conditions, and test rewrites against real drafts."
+        description="Agreement rates · Channel rules · Sandbox simulation."
         action={
           <Badge tone="accent">
             <Icon name="chart" size={13} /> Guideline health
@@ -225,6 +228,36 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
         </Notice>
       )}
       {message && <Notice tone="success">{message}</Notice>}
+
+      <Panel className="p-5 sm:p-6">
+        <div className="grid gap-6 lg:grid-cols-12 lg:items-center">
+          <div className="space-y-4 lg:col-span-7">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span className="lv-eyebrow"><Icon name="chart" size={13} /> Calibration Pipeline</span>
+              <Badge tone="accent">Zero Silent Edits</Badge>
+            </div>
+            <FlowDiagram
+              steps={[
+                { icon: "review", label: "Overrides", detail: "Reviewer friction", tone: "warning" },
+                { icon: "settings", label: "Conditions", detail: "Channel scopes", tone: "accent" },
+                { icon: "radar", label: "Sandbox", detail: "Dry-run drafts", tone: "neutral" },
+                { icon: "check", label: "Publish vNext", detail: "Owner signed", tone: "success" },
+              ]}
+            />
+            <CompactList
+              columns={3}
+              items={[
+                { icon: "chart", label: "Live vs Sample", value: "Separated metrics", tone: "accent" },
+                { icon: "shield", label: "Structured Scope", value: "Validated per channel", tone: "warning" },
+                { icon: "lock", label: "Versioned Keys", value: "Lineage preserved", tone: "success" },
+              ]}
+            />
+          </div>
+          <div className="lg:col-span-5">
+            <SectionMockup variant="guideline_health" />
+          </div>
+        </div>
+      </Panel>
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Metric
@@ -547,18 +580,21 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
 
                       {/* Explicit Channel Conditions Builder */}
                       <div className="rounded-xl border border-line bg-well/40 p-4 space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div className="text-sm font-semibold">Explicit channel conditions (Validated structured data)</div>
-                          <Badge tone="accent">Validated data · No eval</Badge>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 text-sm font-semibold">
+                            <Icon name="settings" size={14} className="text-iris" />
+                            <span>Channel conditions</span>
+                          </div>
+                          <Badge tone="accent">Structured · No eval</Badge>
                         </div>
-                        <p className="lv-muted text-xs leading-5">
-                          Configure explicit channel behavior for this rule version, such as casual greetings permitted on Instagram but restricted in investor copy.
-                        </p>
+                        <div className="text-xs text-ash">
+                          Per-channel exceptions (e.g. casual IG vs strict Investor).
+                        </div>
 
                         {/* Existing drafted conditions */}
                         <div className="space-y-2">
                           {currentConds.length === 0 ? (
-                            <p className="text-xs text-muted italic">No channel conditions attached. Rule applies uniformly across channels.</p>
+                            <div className="text-xs text-ash italic">Uniform across all channels.</div>
                           ) : (
                             currentConds.map(cond => (
                               <div
@@ -658,10 +694,14 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                       <div className="rounded-xl border border-line bg-well/40 p-4 space-y-4">
                         <div className="flex flex-wrap items-center justify-between gap-3">
                           <div>
-                            <div className="text-sm font-semibold">Pre-publication draft evaluation</div>
-                            <p className="lv-muted text-xs mt-1">
-                              Simulate candidate wording and channel conditions against real saved drafts in this workspace before publishing.
-                            </p>
+                            <div className="flex items-center gap-2 text-sm font-semibold">
+                              <Icon name="radar" size={14} className="text-iris" />
+                              <span>Pre-publication sandbox</span>
+                            </div>
+                            <div className="mt-1 flex items-center gap-1.5 text-xs text-ash">
+                              <Badge tone="neutral">Dry run</Badge>
+                              <span>Tests rewrite vs saved workspace drafts</span>
+                            </div>
                           </div>
                           <Button
                             variant="secondary"
@@ -747,9 +787,10 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-muted leading-5">
-                          Publishing policy v{rule.version + 1} will supersede v{rule.version} and automatically route any approved drafts citing the old version into the Evidence Revalidation workflow.
-                        </p>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-ash">
+                          <Badge tone="neutral">v{rule.version} → v{rule.version + 1}</Badge>
+                          <span>Supersedes v{rule.version} · Flags outdated approved drafts</span>
+                        </div>
                       </div>
                     </div>
                   ) : (
@@ -823,12 +864,15 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
         <Panel className="p-6">
           <div className="flex flex-wrap items-center justify-between gap-5">
             <div>
+              <div className="lv-eyebrow mb-1"><Icon name="chart" size={12} /> Evaluation Suite</div>
               <h2 id="benchmark-heading" className="font-display text-2xl font-semibold tracking-tight">
-                Evidence over impressive numbers.
+                Measured benchmark metrics.
               </h2>
-              <p className="lv-muted mt-2 max-w-2xl text-sm leading-6">
-                Run the labelled benchmark against the configured checker. Sample size and results come directly from its response.
-              </p>
+              <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ash">
+                <Badge tone="neutral">Labelled cases</Badge>
+                <Icon name="arrow" size={11} />
+                <Badge tone="accent">Live API scoring</Badge>
+              </div>
             </div>
             <Button variant="primary" disabled={evaluating} onClick={runEvaluation} aria-busy={evaluating}>
               <Icon name="refresh" size={15} />
@@ -900,21 +944,27 @@ export const Insights: React.FC<Props> = ({ brandId, role }) => {
             <div className="grid gap-4 md:grid-cols-2">
               <Panel className="p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-medium">Factual support accuracy</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="lv-icon-tile !size-7"><Icon name="shield" size={13} /></span>
+                    <h3 className="font-medium">Factual support accuracy</h3>
+                  </div>
                   <Badge tone="warning">Not measured</Badge>
                 </div>
-                <p className="lv-muted mt-3 text-sm leading-6">
-                  The supplied benchmark validates citations and issue labels. It does not return independently labelled claim-to-evidence factual support accuracy.
-                </p>
+                <div className="mt-2.5 text-xs text-ash">
+                  Suite validates citations &amp; labels only; claim-to-proof precision unlabelled.
+                </div>
               </Panel>
               <Panel className="p-5">
                 <div className="flex items-center justify-between gap-3">
-                  <h3 className="font-medium">Misleading-pair rejection</h3>
+                  <div className="flex items-center gap-2">
+                    <span className="lv-icon-tile !size-7"><Icon name="alert" size={13} /></span>
+                    <h3 className="font-medium">Misleading-pair rejection</h3>
+                  </div>
                   <Badge tone="warning">Not measured</Badge>
                 </div>
-                <p className="lv-muted mt-3 text-sm leading-6">
-                  “40% lower costs” ≠ “40% lower downtime”. No separate adversarial-pair measurement is exposed by this backend.
-                </p>
+                <div className="mt-2.5 text-xs text-ash">
+                  e.g. “40% lower costs” ≠ “downtime” — no adversarial metric exposed.
+                </div>
               </Panel>
             </div>
             <Panel className="p-6">

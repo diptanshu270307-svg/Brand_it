@@ -475,3 +475,105 @@ export function FormField({
     </div>
   );
 }
+
+export interface FlowStep {
+  icon: string;
+  label: string;
+  detail?: string;
+  tone?: Tone;
+}
+
+const FLOW_TONE_RING: Record<Tone, string> = {
+  neutral: "border-line text-ash bg-white/[0.03]",
+  success: "border-mint/35 text-mint bg-mint/10",
+  warning: "border-amber/35 text-amber bg-amber/10",
+  danger: "border-coral/35 text-coral bg-coral/10",
+  accent: "border-iris/35 text-iris bg-iris/10",
+};
+
+/** Compact horizontal diagram strip to replace multi-sentence workflow explanations. */
+export function FlowDiagram({
+  steps,
+  className = "",
+}: {
+  steps: FlowStep[];
+  className?: string;
+}) {
+  return (
+    <div
+      className={`flex flex-wrap items-center gap-2 rounded-xl border border-line bg-carbon/70 px-3.5 py-2.5 ${className}`}
+    >
+      {steps.map((step, idx) => {
+        const tone = step.tone ?? "neutral";
+        return (
+          <React.Fragment key={`${step.label}-${idx}`}>
+            <div className="flex items-center gap-2 rounded-lg border border-line/80 bg-panel/80 px-2.5 py-1.5">
+              <span className={`flex size-6 shrink-0 items-center justify-center rounded-md border ${FLOW_TONE_RING[tone]}`}>
+                <Icon name={step.icon} size={13} />
+              </span>
+              <div className="leading-tight">
+                <div className="font-label text-[11px] font-semibold uppercase tracking-wide text-bone">
+                  {step.label}
+                </div>
+                {step.detail && (
+                  <div className="text-[11px] text-ash">{step.detail}</div>
+                )}
+              </div>
+            </div>
+            {idx < steps.length - 1 && (
+              <Icon name="arrow" size={13} className="shrink-0 text-ash/70" />
+            )}
+          </React.Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+export interface ShortLineItem {
+  icon: string;
+  label: string;
+  value?: string;
+  tone?: Tone;
+}
+
+/** Concise icon + short-line list used in place of descriptive prose blocks. */
+export function CompactList({
+  items,
+  columns = 1,
+  className = "",
+}: {
+  items: ShortLineItem[];
+  columns?: 1 | 2 | 3;
+  className?: string;
+}) {
+  const gridCls =
+    columns === 3
+      ? "grid gap-2.5 sm:grid-cols-3"
+      : columns === 2
+      ? "grid gap-2.5 sm:grid-cols-2"
+      : "space-y-2";
+
+  return (
+    <div className={`${gridCls} ${className}`}>
+      {items.map((item, idx) => {
+        const tone = item.tone ?? "accent";
+        return (
+          <div
+            key={`${item.label}-${idx}`}
+            className="flex items-center gap-2.5 rounded-lg border border-line/75 bg-carbon/55 px-3 py-2"
+          >
+            <span className={`flex size-7 shrink-0 items-center justify-center rounded-md border ${FLOW_TONE_RING[tone]}`}>
+              <Icon name={item.icon} size={14} />
+            </span>
+            <div className="min-w-0 flex-1">
+              <div className="text-xs font-medium text-bone">{item.label}</div>
+              {item.value && <div className="truncate text-[11px] text-ash">{item.value}</div>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+

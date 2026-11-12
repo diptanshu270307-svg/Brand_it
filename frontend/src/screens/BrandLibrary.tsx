@@ -1,11 +1,14 @@
 import React, { useEffect, useId, useRef, useState } from "react";
 import { api, DocumentItem, RuleItem } from "../api";
+import { SectionMockup } from "../components/SectionMockup";
 import { SourceModal } from "../components/SourceModal";
 import {
   Badge,
   Button,
+  CompactList,
   Empty,
   ExpandableDetails,
+  FlowDiagram,
   Icon,
   Metric,
   Notice,
@@ -87,30 +90,59 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
   return <div className="space-y-7">
     <StatusAnnouncer message={message || error || null} />
     <PageHeading
-      eyebrow="Brand rulebook · What we say and don't say"
+      eyebrow="Brand Library · Guardrails & Sources"
       title="Brand rules"
-      description="Every rule your team writes by — tone, banned words, required disclaimers, and claim rules — each traced back to the exact page of your brand guide."
+      description="Tone · Banned terms · PDF page citations."
       action={
         <Button variant="primary" onClick={() => setTab("ingest")}>
           <Icon name="upload" size={15}/> Upload guidelines
         </Button>
       }
     />
+
+    <Panel className="p-5 sm:p-6">
+      <div className="grid gap-6 lg:grid-cols-12 lg:items-center">
+        <div className="space-y-4 lg:col-span-7">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="lv-eyebrow"><Icon name="book" size={13}/> Rulebook Architecture</span>
+            <Badge tone="success">Injection Guard Active</Badge>
+          </div>
+          <FlowDiagram
+            steps={[
+              { icon: "upload", label: "Upload PDF", detail: "Versioned source", tone: "neutral" },
+              { icon: "lock", label: "Sanitize", detail: "Untrusted guard", tone: "warning" },
+              { icon: "spark", label: "Proposals", detail: "Page-pinned text", tone: "accent" },
+              { icon: "check", label: "Activate", detail: "Owner signed", tone: "success" },
+            ]}
+          />
+          <CompactList
+            columns={3}
+            items={[
+              { icon: "shield", label: "Untrusted Guard", value: "Blocks embedded attacks", tone: "warning" },
+              { icon: "file", label: "Page Provenance", value: "Exact guide quotes", tone: "accent" },
+              { icon: "lock", label: "Human Gate", value: "Zero auto-activation", tone: "success" },
+            ]}
+          />
+        </div>
+        <div className="lg:col-span-5">
+          <SectionMockup variant="brand_library" />
+        </div>
+      </div>
+    </Panel>
+
     {error && <Notice tone="danger">{error}</Notice>}
     {message && <Notice tone="success">{message}</Notice>}
     {lastDoc && (lastDoc.suspicious || notes.length > 0) && (
       <Notice tone="warning">
         <div className="flex items-start gap-3">
-          <Icon name="alert"/>
+          <Icon name="alert" className="mt-0.5 shrink-0"/>
           <div>
-            <strong>{lastDoc.suspicious ? "Untrusted instructions flagged for inspection" : "Ingestion notes"}</strong>
-            <p className="mt-1 text-sm leading-6">
-              {lastDoc.suspicious
-                ? "Instruction-like text was detected in this source document. Inspect the proposed rules before activating."
-                : "The source was ingested with the following notes."}
-            </p>
+            <div className="flex flex-wrap items-center gap-2">
+              <strong>{lastDoc.suspicious ? "Untrusted instructions isolated" : "Ingestion notes"}</strong>
+              <Badge tone="warning">Review Required</Badge>
+            </div>
             {[...lastDoc.suspicious_notes, ...notes].length > 0 && (
-              <ul className="mt-2 space-y-1 text-xs leading-5">
+              <ul className="mt-1.5 space-y-1 text-xs">
                 {[...lastDoc.suspicious_notes, ...notes].map((n, i) => <li key={i}>{n}</li>)}
               </ul>
             )}
@@ -126,7 +158,7 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
     </div>
 
     <div className="flex flex-wrap items-center justify-between gap-4">
-      <div className="border border-line bg-panel flex flex-wrap gap-1 p-1.5" role="group" aria-label="Brand rule views">
+      <div className="lv-card flex flex-wrap gap-1 p-1.5" role="group" aria-label="Brand rule views">
         {([['rules', 'Active rules', 'book'], ['ingest', 'Upload guidelines', 'upload'], ['docs', 'Source files', 'file']] as const).map(([key, labelText, icon]) => (
           <Button key={key} variant={tab === key ? "primary" : "ghost"} aria-pressed={tab === key} onClick={() => setTab(key)}>
             <Icon name={icon} size={15}/>{labelText}
@@ -137,19 +169,22 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
     </div>
 
     {tab === "rules" && <>
-      {/* Plumbline Category Distribution Grid */}
+      {/* Category Distribution Grid */}
       {!loading && categories.length > 0 && (
-        <div className="grid gap-px bg-line sm:grid-cols-2 lg:grid-cols-5 border border-line">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
           <button
             type="button"
             onClick={() => setCategory("all")}
-            className={`p-4 text-left transition-colors ${category === "all" ? "bg-raised" : "bg-panel hover:bg-raised/60"}`}
+            className={`lv-card p-4 text-left transition-colors ${category === "all" ? "!border-iris/60 bg-raised" : "hover:bg-raised/60"}`}
           >
-            <div className="font-label text-[10px] uppercase tracking-[0.18em] text-iris">All categories</div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="font-label text-[10px] uppercase tracking-[0.18em] text-iris">All categories</div>
+              <Icon name="book" size={13} className="text-iris" />
+            </div>
             <div className="mt-1 font-display text-2xl font-extrabold uppercase text-bone">
               All rules <span className="font-mono text-sm text-ash">({rules.length})</span>
             </div>
-            <p className="mt-1 text-xs text-ash">Show every rule in the rulebook</p>
+            <div className="mt-1 text-xs text-ash">Full rulebook</div>
           </button>
           {categories.slice(0, 4).map(cat => {
             const catRules = rules.filter(r => r.category === cat);
@@ -161,14 +196,14 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
                 key={cat}
                 type="button"
                 onClick={() => setCategory(category === cat ? "all" : cat)}
-                className={`p-4 text-left transition-colors ${category === cat ? "bg-raised" : "bg-panel hover:bg-raised/60"}`}
+                className={`lv-card p-4 text-left transition-colors ${category === cat ? "!border-iris/60 bg-raised" : "hover:bg-raised/60"}`}
               >
                 <div className="flex items-center justify-between">
                   <span className="font-label text-[10px] uppercase tracking-[0.18em] text-iris">{cat}</span>
                   <span className="font-mono text-xs text-ash">{catRules.length}</span>
                 </div>
                 <div className="mt-1 font-display text-xl font-bold uppercase text-bone">{cat}</div>
-                <div className="mt-3 flex h-1.5 overflow-hidden bg-carbon">
+                <div className="mt-3 flex h-1.5 overflow-hidden rounded-full bg-carbon">
                   {blockCnt > 0 && <div className="bg-blocking" style={{ width: `${(blockCnt / catRules.length) * 100}%` }} />}
                   {majCnt > 0 && <div className="bg-major" style={{ width: `${(majCnt / catRules.length) * 100}%` }} />}
                   {minCnt > 0 && <div className="bg-minor" style={{ width: `${(minCnt / catRules.length) * 100}%` }} />}
@@ -359,14 +394,28 @@ export const BrandLibrary: React.FC<Props> = ({ brandId, role }) => {
         </Panel>
 
         <div className="space-y-4">
-          <Panel className="p-6">
-            <div className="mb-3 flex items-center gap-2.5">
-              <Icon name="shield" size={18}/>
-              <h3 className="font-display text-base font-semibold">How rule extraction works</h3>
+          <Panel className="p-6 space-y-4">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5">
+                <span className="lv-icon-tile !size-8"><Icon name="shield" size={16}/></span>
+                <h3 className="font-display text-base font-semibold">Extraction pipeline</h3>
+              </div>
+              <Badge tone="success">Guard Active</Badge>
             </div>
-            <p className="lv-muted text-xs leading-6">
-              When you upload a guideline, BrandLint analyzes the text, extracts actionable rule statements, and presents them as proposals.
-            </p>
+            <div className="space-y-2 text-xs">
+              <div className="flex items-center gap-2.5 rounded-lg border border-line/75 bg-carbon/55 px-3 py-2">
+                <Icon name="upload" size={14} className="shrink-0 text-iris" />
+                <span><strong>1. Ingest:</strong> PDF &amp; txt scanned as untrusted data</span>
+              </div>
+              <div className="flex items-center gap-2.5 rounded-lg border border-line/75 bg-carbon/55 px-3 py-2">
+                <Icon name="lock" size={14} className="shrink-0 text-amber" />
+                <span><strong>2. Sanitize:</strong> Prompt injections flagged &amp; blocked</span>
+              </div>
+              <div className="flex items-center gap-2.5 rounded-lg border border-line/75 bg-carbon/55 px-3 py-2">
+                <Icon name="check" size={14} className="shrink-0 text-mint" />
+                <span><strong>3. Approve:</strong> Owner promotes cited proposals</span>
+              </div>
+            </div>
             <ol className="mt-4 space-y-3 text-xs">
               {["Upload your PDF or text document", "Review proposed rules and severity", "Approve rules to activate them", "Active rules are enforced in Check Content"].map((step, i) => (
                 <li key={step} className="flex items-start gap-2.5">

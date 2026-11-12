@@ -1,11 +1,14 @@
 import React, { useEffect, useRef, useState } from "react";
 import { api, ApiError, DraftDetail, DraftSummary, HistoryData, Passport } from "../api";
+import { SectionMockup } from "../components/SectionMockup";
 import { SourceModal } from "../components/SourceModal";
 import {
   Badge,
   Button,
+  CompactList,
   Empty,
   ExpandableDetails,
+  FlowDiagram,
   Icon,
   IssueBadge,
   Modal,
@@ -154,26 +157,59 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
   return <div>
     <StatusAnnouncer message={gate?.message || error || (busy ? "Recording decision…" : null)} />
     <PageHeading
-      eyebrow="Review queue · Four-eyes sign-off"
+      eyebrow="Review Queue · Four-Eyes Gate"
       title="Approvals"
-      description="No one approves their own post. Routine posts go to your reviewer; medical, clinical, or guarantee language goes to Senior / Legal."
+      description="Author lock · Risk routing · Signed audit."
       action={<Badge tone="accent"><Icon name="lock" size={13}/>{role.replace(/_/g, " ")}</Badge>}
     />
+
+    <Panel className="mb-6 p-5 sm:p-6">
+      <div className="grid gap-6 lg:grid-cols-12 lg:items-center">
+        <div className="space-y-4 lg:col-span-7">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="lv-eyebrow"><Icon name="shield" size={13}/> Governance Circuit</span>
+            <Badge tone="success">Four-Eyes Active</Badge>
+          </div>
+          <FlowDiagram
+            steps={[
+              { icon: "user", label: "Author", detail: "Self-approve locked", tone: "danger" },
+              { icon: "review", label: "Reviewer", detail: "Standard copy", tone: "accent" },
+              { icon: "shield", label: "Senior / Legal", detail: "Clinical & claims", tone: "warning" },
+              { icon: "lock", label: "Approved", detail: "Immutable hash", tone: "success" },
+            ]}
+          />
+          <CompactList
+            columns={3}
+            items={[
+              { icon: "lock", label: "Author Blocked", value: "API + UI enforced", tone: "danger" },
+              { icon: "radar", label: "Live Recheck", value: "Facts verified at sign", tone: "accent" },
+              { icon: "file", label: "Audit Record", value: "Notes + JSON ledger", tone: "success" },
+            ]}
+          />
+        </div>
+        <div className="lg:col-span-5">
+          <SectionMockup variant="review_queue" />
+        </div>
+      </div>
+    </Panel>
     {error && <Notice tone="danger" className="mb-5">{error}</Notice>}
 
     {/* Plumbline 4-card Queue Summary */}
-    <div className="mb-6 grid gap-px bg-line sm:grid-cols-4 border border-line">
+    <div className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {[
-        { k: "Waiting on you", v: loading ? "—" : actionableCount, sub: "Ready for your sign-off", c: "text-major" },
-        { k: "Needs senior / legal", v: loading ? "—" : seniorCount, sub: "Medical or guarantee claims", c: "text-blocking" },
-        { k: "Needs revalidation", v: loading ? "—" : revalCount, sub: "Recalled or expired proof", c: "text-iris" },
-        { k: "Approved", v: loading ? "—" : approvedCount, sub: "Signed off & locked", c: "text-ok" },
+        { icon: "clock", k: "Waiting on you", v: loading ? "—" : actionableCount, sub: "Ready for sign-off", c: "text-major" },
+        { icon: "shield", k: "Senior / legal", v: loading ? "—" : seniorCount, sub: "High-risk claims", c: "text-blocking" },
+        { icon: "radar", k: "Revalidation", v: loading ? "—" : revalCount, sub: "Expired proof links", c: "text-iris" },
+        { icon: "check", k: "Approved", v: loading ? "—" : approvedCount, sub: "Signed & locked", c: "text-ok" },
       ].map(s => (
-        <div key={s.k} className="bg-panel p-5">
-          <div className="font-label text-[11px] uppercase tracking-[0.18em] text-ash">{s.k}</div>
-          <div className={`mt-1 font-display text-4xl font-extrabold ${s.c}`}>{s.v}</div>
+        <Panel key={s.k} className="p-5">
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-label text-[11px] uppercase tracking-[0.16em] text-ash">{s.k}</div>
+            <span className="lv-icon-tile !size-7"><Icon name={s.icon} size={13} /></span>
+          </div>
+          <div className={`mt-2 font-display text-3xl font-extrabold ${s.c}`}>{s.v}</div>
           <div className="mt-1 text-xs text-ash">{s.sub}</div>
-        </div>
+        </Panel>
       ))}
     </div>
 
@@ -246,10 +282,13 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
                     <span className="font-display font-bold uppercase tracking-wider text-blocking text-sm">Content requires revalidation</span>
                   </div>
                   <p className="text-sm text-bone mt-1 font-medium">{detail.recall_reason || "A cited evidence passport or brand rule has expired, been revoked, or updated."}</p>
-                  <p className="lv-muted text-xs mt-1.5">
-                    <Icon name="lock" size={12} className="inline mr-1" />
-                    <strong>Historical approval preserved:</strong> Revision {detail.approved_revision_id || detail.revision} was previously approved and is preserved in the audit trail. Publication validity is paused pending human re-check and sign-off.
-                  </p>
+                  <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-ash">
+                    <Badge tone="neutral"><Icon name="lock" size={11} /> Rev {detail.approved_revision_id || detail.revision} archived</Badge>
+                    <Icon name="arrow" size={11} />
+                    <Badge tone="danger">Publish paused</Badge>
+                    <Icon name="arrow" size={11} />
+                    <span>Re-check required</span>
+                  </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Button
@@ -420,14 +459,13 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
             {self && awaiting && (
               <Notice tone="warning" className="mb-5">
                 <div className="space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-4">
-                    <p className="max-w-lg text-sm leading-6">
-                      <strong>Authors cannot approve their own drafts.</strong> Submission requires independent sign-off by a qualified reviewer or brand owner.
-                    </p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs font-medium text-bone">
+                    <Icon name="lock" size={14} className="shrink-0 text-amber" />
+                    <span>Self-approval locked · Independent reviewer required</span>
                   </div>
                   {detail.eligible_reviewers && detail.eligible_reviewers.length > 0 && onSwitchReviewer && (
                     <div className="pt-2 border-t border-amber-500/20">
-                      <span className="text-xs text-muted block mb-1.5">Switch to an eligible independent reviewer:</span>
+                      <span className="text-[11px] text-ash block mb-1.5">Switch reviewer role:</span>
                       <div className="flex flex-wrap gap-2">
                         {detail.eligible_reviewers.map(r => (
                           <Button
@@ -436,7 +474,7 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
                             className="!text-xs !py-1 !px-2.5"
                             onClick={() => onSwitchReviewer(r.role === "senior_reviewer")}
                           >
-                            Switch to {r.name} ({r.role.replace(/_/g, " ")}) →
+                            {r.name} ({r.role.replace(/_/g, " ")}) <Icon name="arrow" size={12} />
                           </Button>
                         ))}
                       </div>
@@ -449,11 +487,14 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
             {!self && (!rightRole) && awaiting && (
               <Notice tone="warning" className="mb-5">
                 <div className="flex flex-wrap items-center justify-between gap-4">
-                  <p className="max-w-lg text-sm leading-6">
-                    {route === "senior"
-                      ? "This content contains sensitive claims and requires Senior Reviewer sign-off."
-                      : "Switch to a reviewer to sign off this content."}
-                  </p>
+                  <div className="flex items-center gap-2 text-xs font-medium text-bone">
+                    <Icon name="shield" size={14} className="shrink-0 text-amber" />
+                    <span>
+                      {route === "senior"
+                        ? "High-risk claims · Senior Reviewer sign-off required"
+                        : "Switch to a Reviewer role to sign off"}
+                    </span>
+                  </div>
                   {onSwitchReviewer && (
                     <Button onClick={() => onSwitchReviewer(route === "senior")}>
                       Switch to {route === "senior" ? "Senior Reviewer" : "Reviewer"} <Icon name="arrow" size={14}/>
@@ -466,8 +507,8 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
             {!awaiting && (
               <Notice className="mb-5">
                 {detail.status === "approved"
-                  ? `Revision ${detail.revision} is already approved. Edit in Check Content to start a new revision.`
-                  : "This draft is not currently awaiting review."}
+                  ? `Revision ${detail.revision} is signed · Edit in Check Content for new revision.`
+                  : "Not currently awaiting review."}
               </Notice>
             )}
 
@@ -500,9 +541,10 @@ export const ReviewQueue: React.FC<Props> = ({ brandId, role, selectedDraftId, o
                 Request changes
               </Button>
             </div>
-            <p className="lv-muted mt-2.5 text-xs leading-5">
-              A decision note is required. Permissions, four-eyes policy, and evidence gates are enforced by the server.
-            </p>
+            <div className="mt-2.5 flex flex-wrap items-center gap-2 text-[11px] text-ash">
+              <Badge tone="neutral"><Icon name="lock" size={11}/> Server-enforced SoD</Badge>
+              <span>Decision note + live fact check required</span>
+            </div>
 
             {gate && (
               <Notice tone={gate.ok ? "success" : "danger"} className="mt-4">

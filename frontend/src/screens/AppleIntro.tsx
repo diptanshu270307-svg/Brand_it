@@ -14,11 +14,14 @@ import {
 import { AdImageScanner, AURA_GLOW_ADS } from "../components/AdImageScanner";
 import { GovernanceOrbit } from "../components/GovernanceOrbit";
 import { ProledXdrShowcase } from "../components/ProledXdrShowcase";
+import { SectionMockup } from "../components/SectionMockup";
 import {
   Badge,
   Button,
+  CompactList,
   Empty,
   errorText,
+  FlowDiagram,
   formatDate,
   Icon,
   Metric,
@@ -48,7 +51,7 @@ const HERO_TOPICS = [
     titleLine1: "Every Ad Claim Checked.",
     titleGradient: "Every Visual Placement",
     titleLine3: "Verified Before Launch.",
-    subtitle: "Instant label OCR, platform safe-zone detection, and WCAG contrast scoring for any image format.",
+    subtitle: "Label OCR · Safe zones · Contrast score.",
     badgeText: "5 Brand Creatives Audited",
     primaryCta: "Scan Creative ↓",
     primaryAction: "scroll-scanner" as const,
@@ -60,7 +63,7 @@ const HERO_TOPICS = [
     titleLine1: "Spot Packaging Typos &",
     titleGradient: "Unbacked Guarantees",
     titleLine3: "In Milliseconds.",
-    subtitle: "Catches duplicate bottle print errors, unqualified refund headlines, and crowded text layouts.",
+    subtitle: "Bottle typos · Unqualified claims · Safe zones.",
     badgeText: "OCR + Safe Zones",
     primaryCta: "Explore 5 Ads ↓",
     primaryAction: "scroll-gallery" as const,
@@ -72,7 +75,7 @@ const HERO_TOPICS = [
     titleLine1: "Never Ship An",
     titleGradient: "Unsupported Metric",
     titleLine3: "Or Prohibited Term.",
-    subtitle: "Verifies Product, Metric, Population, Timeframe, and Qualifiers with 1-click Evidence Vault swaps.",
+    subtitle: "5D verification · 1-click Evidence swaps.",
     badgeText: "94% Recall · 100% Quote Match",
     primaryCta: "Open Checker →",
     primaryAction: "open-review" as const,
@@ -84,7 +87,7 @@ const HERO_TOPICS = [
     titleLine1: "Anchor Every Claim",
     titleGradient: "To Verified Source",
     titleLine3: "Clinical Passports.",
-    subtitle: "Automated Recall Watch flags published assets the instant an underlying study or passport expires.",
+    subtitle: "Live recall watch · Auto expiry alerts.",
     badgeText: "Automated Recall Watch",
     primaryCta: "View Passports →",
     primaryAction: "open-vault" as const,
@@ -96,7 +99,7 @@ const HERO_TOPICS = [
     titleLine1: "Authors Cannot",
     titleGradient: "Approve Their Own",
     titleLine3: "Campaign Drafts.",
-    subtitle: "Independent reviewers and senior legal officers approve with cryptographic SHA-256 audit trails.",
+    subtitle: "Independent sign-off · SHA-256 audit trail.",
     badgeText: "Mandatory Gate",
     primaryCta: "Open Queue →",
     primaryAction: "open-queue" as const,
@@ -555,9 +558,10 @@ export const AppleIntro: React.FC<Props> = ({
                 <span>{activeTopic.titleLine3}</span>
               </h1>
 
-              <p className="max-w-xl text-sm leading-relaxed text-slate-300 sm:text-base">
-                {activeTopic.subtitle}
-              </p>
+              <div className="flex items-center gap-2 text-xs font-medium text-slate-300 sm:text-sm">
+                <Icon name="check" size={14} className="shrink-0 text-mint" />
+                <span>{activeTopic.subtitle}</span>
+              </div>
 
               {/* CTAs */}
               <div className="flex flex-wrap items-center gap-3 pt-1">
@@ -1159,8 +1163,47 @@ export const AppleIntro: React.FC<Props> = ({
       </section>
 
       {/* =====================================================================
-          6. TANDEM VERIFICATION SHOWCASE (ProLED XDR Display)
+          6. KEYNOTE ARCHITECTURE MOCKUP & TANDEM VERIFICATION SHOWCASE
          ===================================================================== */}
+      <section aria-label="Keynote governance architecture" className="reveal-on-scroll py-2">
+        <Panel className="p-6 sm:p-8">
+          <div className="grid gap-8 lg:grid-cols-12 lg:items-center">
+            <div className="space-y-5 lg:col-span-7">
+              <div>
+                <div className="lv-eyebrow mb-2">
+                  <Icon name="spark" size={14} /> KEYNOTE · GOVERNANCE ENGINE
+                </div>
+                <h2 className="font-display text-2xl font-bold uppercase tracking-tight text-bone sm:text-3xl">
+                  From raw copy to verified sign-off.
+                </h2>
+              </div>
+
+              <FlowDiagram
+                steps={[
+                  { icon: "book", label: "Rules", detail: "Page-pinned", tone: "accent" },
+                  { icon: "shield", label: "Passports", detail: "Dated proof", tone: "success" },
+                  { icon: "search", label: "5D Check", detail: "Text & Ad", tone: "warning" },
+                  { icon: "lock", label: "4-Eyes", detail: "Signed", tone: "success" },
+                ]}
+              />
+
+              <CompactList
+                columns={3}
+                items={[
+                  { icon: "file", label: "Cited Spans", value: "PDF page + offset", tone: "accent" },
+                  { icon: "radar", label: "Recall Watch", value: "Expiry flagged live", tone: "danger" },
+                  { icon: "users", label: "Role Gate", value: "Zero self-approvals", tone: "success" },
+                ]}
+              />
+            </div>
+
+            <div className="lg:col-span-5">
+              <SectionMockup variant="keynote" />
+            </div>
+          </div>
+        </Panel>
+      </section>
+
       <div className="reveal-on-scroll -mx-4 sm:-mx-6 lg:-mx-9">
         <ProledXdrShowcase
           onTryChecker={() => onOpenScreen("review")}

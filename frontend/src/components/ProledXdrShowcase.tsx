@@ -198,10 +198,13 @@ export const ProledXdrShowcase: React.FC<Props> = ({ onTryChecker, onOpenVault }
               For every claim your team ships.
             </span>
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-sm leading-relaxed text-ash sm:text-base">
-            Explore how BrandLint stacks two independent verification planes in tandem—combining
-            versioned brand guidelines with pinned Evidence Passports so unbacked claims never slip through.
-          </p>
+          <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+            <Badge tone="accent"><Icon name="book" size={12} /> Versioned Brand Rules</Badge>
+            <Icon name="plus" size={12} className="text-ash" />
+            <Badge tone="success"><Icon name="shield" size={12} /> Pinned Evidence Passports</Badge>
+            <Icon name="arrow" size={12} className="text-ash" />
+            <Badge tone="neutral"><Icon name="lock" size={12} /> Zero Unbacked Claims</Badge>
+          </div>
 
           {/* Interactive Mode Switcher Pill Bar */}
           <div
@@ -429,9 +432,14 @@ export const ProledXdrShowcase: React.FC<Props> = ({ onTryChecker, onOpenVault }
 
                   {/* Quick Layer Selector Pills */}
                   <div className="flex flex-wrap items-center justify-between gap-2">
-                    <span className="font-mono text-[11px] text-ash">
-                      Signal path: Draft Copy → L01 → L02 → L03 → L04 → L05 → Human Approval
-                    </span>
+                    <div className="flex flex-wrap items-center gap-1.5 font-mono text-[10px] text-ash">
+                      <Icon name="spark" size={12} className="text-iris" />
+                      <span>Draft</span>
+                      <Icon name="arrow" size={11} className="opacity-60" />
+                      <span>L01–L05</span>
+                      <Icon name="arrow" size={11} className="opacity-60" />
+                      <span className="text-ok">Gate Sign-off</span>
+                    </div>
                     <div className="flex gap-1.5">
                       {TANDEM_LAYERS.map(l => (
                         <button
@@ -481,9 +489,10 @@ export const ProledXdrShowcase: React.FC<Props> = ({ onTryChecker, onOpenVault }
                       </div>
                     </div>
 
-                    <p className="text-sm leading-relaxed text-bone/90">
-                      {activeLayer.description}
-                    </p>
+                    <div className="flex items-start gap-2.5 rounded-xl border border-line bg-carbon/60 px-3.5 py-2.5 text-xs text-bone/90">
+                      <Icon name="shield" size={15} className="mt-0.5 shrink-0 text-iris" />
+                      <span className="line-clamp-2">{activeLayer.description}</span>
+                    </div>
 
                     <div className="mt-5 space-y-2">
                       <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-ash">
@@ -820,35 +829,44 @@ export const ProledXdrShowcase: React.FC<Props> = ({ onTryChecker, onOpenVault }
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
             {
-              eyebrow: "Tandem Architecture",
+              icon: "spark",
+              eyebrow: "Tandem Engine",
               stat: "2-Layer",
-              unit: "Rules + Passports",
-              desc: "Dual verification planes evaluate brand tone rules and Evidence Passports simultaneously.",
+              unit: "Rules + Facts",
+              desc: "Dual verification across tone & proof.",
             },
             {
+              icon: "check",
               eyebrow: "Claim Alignment",
               stat: "5 / 5",
-              unit: "Dimensions Locked",
-              desc: "Product, Metric, Population, Timeframe, and Qualifiers must align with the source page.",
+              unit: "Locked Checks",
+              desc: "Metric, target, window, scope & qualifier.",
             },
             {
-              eyebrow: "Citation Integrity",
+              icon: "file",
+              eyebrow: "Citation Proof",
               stat: "100%",
-              unit: "Verbatim Offsets",
-              desc: "Every finding cites an exact character span and PDF page excerpt—never a fabricated quote.",
+              unit: "Page Spans",
+              desc: "Exact verbatim offsets cited from PDF.",
             },
             {
+              icon: "lock",
               eyebrow: "Governance Gate",
               stat: "4-Eyes",
               unit: "Human Sign-Off",
-              desc: "Authors cannot approve their own drafts. Expired facts automatically trigger a revalidation alert.",
+              desc: "Self-approval blocked; expiry alerts live.",
             },
           ].map(item => (
-            <div key={item.eyebrow} className="rounded-xl border border-line bg-panel p-5">
-              <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-iris">
-                {item.eyebrow}
+            <div key={item.eyebrow} className="lv-card p-5">
+              <div className="flex items-center justify-between gap-2">
+                <div className="font-mono text-[10px] uppercase tracking-[0.18em] text-iris">
+                  {item.eyebrow}
+                </div>
+                <span className="lv-icon-tile !size-7">
+                  <Icon name={item.icon} size={13} />
+                </span>
               </div>
-              <div className="mt-2 flex items-baseline gap-2">
+              <div className="mt-2.5 flex items-baseline gap-2">
                 <span
                   className="font-display text-3xl font-extrabold tracking-tight bg-clip-text text-transparent sm:text-4xl"
                   style={{
@@ -859,7 +877,7 @@ export const ProledXdrShowcase: React.FC<Props> = ({ onTryChecker, onOpenVault }
                 </span>
                 <span className="font-mono text-xs text-bone">{item.unit}</span>
               </div>
-              <p className="mt-2 text-xs leading-relaxed text-ash">{item.desc}</p>
+              <div className="mt-2.5 text-xs text-ash">{item.desc}</div>
             </div>
           ))}
         </div>

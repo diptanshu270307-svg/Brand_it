@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from "react";
 import { api, DocumentItem, DraftDetail, Passport } from "../api";
+import { SectionMockup } from "../components/SectionMockup";
 import { SourceModal } from "../components/SourceModal";
 import {
   Badge,
   Button,
+  CompactList,
   Empty,
   ExpandableDetails,
+  FlowDiagram,
   Icon,
   Metric,
   Modal,
@@ -105,9 +108,9 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
   return <div>
     <StatusAnnouncer message={error || (scanning ? "Scanning approved drafts…" : null)} />
     <PageHeading
-      eyebrow="Approved facts · What you can prove"
+      eyebrow="Evidence Vault & Recall · Approved Proof"
       title="Approved facts"
-      description="Every number, test result, and product claim your team is allowed to use — each tied to a real document, a page number, and an expiration date."
+      description="Page-pinned sources · Expiry dates · Recall radar."
       action={canCreate && (
         <Button variant="secondary" onClick={() => setShowAdd(true)}>
           <Icon name="plus" size={14}/> Add approved fact
@@ -118,17 +121,47 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
 
     {/* Plumbline Outdated Claim Scanner & Validity Timeline */}
     <Panel className="relative mb-8 overflow-hidden p-6 md:p-8 guides">
-      <div className="relative flex flex-wrap items-start justify-between gap-5">
-        <div>
-          <div className="lv-eyebrow mb-2 flex items-center gap-2">
-            <Icon name="radar" size={14}/> WHEN FACTS STOP BEING TRUE · OUTDATED CLAIM SCANNER
+      <div className="relative grid gap-6 lg:grid-cols-12 lg:items-center">
+        <div className="space-y-4 lg:col-span-7">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="lv-eyebrow mb-2 flex items-center gap-2">
+                <Icon name="radar" size={14}/> RECALL RADAR · EXPIRY WATCH
+              </div>
+              <h2 className="font-display text-2xl font-extrabold uppercase tracking-tight text-bone sm:text-3xl">
+                Keep approved proof valid.
+              </h2>
+            </div>
           </div>
-          <h2 className="font-display text-3xl font-extrabold uppercase tracking-tight text-bone">
-            Ensure approved content stays valid.
-          </h2>
-          <p className="lv-muted mt-2 max-w-2xl text-sm leading-6">
-            Scans all published and approved content to identify claims whose evidence has expired, changed, or been revoked.
-          </p>
+
+          <FlowDiagram
+            steps={[
+              { icon: "file", label: "Passport", detail: "PDF page + span", tone: "accent" },
+              { icon: "clock", label: "Validity", detail: "Start & expiry", tone: "success" },
+              { icon: "radar", label: "Recall Scan", detail: "Active links", tone: "warning" },
+              { icon: "refresh", label: "Re-verify", detail: "1-click reopen", tone: "danger" },
+            ]}
+          />
+
+          <CompactList
+            columns={3}
+            items={[
+              { icon: "shield", label: "Source Linked", value: "Exact PDF excerpt", tone: "accent" },
+              { icon: "clock", label: "Date Enforced", value: "Auto expiry block", tone: "warning" },
+              { icon: "lock", label: "Owner Signed", value: "Pending -> Current", tone: "success" },
+            ]}
+          />
+        </div>
+
+        <div className="lg:col-span-5">
+          <SectionMockup variant="evidence_vault" />
+        </div>
+      </div>
+
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4 border-t border-line/70 pt-5">
+        <div className="flex items-center gap-2 text-xs text-ash">
+          <Icon name="shield" size={14} className="text-mint" />
+          <span>Inspect active citations across published assets</span>
         </div>
         <Button variant="primary" disabled={scanning || loading || busyId !== null} onClick={scan} className="!px-5 !py-2.5">
           <Icon name={scanning ? "refresh" : "radar"} size={16}/>
@@ -144,7 +177,7 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
 
       {/* Plumbline Validity Timeline Bar */}
       {!loading && records.length > 0 && (
-        <div className="mb-6 border border-line bg-carbon/80 p-5">
+        <div className="mb-6 rounded-xl border border-line bg-carbon/80 p-5">
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
             <span className="font-label text-[11px] uppercase tracking-[0.2em] text-ash">
               Fact validity windows · Plumb line at today
@@ -202,9 +235,15 @@ export const EvidenceVault: React.FC<Props> = ({ brandId, role, onOpenDraft }) =
       )}
 
       <Notice>
-        <p className="text-xs leading-5">
-          <strong>How this works:</strong> This live scan inspects approved drafts for outdated or revoked evidence. If a supporting source expires, the draft is flagged so your team can create a revised draft in Check Content.
-        </p>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <Icon name="radar" size={14} className="text-iris" />
+          <Badge tone="accent">Live Scan</Badge>
+          <span>Checks cited passports</span>
+          <Icon name="arrow" size={11} className="text-ash" />
+          <span>Flags expired sources</span>
+          <Icon name="arrow" size={11} className="text-ash" />
+          <span>Reopen in Draft Review</span>
+        </div>
       </Notice>
       {scanNote && <p className="lv-muted mt-3 font-mono text-xs">{scanNote}</p>}
 

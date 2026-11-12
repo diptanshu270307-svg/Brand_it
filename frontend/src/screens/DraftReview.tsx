@@ -1,12 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { api, DraftDetail, DraftSummary, FindingItem, Passport, RuleItem } from "../api";
 import { AdImageScanner } from "../components/AdImageScanner";
+import { SectionMockup } from "../components/SectionMockup";
 import { SourceModal } from "../components/SourceModal";
 import {
   Badge,
   Button,
+  CompactList,
   Empty,
   ExpandableDetails,
+  FlowDiagram,
   Icon,
   IssueBadge,
   Modal,
@@ -254,9 +257,9 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
   return <div className="mx-auto max-w-[1680px] px-4 pb-16 pt-7 sm:px-6 lg:px-9">
     <StatusAnnouncer message={message || error || (busy ? "Processing request…" : null)} />
     <PageHeading
-      eyebrow="Check a post · Line by line or Visual Ad Scan"
+      eyebrow="Draft Review · Copy & Ad Inspector"
       title="Check content"
-      description="Paste a caption, an ad, or drop an advertisement image. Every number, promise, visual layout, safe-zone margin, and superlative is checked against your approved facts and brand rules."
+      description="Claims · 5D proof · Ad safe zones."
       action={
         <div className="flex flex-wrap items-center gap-2">
           <div className="inline-flex rounded-full border border-line bg-panel p-1">
@@ -287,6 +290,38 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
     />
     {error && <Notice tone="danger" className="mb-5 flex flex-wrap items-center justify-between gap-3"><span>{error}</span><Button variant="ghost" onClick={() => setLoadVersion(v => v + 1)} disabled={pending}><Icon name="refresh" size={14}/>Reload desk</Button></Notice>}
     {message && <Notice tone="accent" className="mb-5">{message}</Notice>}
+
+    {/* Consistent Draft Review Workflow & Visual Mockup */}
+    <Panel className="mb-6 p-5 sm:p-6">
+      <div className="grid gap-6 lg:grid-cols-12 lg:items-center">
+        <div className="space-y-4 lg:col-span-7">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <span className="lv-eyebrow"><Icon name="search" size={13}/> Pre-flight Linter · Workflow</span>
+            <Badge tone="accent">Zero Uncited Claims</Badge>
+          </div>
+          <FlowDiagram
+            steps={[
+              { icon: "file", label: "Paste / Upload", detail: "Copy or creative", tone: "neutral" },
+              { icon: "spark", label: "5D Scan", detail: "Rules + Passports", tone: "warning" },
+              { icon: "check", label: "1-Tap Fix", detail: "Intent kept", tone: "success" },
+              { icon: "lock", label: "Submit", detail: "To Approvals", tone: "accent" },
+            ]}
+          />
+          <CompactList
+            columns={3}
+            items={[
+              { icon: "shield", label: "5D Claim Align", value: "Metric, pop & scope", tone: "accent" },
+              { icon: "search", label: "Ad Image OCR", value: "Safe-zone & contrast", tone: "warning" },
+              { icon: "book", label: "Verbatim Citations", value: "Pinned PDF spans", tone: "success" },
+            ]}
+          />
+        </div>
+        <div className="lg:col-span-5">
+          <SectionMockup variant="draft_review" />
+        </div>
+      </div>
+    </Panel>
+
     {checkMode === "ad_scanner" ? (
       <AdImageScanner
         brandId={brandId}
@@ -333,11 +368,19 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
           </div>
         </Panel>
         <Panel className="p-4">
-          <div className="mb-2 flex items-center gap-2">
-            <Icon name="spark" className="text-iris" size={17}/>
-            <h2 className="font-display text-sm font-bold uppercase tracking-wider text-bone">Quick claim check</h2>
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <span className="lv-icon-tile !size-7">
+                <Icon name="spark" size={14}/>
+              </span>
+              <h2 className="font-display text-sm font-bold uppercase tracking-wider text-bone">Quick claim check</h2>
+            </div>
+            <Badge tone="neutral">1-sentence</Badge>
           </div>
-          <p className="lv-muted mb-3 text-xs leading-5">Paste a single claim or sentence to check it against brand proof.</p>
+          <div className="mb-3 flex items-center gap-1.5 text-[11px] text-ash">
+            <Icon name="shield" size={12} className="shrink-0 text-iris" />
+            <span>Tests sentence vs approved passports</span>
+          </div>
           <form onSubmit={e => { e.preventDefault(); if (quickText.trim()) void createDraft({ ...blankDraft, title: "Quick claim check", text: quickText.trim(), purpose: "Quick test of promotional claim" }, true); }}>
             <label className="sr-only" htmlFor="unfamiliar-claim">Paste claim</label>
             <textarea
@@ -599,7 +642,11 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
                 <h2 id="findings-heading" className="font-display text-xl font-bold uppercase tracking-tight text-bone">
                   Issues &amp; Suggestions <span className="lv-muted ml-1 font-mono text-xs">({detail.findings.length})</span>
                 </h2>
-                <p className="text-xs text-ash mt-0.5">Categorized by priority: Must fix (Blocking), Needs review (Major), and Suggestions (Minor).</p>
+                <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-ash">
+                  <Badge tone="danger">Blocking</Badge>
+                  <Badge tone="warning">Needs review</Badge>
+                  <Badge tone="neutral">Advisory</Badge>
+                </div>
               </div>
               <div className="flex flex-wrap items-center gap-1.5">
                 <button
@@ -806,9 +853,10 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
                                       </span>
                                     )}
                                   </div>
-                                  <p className="text-[11px] text-ash leading-4">
-                                    Matching numbers or quotes is not sufficient. All 5 dimensions must align with approved proof.
-                                  </p>
+                                  <div className="flex items-center gap-1.5 text-[11px] text-ash">
+                                    <Icon name="shield" size={12} className="shrink-0 text-iris" />
+                                    <span>All 5 proof dimensions required</span>
+                                  </div>
                                   <div className="grid gap-2 sm:grid-cols-2">
                                     {(["product", "metric", "population", "timeframe", "qualifiers"] as const).map(dimKey => {
                                       const dim = finding.dimensions?.[dimKey];
@@ -1070,27 +1118,32 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
                 </Button>
               </>
             ) : (
-              <p className="lv-muted text-xs leading-5">
-                Select a highlighted claim to inspect its approved source document, version, and validity dates.
-              </p>
+              <div className="flex items-center gap-2 rounded-lg border border-line/75 bg-carbon/55 px-3 py-2.5 text-xs text-ash">
+                <Icon name="search" size={14} className="shrink-0 text-iris" />
+                <span>Click a highlighted claim to view proof</span>
+              </div>
             )}
           </Panel>
         </div>
 
         <Panel className="p-5">
-          <div className="lv-eyebrow mb-1">Human Sign-Off</div>
+          <div className="lv-eyebrow mb-1"><Icon name="lock" size={12} /> Human Sign-Off</div>
           <h2 className="font-display text-base font-semibold">Request approval</h2>
-          <p className="lv-muted mt-1.5 text-xs leading-5">
-            When all issues are resolved, submit this draft for independent reviewer sign-off.
-          </p>
+          <div className="mt-2 flex flex-wrap items-center gap-1.5 text-[11px] text-ash">
+            <Badge tone="neutral">0 Blockers</Badge>
+            <Icon name="arrow" size={11} />
+            <Badge tone="accent">Reviewer Gate</Badge>
+          </div>
 
           {(detail?.validity_status === "needs_revalidation" || detail?.status === "needs_revalidation") && (
             <Notice tone="danger" className="mt-3 text-xs">
-              <div className="font-semibold text-rose-300">Evidence Recall · Needs revalidation</div>
-              <p className="mt-1 text-ink">{detail?.recall_reason || "Cited evidence or rules have changed."}</p>
-              <p className="mt-1 text-muted text-[11px]">
-                Historical approval for revision {detail?.approved_revision_id || detail?.revision} is preserved in audit trail, but current publication validity is suspended. Edit or re-check to revalidate.
-              </p>
+              <div className="flex items-center gap-1.5 font-semibold text-rose-300">
+                <Icon name="alert" size={13} /> Evidence Recall · Revalidation required
+              </div>
+              <div className="mt-1 text-ink">{detail?.recall_reason || "Cited proof changed."}</div>
+              <div className="mt-1 font-mono text-[10px] text-muted">
+                Rev {detail?.approved_revision_id || detail?.revision} archived · Validity paused
+              </div>
             </Notice>
           )}
 
@@ -1117,14 +1170,14 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
 
           {detail && ["in_review", "senior_review"].includes(detail.status) && (
             <Notice tone="accent" className="mt-3 text-xs">
-              <div className="font-semibold text-ink">Submitted for review (Pending sign-off)</div>
-              <p className="mt-1 text-muted leading-5">
-                This draft has been submitted for independent human review and is <strong>not approved</strong> for publication until signed off.
-              </p>
+              <div className="flex items-center gap-1.5 font-semibold text-ink">
+                <Icon name="clock" size={13} /> Pending independent sign-off
+              </div>
               {detail.assigned_reviewer && (
-                <p className="mt-1.5 text-xs text-ink">
-                  Assigned Reviewer: <strong>{detail.assigned_reviewer.name}</strong>
-                </p>
+                <div className="mt-1.5 flex items-center gap-1.5 text-xs text-ink">
+                  <Icon name="user" size={12} className="text-iris" />
+                  <span>Reviewer: <strong>{detail.assigned_reviewer.name}</strong></span>
+                </div>
               )}
             </Notice>
           )}
@@ -1150,15 +1203,18 @@ export const DraftReview: React.FC<Props> = ({ brandId, role, selectedDraftId, o
               Open in Approvals queue
             </Button>
           ) : (
-            <p className="lv-muted mt-3 text-[11px] leading-5">
-              {detail?.status === "approved"
-                ? "This revision is approved. Editing creates a new revision for review."
-                : detail?.status === "needs_revalidation"
-                ? "Content requires revalidation. Edit draft to create a new revision or re-check in Approvals."
-                : detail?.can_edit
-                ? "Run content checks before submitting for approval."
-                : "The draft author submits content for review."}
-            </p>
+            <div className="mt-3 flex items-center gap-1.5 text-[11px] text-ash">
+              <Icon name="shield" size={12} className="shrink-0 text-iris" />
+              <span>
+                {detail?.status === "approved"
+                  ? "Approved revision · Edits branch new revision."
+                  : detail?.status === "needs_revalidation"
+                  ? "Revalidation required · Re-check to publish."
+                  : detail?.can_edit
+                  ? "Run check before submitting."
+                  : "Author submits revision for review."}
+              </span>
+            </div>
           )}
         </Panel>
       </aside>

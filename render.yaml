@@ -2,44 +2,24 @@ services:
   - type: web
     name: brandlint
     runtime: docker
-    plan: starter
+    plan: free
     region: oregon
     envVars:
-      - key: PORT
-        value: 8000
       - key: APP_MODE
-        value: production
+        value: isolated-demo
       - key: DATABASE_URL
-        fromDatabase:
-          name: brandlint-db
-          property: connectionString
+        value: sqlite:///./brandlint.db
+      - key: AUTO_MIGRATE
+        value: "true"
+      - key: SEED_ON_STARTUP
+        value: "true"
       - key: SECRET_KEY
         generateValue: true
-      - key: PUBLIC_BASE_URL
-        sync: false
       - key: TRUSTED_PROXIES
         value: "*"
-      - key: MAIL_PROVIDER
-        value: smtp
-      - key: SMTP_HOST
-        sync: false
-      - key: SMTP_PORT
-        value: 587
-      - key: SMTP_USERNAME
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: SMTP_FROM
-        sync: false
-      - key: SMTP_STARTTLS
-        value: "true"
       - key: LLM_PROVIDER
-        value: openai
-      - key: OPENAI_API_KEY
-        sync: false
-      - key: SEED_ON_STARTUP
-        value: "false"
-
-databases:
-  - name: brandlint-db
-    plan: starter
+        value: mock
+      - key: SESSION_COOKIE_NAME
+        value: "brandlint_session"
+      - key: DEV_COOKIE_SECURE
+        value: "true"

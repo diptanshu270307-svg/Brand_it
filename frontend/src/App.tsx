@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, useCallback, useEffect, useState } from "react";
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from "react";
 import {
   api,
   BrandInfo,
@@ -438,6 +438,10 @@ export const App: React.FC = () => {
     setScreen(next);
     window.scrollTo({ top: 0 });
   }, []);
+  const suppressHomeTourRef = useRef(false);
+  const initialHomeTourDoneRef = useRef(false);
+  const prevScreenRef = useRef<Screen>("intro");
+
   const openWorkspaceOrAuth = useCallback((next: Screen, anchorId?: string) => {
     if (!user || !brand) {
       if (anchorId) {
@@ -450,6 +454,9 @@ export const App: React.FC = () => {
       setAuthMsg("Sign in or pick a demo role below to open this workspace.");
       setAuthView("login");
       return;
+    }
+    if (next === "intro" && anchorId === "ad-image-scanner") {
+      suppressHomeTourRef.current = true;
     }
     navigate(next);
     if (anchorId) {
@@ -513,6 +520,54 @@ export const App: React.FC = () => {
   const handleSwitchReviewerProp = useCallback((senior?: boolean) => { void switchReviewer(senior); }, [switchReviewer]);
   const [loaderActive, setLoaderActive] = useState(true);
   const ready = !!user && !!brand;
+
+  // Activate the Walkthrough Guide modal automatically on initial homepage arrival and when returning to the homepage
+  useEffect(() => {
+    const cameFromOtherScreen = prevScreenRef.current !== "intro" && screen === "intro";
+    prevScreenRef.current = screen;
+
+    const canAutoOpen =
+      screen === "intro" &&
+      !loaderActive &&
+      (ready || !!error || bootSettled) &&
+      !authView &&
+      !showAcceptInvite &&
+      !showPrivacy &&
+      !showReset &&
+      !showOrbit &&
+      !showTeamModal;
+
+    if (!canAutoOpen) return;
+
+    if (cameFromOtherScreen) {
+      if (suppressHomeTourRef.current) {
+        suppressHomeTourRef.current = false;
+        return;
+      }
+      setTourStep(0);
+      setShowTour(true);
+      initialHomeTourDoneRef.current = true;
+      return;
+    }
+
+    if (!initialHomeTourDoneRef.current) {
+      initialHomeTourDoneRef.current = true;
+      setTourStep(0);
+      setShowTour(true);
+    }
+  }, [
+    screen,
+    loaderActive,
+    ready,
+    error,
+    bootSettled,
+    authView,
+    showAcceptInvite,
+    showPrivacy,
+    showReset,
+    showOrbit,
+    showTeamModal,
+  ]);
 
   // Global once-only GPU scroll-reveal observer across all workspace views and landing sections
   useEffect(() => {
@@ -1182,7 +1237,7 @@ export const App: React.FC = () => {
           </div>
         </div>
       </footer>
-      {showTour && !authView && !showAcceptInvite && (
+      {!loaderActive && showTour && !authView && !showAcceptInvite && (
         <WorkspaceTour
           open
           onClose={() => setShowTour(false)}

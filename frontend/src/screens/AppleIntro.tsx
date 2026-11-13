@@ -665,7 +665,7 @@ export const AppleIntro: React.FC<Props> = memo(({
       <section
         id="walkthrough-guide"
         aria-labelledby="workspace-walkthrough-heading"
-        className="reveal-on-scroll mx-auto w-full max-w-[1120px] space-y-4"
+        className="mx-auto w-full max-w-[1120px] space-y-4"
       >
         <div className="flex flex-wrap items-end justify-between gap-4">
           <div>
@@ -679,6 +679,14 @@ export const AppleIntro: React.FC<Props> = memo(({
               Scan to Publish in Four Steps
             </h2>
           </div>
+          <button
+            type="button"
+            onClick={() => onLaunchStep(0)}
+            className="inline-flex min-h-[38px] cursor-pointer items-center gap-2 rounded-full border border-teal/40 bg-teal/10 px-4 py-1.5 font-sans text-xs font-semibold text-iris transition-colors hover:bg-teal/20"
+          >
+            <span>Open Modal Guide</span>
+            <span aria-hidden="true">↗</span>
+          </button>
         </div>
         <WalkthroughFlow
           mode="inline"

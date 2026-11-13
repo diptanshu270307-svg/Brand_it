@@ -16,6 +16,7 @@ import {
 import { Loader } from "./components/Loader";
 import { Navbar, TopSection } from "./components/Navbar";
 import { WalkthroughFlow } from "./components/WalkthroughFlow";
+import { WorkspaceTour } from "./components/WorkspaceTour";
 import {
   Badge,
   BrandLintLogo,
@@ -55,9 +56,6 @@ const GovernanceOrbit = lazy(() =>
 const ProledXdrShowcase = lazy(() =>
   import("./components/ProledXdrShowcase").then(m => ({ default: m.ProledXdrShowcase }))
 );
-const WorkspaceTour = lazy(() =>
-  import("./components/WorkspaceTour").then(m => ({ default: m.WorkspaceTour }))
-);
 
 type Screen = "intro" | "review" | "vault" | "queue" | "insights" | "library";
 
@@ -73,6 +71,7 @@ export const App: React.FC = () => {
   const [selectedDraftId, setSelectedDraftId] = useState<number | null>(null);
   const [error, setError] = useState("");
   const [switching, setSwitching] = useState(false);
+  const [bootSettled, setBootSettled] = useState(false);
   const [refresh, setRefresh] = useState(0);
   const [showPrivacy, setShowPrivacy] = useState(false);
   const [showOrbit, setShowOrbit] = useState(false);
@@ -191,7 +190,7 @@ export const App: React.FC = () => {
       }
       return me;
     } catch (e) { setError(errorText(e)); return null; }
-    finally { setSwitching(false); }
+    finally { setSwitching(false); setBootSettled(true); }
   };
   useEffect(() => { void bootstrap(undefined, true); }, []);
 
@@ -505,6 +504,7 @@ export const App: React.FC = () => {
     } else openDraft(id);
   }, [switchPersona, openDraft]);
   const handleLaunchStepProp = useCallback((step?: number) => {
+    setAuthView(null);
     setTourStep(step ?? 0);
     setShowTour(true);
   }, []);
@@ -606,7 +606,11 @@ export const App: React.FC = () => {
     setTheme(t => (t === "dark" ? "light" : "dark"));
   }, []);
 
-  const handleOpenTourNav = useCallback(() => setShowTour(true), []);
+  const handleOpenTourNav = useCallback(() => {
+    setAuthView(null);
+    setTourStep(0);
+    setShowTour(true);
+  }, []);
   const handleOpenOrbitNav = useCallback(() => setShowOrbit(true), []);
   const handleOpenPrivacyNav = useCallback(() => setShowPrivacy(true), []);
   const handleOpenResetNav = useCallback(() => setShowReset(true), []);
@@ -620,7 +624,7 @@ export const App: React.FC = () => {
   return <>
     {loaderActive && (
       <Loader
-        ready={ready || !!error}
+        ready={ready || !!error || bootSettled}
         onRetry={() => { void bootstrap(undefined, true); }}
         onDone={() => setLoaderActive(false)}
       />
@@ -810,6 +814,13 @@ export const App: React.FC = () => {
                         Create an account
                       </Button>
                     )}
+                    <Button
+                      variant="secondary"
+                      onClick={() => handleLaunchStepProp(0)}
+                      className="!h-12 !rounded-full !px-6 font-display !text-sm !font-bold uppercase"
+                    >
+                      <Icon name="radar" size={15} /> Walkthrough Guide
+                    </Button>
                   </div>
                 </div>
 
@@ -866,7 +877,7 @@ export const App: React.FC = () => {
             <section
               id="walkthrough-guide"
               aria-labelledby="landing-walkthrough-heading"
-              className="reveal-on-scroll mx-auto w-full max-w-[1120px] space-y-6"
+              className="mx-auto w-full max-w-[1120px] space-y-6"
             >
               <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
@@ -1171,41 +1182,40 @@ export const App: React.FC = () => {
           </div>
         </div>
       </footer>
-      {(ready || !!error) && showTour && !authView && !showAcceptInvite && (
-        <Suspense fallback={null}>
-          <WorkspaceTour
-            open
-            onClose={() => setShowTour(false)}
-            currentStepIndex={tourStep}
-            onStepChange={setTourStep}
-            user={user}
-            companyName={displayCompanyName}
-            brandName={displayBrandName}
-            role={brand?.role || activeCompany?.role}
-            privacy={privacy}
-            theme={theme}
-            onToggleTheme={() => setTheme(t => (t === "dark" ? "light" : "dark"))}
-            onNavigate={navigate}
-            onOpenAuth={view => {
-              setAuthMsg("");
-              setAuthPassword("");
-              setAuthView(view);
-            }}
-            onOpenTeamModal={() => {
-              void openTeamModal();
-            }}
-            onLogout={() => {
-              void handleLogout();
-            }}
-            onSwitchPersona={email => {
-              void switchPersona(email);
-            }}
-            onOpenPrivacy={() => setShowPrivacy(true)}
-            onOpenReset={() => setShowReset(true)}
-            allowPersonaSwitch={systemMode?.allow_persona_switch !== false}
-            allowReset={!!systemMode?.allow_reset}
-          />
-        </Suspense>
+      {showTour && !authView && !showAcceptInvite && (
+        <WorkspaceTour
+          open
+          onClose={() => setShowTour(false)}
+          currentStepIndex={tourStep}
+          onStepChange={setTourStep}
+          user={user}
+          companyName={displayCompanyName}
+          brandName={displayBrandName}
+          role={brand?.role || activeCompany?.role}
+          privacy={privacy}
+          theme={theme}
+          onToggleTheme={() => setTheme(t => (t === "dark" ? "light" : "dark"))}
+          onNavigate={openWorkspaceOrAuth}
+          onOpenAuth={view => {
+            setShowTour(false);
+            setAuthMsg("");
+            setAuthPassword("");
+            setAuthView(view);
+          }}
+          onOpenTeamModal={() => {
+            void openTeamModal();
+          }}
+          onLogout={() => {
+            void handleLogout();
+          }}
+          onSwitchPersona={email => {
+            void switchPersona(email);
+          }}
+          onOpenPrivacy={() => setShowPrivacy(true)}
+          onOpenReset={() => setShowReset(true)}
+          allowPersonaSwitch={systemMode?.allow_persona_switch !== false}
+          allowReset={!!systemMode?.allow_reset}
+        />
       )}
       {showPrivacy && <Modal title="Processing & privacy" onClose={() => setShowPrivacy(false)}><div className="space-y-5"><Badge tone={privacy?.hosted ? "success" : "warning"}>{privacy?.hosted ? "Hosted AI processing" : "Local verification"} · {privacy?.provider || "Unknown"}</Badge><p className="text-sm leading-7">{privacy?.notice || "Processing information is unavailable. Reconnect before submitting confidential content."}</p><Notice>Offline checks demonstrate the workflow. They do not establish factual truth or comprehensive claim detection. Source matches and human decisions remain visible.</Notice></div></Modal>}
       {showReset && <Modal title="Reset the demo workspace?" onClose={() => setShowReset(false)}><p className="lv-muted mb-6 text-sm leading-6">This replaces demo drafts, evidence decisions and review history with the original sample data.</p><div className="flex justify-end gap-2"><Button onClick={() => setShowReset(false)}>Cancel</Button><Button variant="danger" disabled={switching} onClick={async () => { setSwitching(true); try { await api.resetDemo(); await switchPersona(DEMO_USERS[0].email); setSelectedDraftId(null); navigate("review"); setShowReset(false); } catch (e) { setError(errorText(e)); } finally { setSwitching(false); } }}>Reset sample data</Button></div></Modal>}

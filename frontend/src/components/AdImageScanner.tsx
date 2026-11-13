@@ -206,14 +206,14 @@ export const AdImageScanner: React.FC<Props> = ({
           );
         }
 
-        // Compress uploaded high-resolution image cleanly so base64 stays fast and under API limits (<= 1600px / <= 2.4M chars)
+        // Compress uploaded high-resolution image cleanly so base64 uploads fast (< 3s to Cloud Run) and stays well under API limits
         const compressImageForScan = (rawUrl: string): string => {
-          const maxChars = 2_400_000;
+          const maxChars = 700_000;
           const steps: Array<[number, number, "image/webp" | "image/jpeg"]> = [
-            [1600, 0.88, "image/webp"],
-            [1600, 0.86, "image/jpeg"],
-            [1280, 0.8, "image/jpeg"],
-            [960, 0.72, "image/jpeg"],
+            [1400, 0.82, "image/webp"],
+            [1280, 0.78, "image/jpeg"],
+            [1024, 0.72, "image/jpeg"],
+            [800, 0.65, "image/jpeg"],
           ];
           for (const [maxEdge, quality, mime] of steps) {
             const scale = Math.min(1, maxEdge / Math.max(width, height));
@@ -970,7 +970,11 @@ export const AdImageScanner: React.FC<Props> = ({
                     )}
                   </div>
 
-                  {scanResult?.text_findings && scanResult.text_findings.length > 0 ? (
+                  {scanning && !scanResult ? (
+                    <div className="rounded-2xl border border-blue-400/30 bg-blue-500/10 p-4 text-xs text-blue-300">
+                      Scanning uploaded creative, pixel layout, and ad copy…
+                    </div>
+                  ) : scanResult?.text_findings && scanResult.text_findings.length > 0 ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {scanResult.text_findings.map(f => {
                         const isSupported = f.evidence_status === "supported";

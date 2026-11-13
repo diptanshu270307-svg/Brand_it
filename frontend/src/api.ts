@@ -512,6 +512,7 @@ export interface AdScanResponse {
   overall_score: number;
   verdict: "ready" | "needs_tuning" | "blocked";
   ocr_used: boolean;
+  ocr_note?: string;
   suspicious_notes: string[];
   scores: {
     text_compliance: number;

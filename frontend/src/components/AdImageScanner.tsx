@@ -34,6 +34,7 @@ export const AdImageScanner: React.FC<Props> = ({
   const [statusMsg, setStatusMsg] = useState<string>("");
 
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const scanSeqRef = useRef(0);
 
   useEffect(() => {
     if (initialAdId && ads.some(a => a.id === initialAdId)) {
@@ -47,6 +48,7 @@ export const AdImageScanner: React.FC<Props> = ({
 
   const runAdScan = async (ad: PresetAd, channelOverride?: string, textOverride?: string) => {
     if (!brandId) return;
+    const reqId = ++scanSeqRef.current;
     setScanning(true);
     setError("");
     try {
@@ -66,20 +68,40 @@ export const AdImageScanner: React.FC<Props> = ({
         bottom_zone_busy: ad.bottomZoneBusy,
         focal_balance_pct: ad.focalBalancePct,
       });
+      if (reqId !== scanSeqRef.current) return;
       if (res && typeof res === "object" && res.image_meta && res.scores) {
         setScanResult(res);
       }
       if (res?.ocr_used && res?.extracted_text && !txt) {
         setEditableText(res.extracted_text);
+        setStatusMsg(
+          `OCR extracted ${res.extracted_text.length} characters from "${ad.shortLabel}" (${res.image_meta.width}×${res.image_meta.height}px) and completed compliance checks.`
+        );
+      } else if (ad.id.startsWith("uploaded-")) {
+        if ((res?.extracted_text || txt).trim()) {
+          setStatusMsg(
+            `Scanned "${ad.shortLabel}" (${res.image_meta.width}×${res.image_meta.height}px) — layout, safe zones & copy audit complete.`
+          );
+        } else {
+          setStatusMsg("");
+        }
       }
     } catch (e) {
+      if (reqId !== scanSeqRef.current) return;
+      setStatusMsg("");
+      setScanResult(null);
       setError(errorText(e));
     } finally {
-      setScanning(false);
+      if (reqId === scanSeqRef.current) {
+        setScanning(false);
+      }
     }
   };
 
   useEffect(() => {
+    setError("");
+    setStatusMsg("");
+    setScanResult(null);
     setTargetChannel(currentAd.channel);
     setEditableText(currentAd.extractedText);
     setActiveRegionId(currentAd.regions[0]?.id || "");
@@ -184,9 +206,46 @@ export const AdImageScanner: React.FC<Props> = ({
           );
         }
 
+        // Compress uploaded high-resolution image cleanly so base64 stays fast and under API limits (<= 1600px / <= 2.4M chars)
+        const compressImageForScan = (rawUrl: string): string => {
+          const maxChars = 2_400_000;
+          const steps: Array<[number, number, "image/webp" | "image/jpeg"]> = [
+            [1600, 0.88, "image/webp"],
+            [1600, 0.86, "image/jpeg"],
+            [1280, 0.8, "image/jpeg"],
+            [960, 0.72, "image/jpeg"],
+          ];
+          for (const [maxEdge, quality, mime] of steps) {
+            const scale = Math.min(1, maxEdge / Math.max(width, height));
+            const outW = Math.max(1, Math.round(width * scale));
+            const outH = Math.max(1, Math.round(height * scale));
+            const outCanvas = document.createElement("canvas");
+            outCanvas.width = outW;
+            outCanvas.height = outH;
+            const outCtx = outCanvas.getContext("2d");
+            if (!outCtx) break;
+            outCtx.drawImage(img, 0, 0, outW, outH);
+            const encoded = outCanvas.toDataURL(mime, quality);
+            if (encoded.startsWith(`data:${mime}`) && encoded.length <= maxChars) {
+              return encoded;
+            }
+          }
+          return rawUrl;
+        };
+
+        const uploadDataUrl = compressImageForScan(dataUrl);
+        if (uploadDataUrl.length > 7_500_000) {
+          reject(new Error("Uploaded image exceeds maximum encoded upload size. Please try a smaller PNG or JPEG."));
+          return;
+        }
+
         const cleanName = fileName.replace(/\.[^.]+$/, "");
-        const defaultCopy =
-          "Aura Glow guarantees 100% visible results or your money back! Try Aura Glow Facial Serum risk-free for 30 days.";
+        const primaryStatus: BoundingRegion["status"] =
+          contrastRatio < 3.2 || textCoveragePct > 35
+            ? "blocking"
+            : contrastRatio < 4.5 || textCoveragePct > 22
+            ? "warning"
+            : "pass";
 
         const newAd: PresetAd = {
           id: `uploaded-${Date.now()}`,
@@ -197,9 +256,9 @@ export const AdImageScanner: React.FC<Props> = ({
           eyebrow: `${brandName.toUpperCase()} · UPLOADED CREATIVE`,
           headline: [cleanName.slice(0, 18) || "Uploaded Ad", "Visual & Claim", "Inspection"],
           subline: "Pixel contrast, safe zones, and ad claims scanned.",
-          cta: "Shop Aura Glow Today →",
+          cta: "",
           footnote: "",
-          extractedText: defaultCopy,
+          extractedText: "",
           contrastRatio,
           textCoveragePct,
           topZoneBusy,
@@ -207,7 +266,7 @@ export const AdImageScanner: React.FC<Props> = ({
           focalBalancePct,
           gradient: "from-[#0a2540] via-[#0b1220] to-[#08101c]",
           accent: "#14b8a6",
-          customImageUrl: dataUrl,
+          customImageUrl: uploadDataUrl,
           showTextOverlay: false,
           gridWeights,
           regions: [
@@ -223,12 +282,11 @@ export const AdImageScanner: React.FC<Props> = ({
             },
             {
               id: "up-main",
-              code: "OCR + CLAIM SCAN",
-              label: "Primary Ad Copy & Focal Area",
-              status: "blocking",
+              code: contrastRatio >= 4.5 ? "CONTRAST · WCAG PASS" : "CONTRAST · LOW",
+              label: "Primary Visual Frame & Density",
+              status: primaryStatus,
               box: { top: 19, left: 8, width: 84, height: 48 },
-              detail: `Measured ${contrastRatio}:1 contrast ratio and ${textCoveragePct}% text/edge density across ${width}×${height}px canvas.`,
-              fix: "Teams and customers reported 18% higher throughput and hydration after 90 days (EV-1, p.2).",
+              detail: `Measured ${contrastRatio}:1 WCAG luminance contrast and ${textCoveragePct}% visual edge density across ${width}×${height}px canvas.`,
             },
             {
               id: "up-bottom",
@@ -244,7 +302,37 @@ export const AdImageScanner: React.FC<Props> = ({
         };
         resolve(newAd);
       };
-      img.onerror = () => reject(new Error("Could not decode uploaded image file."));
+      img.onerror = () => {
+        if (dataUrl.length > 7_500_000) {
+          reject(new Error("This image format could not be resized in the browser and exceeds 5.5 MB. Please upload PNG, JPEG, or WebP."));
+          return;
+        }
+        const cleanName = fileName.replace(/\.[^.]+$/, "");
+        resolve({
+          id: `uploaded-${Date.now()}`,
+          name: `Uploaded · ${cleanName.slice(0, 22)}`,
+          shortLabel: cleanName.slice(0, 14),
+          channel: "auto",
+          dimensions: { width: 1080, height: 1350 },
+          eyebrow: `${brandName.toUpperCase()} · UPLOADED CREATIVE`,
+          headline: [cleanName.slice(0, 18) || "Uploaded Ad", "OCR Inspection"],
+          subline: "Uploaded raster forwarded for server OCR inspection.",
+          cta: "",
+          footnote: "",
+          extractedText: "",
+          contrastRatio: 7.2,
+          textCoveragePct: 16.5,
+          topZoneBusy: false,
+          bottomZoneBusy: false,
+          focalBalancePct: 86,
+          gradient: "from-[#0a2540] via-[#0b1220] to-[#08101c]",
+          accent: "#14b8a6",
+          customImageUrl: dataUrl,
+          showTextOverlay: false,
+          gridWeights: [15, 18, 15, 25, 32, 24, 16, 20, 14],
+          regions: [],
+        });
+      };
       img.src = dataUrl;
     });
   };
@@ -252,17 +340,26 @@ export const AdImageScanner: React.FC<Props> = ({
   const handleFileUpload = (files: FileList | null) => {
     if (!files || !files.length) return;
     const file = files[0];
+    if (!file.type.startsWith("image/") && !/\.(png|jpe?g|webp|gif|bmp|avif|svg|heic|heif)$/i.test(file.name)) {
+      setStatusMsg("");
+      setScanResult(null);
+      setError("Unsupported file type. Please select a PNG, JPEG, WebP, or HEIC image.");
+      return;
+    }
+    setError("");
+    setStatusMsg("");
+    setScanResult(null);
     const reader = new FileReader();
+    reader.onerror = () => setError("Failed to read the selected image file.");
     reader.onload = async () => {
       if (typeof reader.result === "string") {
         try {
           const analyzed = await analyzeImagePixels(reader.result, file.name);
           setAds(prev => [analyzed, ...prev]);
           setSelectedAdId(analyzed.id);
-          setStatusMsg(
-            `Scanned "${file.name}" (${analyzed.dimensions.width}×${analyzed.dimensions.height}px) — pixel layout & claim check complete.`
-          );
         } catch (err) {
+          setStatusMsg("");
+          setScanResult(null);
           setError(errorText(err));
         }
       }
@@ -272,11 +369,19 @@ export const AdImageScanner: React.FC<Props> = ({
 
   const handleApplyVerifiedFix = () => {
     if (!scanResult) return;
-    const fixedText =
-      "Aura Glow Facial Serum · Clinically tested botanical formula. Participants reported 18% higher task throughput and visible hydration after 90 days (EV-1, p.2). Backed by our 30-day satisfaction policy (terms at auraglow.com).";
+    const isUploaded = currentAd.id.startsWith("uploaded-");
+    const serverRewritten = scanResult.rewritten_text?.trim();
+    const fixedText = isUploaded
+      ? serverRewritten || editableText
+      : "Aura Glow Facial Serum · Clinically tested botanical formula. Participants reported 18% higher task throughput and visible hydration after 90 days (EV-1, p.2). Backed by our 30-day satisfaction policy (terms at auraglow.com).";
+    if (!fixedText.trim()) return;
     setEditableText(fixedText);
     setHudMode("verified");
-    setStatusMsg("Applied EV-1 verified wording, label typo fix, and safe-zone calibration to the Aura Glow ad preview.");
+    setStatusMsg(
+      isUploaded
+        ? "Applied approved copy suggestions and verified safe-zone preview."
+        : "Applied EV-1 verified wording, label typo fix, and safe-zone calibration to the Aura Glow ad preview."
+    );
     void runAdScan(
       {
         ...currentAd,
@@ -357,7 +462,10 @@ export const AdImageScanner: React.FC<Props> = ({
               type="file"
               accept="image/*"
               className="sr-only"
-              onChange={e => handleFileUpload(e.target.files)}
+              onChange={e => {
+                handleFileUpload(e.target.files);
+                e.currentTarget.value = "";
+              }}
             />
             <Button
               variant="primary"
@@ -379,6 +487,29 @@ export const AdImageScanner: React.FC<Props> = ({
 
         {error && <Notice tone="danger">{error}</Notice>}
         {statusMsg && <Notice tone="success">{statusMsg}</Notice>}
+
+        {/* Creative Switcher Strip (Presets & Uploaded Images) */}
+        {ads.length > 1 && (
+          <div className="flex flex-wrap items-center gap-1.5" role="group" aria-label="Select creative to inspect">
+            {ads.map(adItem => {
+              const active = adItem.id === currentAd.id;
+              return (
+                <button
+                  key={adItem.id}
+                  type="button"
+                  onClick={() => setSelectedAdId(adItem.id)}
+                  className={`cursor-pointer rounded-full px-3 py-1 font-mono text-[11px] transition ${
+                    active
+                      ? "bg-[#0a2540] text-white border border-teal/50"
+                      : "border border-line bg-carbon text-ash hover:text-bone"
+                  }`}
+                >
+                  {adItem.shortLabel}
+                </button>
+              );
+            })}
+          </div>
+        )}
 
         {/* Target Placement Selector & Image Dimensions */}
         <div className="flex flex-wrap items-center justify-between gap-3">
@@ -418,6 +549,11 @@ export const AdImageScanner: React.FC<Props> = ({
         </div>
 
         {/* 4-Metric Score Strip */}
+        {scanning && !scanResult && (
+          <div className="rounded-2xl border border-teal/30 bg-carbon/80 p-5 font-mono text-xs text-iris">
+            Scanning image luminance contrast, safe zones, aspect placement &amp; OCR…
+          </div>
+        )}
         {scanResult && (
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <div className="rounded-2xl border border-line bg-carbon/90 p-4">
@@ -795,12 +931,15 @@ export const AdImageScanner: React.FC<Props> = ({
                 <div className="rounded-2xl border border-line bg-carbon p-4">
                   <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
                     <span className="font-mono text-[11px] uppercase tracking-wider text-blue-400">
-                      OCR Text Extracted from Aura Glow Image (Editable)
+                      {currentAd.id.startsWith("uploaded-")
+                        ? "Ad Copy & Claims in Uploaded Image (Editable)"
+                        : "OCR Text Extracted from Aura Glow Image (Editable)"}
                     </span>
                     <button
                       type="button"
+                      disabled={scanning}
                       onClick={() => void runAdScan(currentAd, targetChannel, editableText)}
-                      className="cursor-pointer border-0 bg-transparent font-mono text-[11px] font-semibold text-blue-400 hover:underline"
+                      className="cursor-pointer border-0 bg-transparent font-mono text-[11px] font-semibold text-blue-400 hover:underline disabled:opacity-50"
                     >
                       Re-check copy ↻
                     </button>
@@ -810,23 +949,25 @@ export const AdImageScanner: React.FC<Props> = ({
                     value={editableText}
                     onChange={e => setEditableText(e.target.value)}
                     className="lv-input w-full font-sans text-xs leading-relaxed"
-                    placeholder="Text detected on the advertisement creative…"
+                    placeholder="Paste or type headline, claims, and footnote copy shown inside your creative, then click Re-check copy ↻…"
                   />
                 </div>
 
                 {/* Flagged Claims & Brand Rules in the Ad Text - 2-Column Balanced Grid */}
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex items-center justify-between gap-2">
                     <h3 className="font-display text-sm font-bold uppercase tracking-wider text-bone">
                       Findings on Text &amp; Labels in This Image ({scanResult?.text_findings.length ?? 0})
                     </h3>
-                    <button
-                      type="button"
-                      onClick={handleApplyVerifiedFix}
-                      className="cursor-pointer rounded-full border border-ok/40 bg-ok/15 px-3 py-1 font-mono text-[11px] font-semibold text-ok hover:bg-ok/25"
-                    >
-                      ✓ Auto-Fix Ad Copy &amp; Preview
-                    </button>
+                    {(!currentAd.id.startsWith("uploaded-") || (scanResult?.text_findings?.length ?? 0) > 0) && (
+                      <button
+                        type="button"
+                        onClick={handleApplyVerifiedFix}
+                        className="cursor-pointer rounded-full border border-ok/40 bg-ok/15 px-3 py-1 font-mono text-[11px] font-semibold text-ok hover:bg-ok/25"
+                      >
+                        ✓ Auto-Fix Ad Copy &amp; Preview
+                      </button>
+                    )}
                   </div>
 
                   {scanResult?.text_findings && scanResult.text_findings.length > 0 ? (
@@ -877,6 +1018,12 @@ export const AdImageScanner: React.FC<Props> = ({
                           </div>
                         );
                       })}
+                    </div>
+                  ) : !scanResult?.extracted_text?.trim() ? (
+                    <div className="rounded-2xl border border-major/40 bg-major/10 p-4 text-xs leading-relaxed text-bone">
+                      <strong>Copy Pending · No Silence Clearance:</strong>{" "}
+                      {scanResult?.ocr_note ||
+                        "No readable ad copy was extracted automatically yet. Paste or type the headline/claims inside your creative in the box above and click Re-check copy ↻."}
                     </div>
                   ) : (
                     <div className="rounded-2xl border border-ok/35 bg-ok/10 p-4 text-xs text-ok">
@@ -971,12 +1118,14 @@ export const AdImageScanner: React.FC<Props> = ({
             {/* Bottom Action Bar */}
             <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line bg-carbon p-4">
               <div className="text-xs text-ash">
-                Send this Aura Glow ad to the line-by-line checker for team sign-off:
+                Send this scanned creative to the line-by-line checker for team sign-off:
               </div>
               <div className="flex flex-wrap gap-2">
-                <Button variant="secondary" onClick={handleApplyVerifiedFix}>
-                  <Icon name="check" size={14} /> Preview Verified Ad
-                </Button>
+                {(!currentAd.id.startsWith("uploaded-") || Boolean(scanResult?.rewritten_text?.trim())) && (
+                  <Button variant="secondary" onClick={handleApplyVerifiedFix}>
+                    <Icon name="check" size={14} /> Preview Verified Ad
+                  </Button>
+                )}
                 <Button
                   variant="primary"
                   disabled={creatingDraft}

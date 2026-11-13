@@ -2063,7 +2063,7 @@ class AdScanIn(BaseModel):
     channel: str = Field(default="LinkedIn", max_length=80)
     extracted_text: str = Field(default="", max_length=10000)
     cta_text: str = Field(default="", max_length=300)
-    image_data_url: str | None = Field(default=None, max_length=8_000_000)
+    image_data_url: str | None = Field(default=None, max_length=14_000_000)
     image_width: int = Field(default=1080, ge=1, le=12000)
     image_height: int = Field(default=1350, ge=1, le=12000)
     contrast_ratio: float = Field(default=7.2, ge=1.0, le=21.0)
@@ -2317,12 +2317,24 @@ def scan_ad_creative(
         {
             "id": "claim_copy",
             "title": "Ad Copy & Claim Substantiation",
-            "status": "blocking" if blocking_text_issues else ("warning" if minor_text_issues else "pass"),
-            "metric": f"{len(blocking_text_issues)} Blocker(s)" if blocking_text_issues else "Verified ✓",
+            "status": (
+                "warning"
+                if not text
+                else ("blocking" if blocking_text_issues else ("warning" if minor_text_issues else "pass"))
+            ),
+            "metric": (
+                "Copy Pending"
+                if not text
+                else (f"{len(blocking_text_issues)} Blocker(s)" if blocking_text_issues else "Verified ✓")
+            ),
             "detail": (
-                blocking_text_issues[0]["explanation"]
-                if blocking_text_issues
-                else "All promotional claims and brand terms on the creative match active rules and Evidence Passports."
+                "No readable copy was extracted from this image automatically. Paste ad copy or configure Gemini Vision OCR to audit rules and claims."
+                if not text
+                else (
+                    blocking_text_issues[0]["explanation"]
+                    if blocking_text_issues
+                    else "All promotional claims and brand terms on the creative match active rules and Evidence Passports."
+                )
             ),
         },
         {
@@ -2362,10 +2374,19 @@ def scan_ad_creative(
         },
     ]
 
+    ocr_note = ""
+    if not text and body.image_data_url:
+        s_cfg = lib.get_settings()
+        if s_cfg.llm_provider.lower() != "gemini" or not s_cfg.gemini_api_key:
+            ocr_note = "Automatic image OCR requires Gemini Vision (current backend provider is Local Mock). Enter image copy below to check claims."
+        else:
+            ocr_note = "No readable text was detected in this creative. Enter copy manually if your graphic contains stylized typography."
+
     return {
         "overall_score": overall_score,
         "verdict": verdict,
         "ocr_used": ocr_used,
+        "ocr_note": ocr_note,
         "suspicious_notes": suspicious_notes,
         "scores": {
             "text_compliance": text_compliance_score,
